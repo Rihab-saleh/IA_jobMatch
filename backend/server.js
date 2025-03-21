@@ -15,7 +15,11 @@ const Admin = require("./models/admin_model")
 const app = express()
 require("dotenv").config()
 
-app.use(cors())
+app.use(cors({
+  origin: '*', // Or specify allowed origins here, e.g., "http://localhost:3000"
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json())
 const path = require('path')
 // Function to create the first admin person
@@ -78,7 +82,7 @@ async function createFirstAdmin() {
 
 // Connect to the database and create the first admin person
 connectDB().then(() => {
-  createFirstAdmin()
+  //createFirstAdmin()
 })
 
 // Routes
