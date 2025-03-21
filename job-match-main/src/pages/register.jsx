@@ -11,7 +11,8 @@ export default function Register() {
   const { register } = useAuth()
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
-    fullName: "",
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
     mobile: "",
@@ -26,8 +27,12 @@ export default function Register() {
     setError(null)
     let isValid = true
 
-    if (formData.fullName.split(' ').length < 2) {
-      setError("Veuillez entrer votre nom complet")
+    if (formData.firstName.length < 2) {
+      setError("Veuillez entrer votre prenom")
+      isValid = false
+    }
+    if (formData.lastName.length < 2) {
+      setError("Veuillez entrer votre nom")
       isValid = false
     }
 
@@ -90,8 +95,21 @@ export default function Register() {
             <label className="block text-base font-medium mb-2">
               Nom complet
               <Input
-                name="fullName"
-                value={formData.fullName}
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                placeholder="Jean Dupont"
+                className="w-full mt-1"
+                required
+              />
+            </label>
+          </div>
+          <div>
+            <label className="block text-base font-medium mb-2">
+              Nom complet
+              <Input
+                name="lastName"
+                value={formData.lastName}
                 onChange={handleChange}
                 placeholder="Jean Dupont"
                 className="w-full mt-1"
@@ -132,6 +150,7 @@ export default function Register() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-700"
+                  disabled={!formData.password}
                 >
                   {showPassword ? "Cacher" : "Afficher"}
                 </button>

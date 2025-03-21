@@ -1,11 +1,12 @@
-const bcrypt = require("bcryptjs")
-const jwt = require("jsonwebtoken")
-const dotenv = require("dotenv")
-const Person = require("../models/person_model")
-const User = require("../models/user_model")
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const dotenv = require("dotenv");
+const Person = require("../models/person_model");
+const User = require("../models/user_model");
 
-dotenv.config()
-const SECRET_KEY = process.env.JWT_SECRET || "your_secret_key"
+dotenv.config();
+const SECRET_KEY = process.env.JWT_SECRET || "your_secret_key";
+const REFRESH_SECRET_KEY = process.env.JWT_REFRESH_SECRET || "your_refresh_secret_key";
 
 /**
  * Generate JWT token for authentication
@@ -14,36 +15,43 @@ const SECRET_KEY = process.env.JWT_SECRET || "your_secret_key"
  * @returns {string} JWT token
  */
 const generateToken = (userId, role) => {
-  console.log("Generating token for user:", userId, "with role:", role)
-  // Include both id and userId for backward compatibility
-  return jwt.sign({ id: userId, userId: userId, role: role }, SECRET_KEY, { expiresIn: "7d" })
-}
+  return jwt.sign({ id: userId, userId: userId, role: role }, SECRET_KEY, { expiresIn: "1h" });
+};
+
+/**
+ * Generate refresh token for long-lived sessions
+ * @param {string} userId - User ID to include in refresh token
+ * @returns {string} Refresh token
+ */
+const generateRefreshToken = (userId) => {
+  return jwt.sign({ id: userId }, REFRESH_SECRET_KEY, { expiresIn: "7d" });
+};
 
 /**
  * Handle user signup
  * @param {Object} userData - User data for signup
- * @returns {Object} User data and token
+ * @returns {Object} User data and tokens
  */
 const signup = async (userData) => {
-  const { firstName, lastName, email, password, age } = userData
+  const { firstName, lastName, email, password, age } = userData;
 
   // Validate required fields
   if (!firstName || !lastName || !email || !password) {
-    throw new Error("All fields are required")
+    throw new Error("All fields are required");
   }
 
   // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    throw new Error("Invalid email format")
+    throw new Error("Invalid email format");
   }
 
   // Check if user already exists
-  const existingPerson = await Person.findOne({ email })
-  if (existingPerson) throw new Error("User already exists")
+  const existingPerson = await Person.findOne({ email });
+  if (existingPerson) throw new Error("User already exists");
 
   // Hash password
-  const hashedPassword = await bcrypt.hash(password, 10)
+  const hashedPassword = await bcrypt.hash(password, 10);
 
   // Create new person
   const newPerson = new Person({
@@ -52,101 +60,80 @@ const signup = async (userData) => {
     email,
     age: age || null,
     password: hashedPassword,
-    role: "user", // Always set to "user" for signup
-    accountStatusRequests: [], // Initialize empty array
-  })
+    role: "user",
+    accountStatusRequests: [],
+  });
 
-  await newPerson.save()
+  await newPerson.save();
 
   // Create new user
   const newUser = new User({
     person: newPerson._id,
-  })
+  });
 
-  await newUser.save()
+  await newUser.save();
 
-  // Generate token and return user data
-  const token = generateToken(newUser._id, newPerson.role)
-
-  console.log("User signed up successfully:", newUser._id)
+  // Generate token and refresh token
+  const token = generateToken(newUser._id, newPerson.role);
+  const refreshToken = generateRefreshToken(newUser._id);
 
   return {
     token,
-    user: {
-      _id: newUser._id,
-      person: {
-        _id: newPerson._id,
-        firstName: newPerson.firstName,
-        lastName: newPerson.lastName,
-        email: newPerson.email,
-        role: newPerson.role,
-      },
-    },
-  }
-}
+    refreshToken,
+    userId: newUser._id,
+  };
+};
 
-/**
- * Handle user login
- * @param {Object} credentials - Login credentials
- * @returns {Object} User data and token
- */
-const login = async ({ email, password }) => {
-  // Validate required fields
-  if (!email || !password) {
-    throw new Error("Email and password are required")
-  }
 
-  // Find person by email
-  const person = await Person.findOne({ email })
-  if (!person) throw new Error("User not found")
+const login = async (loginData) => {
+  try {
+    const { email, password } =loginData;
+    if (typeof email !== "string" || typeof password !== "string") {
+      throw new Error("Invalid email or password format");
+    }
 
-  // Verify password
-  const isPasswordValid = await bcrypt.compare(password, person.password)
-  if (!isPasswordValid) throw new Error("Invalid credentials")
+    console.log("Logging in with email:", email);
 
-  // For admin users, we don't need to find a User record
-  if (person.role === "admin") {
-    const token = generateToken(person._id, person.role)
+    const person = await Person.findOne({ email: email.trim() });
 
-    console.log("Admin logged in successfully:", person._id)
+    if (!person) {
+      console.log("User not found");
+      throw new Error("User not found");
+    }
+
+    console.log("User found:", person);
+
+    const isMatch = await bcrypt.compare(password, person.password);
+    if (!isMatch) {
+      console.log("Invalid password");
+      throw new Error("Invalid password");
+    }
+
+    console.log("Password matched");
+
+    const user = await User.findOne({ person: person._id });
+    if (!user) {
+      throw new Error("User data not found");
+    }
+
+    console.log("User data:", user);
+
+    const token = generateToken(user._id, person.role);
+    const refreshToken = generateRefreshToken(user._id);
+
+    console.log("Generated token:", token);
+    console.log("Generated refresh token:", refreshToken);
 
     return {
       token,
-      user: {
-        _id: person._id,
-        firstName: person.firstName,
-        lastName: person.lastName,
-        email: person.email,
-        role: person.role,
-      },
-      role: person.role,
-    }
+      refreshToken,
+      userId: user._id,
+    };
+  } catch (error) {
+    console.error("Login error:", error.message);
+    throw error;
   }
+};
 
-  // For regular users, find the associated User record
-  const user = await User.findOne({ person: person._id })
-  if (!user) throw new Error("User not found")
 
-  // Generate token and return user data
-  const token = generateToken(user._id, person.role)
-
-  console.log("User logged in successfully:", user._id)
-
-  return {
-    token,
-    user: {
-      _id: user._id,
-      person: {
-        _id: person._id,
-        firstName: person.firstName,
-        lastName: person.lastName,
-        email: person.email,
-        role: person.role,
-      },
-    },
-    role: person.role,
-  }
-}
-
-module.exports = { signup, login }
-
+module.exports = { signup, login };

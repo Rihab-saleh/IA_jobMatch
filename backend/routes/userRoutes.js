@@ -33,7 +33,7 @@ router.post(
   "/profile/:userId/picture",
   userMiddleware,
   upload.single("profilePicture"),
-  userController.uploadProfilePicture,
+  userController.uploadProfilePicture
 )
 router.delete("/profile/:userId/picture", userMiddleware, userController.deleteProfilePicture)
 
