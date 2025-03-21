@@ -18,53 +18,7 @@ import {
   DialogTitle,
 } from "../components/ui/dialog"
 import { useNavigate } from "react-router-dom"
-
-// Custom fetch function with authentication and error handling
-const fetchAPI = async (url, options = {}, timeout = 10000) => {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), timeout)
-
-  try {
-    const token = localStorage.getItem("auth_token")
-    console.log("Fetching:", url, "with token:", token ? "Token exists" : "No token")
-
-    if (!token) {
-      throw new Error("Non authentifié")
-    }
-
-    const headers = {
-      "Content-Type": "application/json",
-      ...options.headers,
-      Authorization: `Bearer ${token}`,
-    }
-
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      body: options.body && options.method !== "GET" ? JSON.stringify(options.body) : null,
-      signal: controller.signal,
-    })
-
-    if (!response.ok) {
-      console.error("API Error:", url, response.status, response.statusText)
-      if (response.status === 401) {
-        throw new Error("Non authentifié")
-      }
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || `Erreur ${response.status}`)
-    }
-
-    return await response.json()
-  } catch (error) {
-    console.error("Fetch error:", error.message)
-    if (error.name === "AbortError") {
-      throw new Error("La requête a pris trop de temps")
-    }
-    throw error
-  } finally {
-    clearTimeout(timeoutId)
-  }
-}
+import { userService } from "../services/user-service"
 
 function ProfilePage() {
   const { user, loading: authLoading } = useAuth()
@@ -102,38 +56,12 @@ function ProfilePage() {
 
   useEffect(() => {
     let isMounted = true
-    const controller = new AbortController()
 
     const loadProfileData = async () => {
       try {
         // Add these debug logs
         console.log("Auth state:", { user, authLoading })
         console.log("Token in localStorage:", localStorage.getItem("auth_token"))
-
-        // TEMPORARY WORKAROUND: If you're having authentication issues, uncomment this block
-        // to test with mock data
-        /*
-        if (!user || !user._id) {
-          console.log("Using mock data for testing");
-          setState((prev) => ({
-            ...prev,
-            profileData: {
-              firstName: "Test",
-              lastName: "User",
-              email: "test@example.com",
-              phone: "123-456-7890",
-              location: "Test City",
-              jobTitle: "Developer",
-              bio: "This is a test bio",
-            },
-            profilePicture: null,
-            skills: ["JavaScript", "React", "Node.js"],
-            loading: false,
-            error: null,
-          }));
-          return;
-        }
-        */
 
         if (!user || !user._id) {
           setState((prev) => ({
@@ -144,10 +72,10 @@ function ProfilePage() {
           return
         }
 
-        // Use Promise.all with fetch
+        // Use Promise.all with the service functions
         const [profile, skills] = await Promise.all([
-          fetchAPI(`/api/users/profile/${user._id}`, { signal: controller.signal }),
-          fetchAPI(`/api/users/skills/${user._id}`, { signal: controller.signal }).catch(() => []), // Handle case where user has no skills
+          userService.getUserProfile(user._id),
+          userService.getUserSkills(user._id).catch(() => []), // Handle case where user has no skills
         ])
 
         if (isMounted) {
@@ -201,7 +129,6 @@ function ProfilePage() {
 
     return () => {
       isMounted = false
-      controller.abort()
     }
   }, [user, authLoading, navigate])
 
@@ -215,9 +142,9 @@ function ProfilePage() {
       if (operation === "add") {
         if (!state.newSkill || state.skills.includes(state.newSkill)) return
 
-        await fetchAPI(`/api/users/skills/${user._id}`, {
-          method: "POST",
-          body: { name: state.newSkill, level: "Intermediate" },
+        await userService.addUserSkill(user._id, { 
+          name: state.newSkill, 
+          level: "Intermediate" 
         })
 
         setState((prev) => ({
@@ -229,14 +156,12 @@ function ProfilePage() {
       }
 
       if (operation === "remove" && skill) {
-        const skillsData = await fetchAPI(`/api/users/skills/${user._id}`)
+        const skillsData = await userService.getUserSkills(user._id)
         const targetSkill = skillsData.find((s) => s.name === skill)
 
         if (!targetSkill) throw new Error("Compétence introuvable")
 
-        await fetchAPI(`/api/users/skills/${user._id}/${targetSkill._id}`, {
-          method: "DELETE",
-        })
+        await userService.removeUserSkill(user._id, targetSkill._id)
 
         setState((prev) => ({
           ...prev,
@@ -265,33 +190,17 @@ function ProfilePage() {
       setState((prev) => ({ ...prev, isUploading: true }))
 
       if (operation === "upload" && file) {
-        const formData = new FormData()
-        formData.append("profilePicture", file)
-
-        const token = localStorage.getItem("auth_token")
-        if (!token) throw new Error("Non authentifié")
-
-        const response = await fetch(`/api/users/profile/${user._id}/picture`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        })
-
-        if (!response.ok) {
-          if (response.status === 401) throw new Error("Non authentifié")
-          throw new Error("Échec du téléchargement")
-        }
-
-        const data = await response.json()
+        const response = await userService.uploadProfilePicture(user._id, file)
+        
         setState((prev) => ({
           ...prev,
-          profilePicture: data.profilePicture?.url || null,
+          profilePicture: response.profilePicture?.url || null,
         }))
         toast.success("Photo mise à jour")
       }
 
       if (operation === "delete") {
-        await fetchAPI(`/api/users/profile/${user._id}/picture`, { method: "DELETE" })
+        await userService.deleteProfilePicture(user._id)
         setState((prev) => ({ ...prev, profilePicture: null }))
         toast.success("Photo supprimée")
       }
@@ -328,10 +237,7 @@ function ProfilePage() {
     try {
       setState((prev) => ({ ...prev, saving: true }))
 
-      await fetchAPI(`/api/users/profile/${user._id}`, {
-        method: "PUT",
-        body: state.profileData,
-      })
+      await userService.updateUserProfile(user._id, state.profileData)
 
       toast.success("Profil mis à jour")
     } catch (error) {
@@ -704,4 +610,3 @@ function ProfilePage() {
 
 // Export the component with the name expected by your routes
 export default ProfilePage
-
