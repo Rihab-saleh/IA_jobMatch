@@ -1,8 +1,9 @@
-const bcrypt = require("bcrypt"); // Add this line
+const bcrypt = require("bcrypt");
 const User = require("../models/user_model");
 const AccountStatusRequest = require("../models/accountstatus_request");
 const Person = require("../models/person_model");
 const Admin = require("../models/admin_model");
+const IARecommendation = require("../models/recommendation_model");
 
 class AdminService {
   async toggleUserStatus(userId) {
@@ -20,6 +21,7 @@ class AdminService {
       throw new Error(err.message);
     }
   }
+  
   async deleteUser(userId) {
     try {
       // Find the user
@@ -43,21 +45,110 @@ class AdminService {
       throw new Error(err.message)
     }
   }
-  async getAllUsers(page = 1, limit = 10) {
+  
+  async getAllUsers(page = 1, limit = 10, search = "") {
     try {
       const skip = (page - 1) * limit;
+      
+      // Build search query if search parameter is provided
+      let query = {};
+      if (search) {
+        // Search in person's firstName, lastName, or email
+        query = {
+          $or: [
+            { 'person.firstName': { $regex: search, $options: 'i' } },
+            { 'person.lastName': { $regex: search, $options: 'i' } },
+            { 'person.email': { $regex: search, $options: 'i' } }
+          ]
+        };
+      }
 
-      const users = await User.find().select("-password").skip(skip).limit(limit).lean();
+      // Use aggregation to properly filter with search
+      const users = await User.aggregate([
+        {
+          $lookup: {
+            from: 'people', // Assuming your Person collection is named 'people'
+            localField: 'person',
+            foreignField: '_id',
+            as: 'personData'
+          }
+        },
+        {
+          $unwind: {
+            path: '$personData',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $match: search ? {
+            $or: [
+              { 'personData.firstName': { $regex: search, $options: 'i' } },
+              { 'personData.lastName': { $regex: search, $options: 'i' } },
+              { 'personData.email': { $regex: search, $options: 'i' } }
+            ]
+          } : {}
+        },
+        {
+          $skip: skip
+        },
+        {
+          $limit: limit
+        },
+        {
+          $project: {
+            _id: 1,
+            firstName: '$personData.firstName',
+            lastName: '$personData.lastName',
+            email: '$personData.email',
+            phoneNumber: '$personData.phoneNumber',
+            isActive: 1,
+            createdAt: 1
+          }
+        }
+      ]);
 
-      const totalUsers = await User.countDocuments();
+      // Count total users matching the search criteria
+      const totalUsersQuery = search ? {
+        $or: [
+          { 'personData.firstName': { $regex: search, $options: 'i' } },
+          { 'personData.lastName': { $regex: search, $options: 'i' } },
+          { 'personData.email': { $regex: search, $options: 'i' } }
+        ]
+      } : {};
+      
+      const totalUsers = await User.aggregate([
+        {
+          $lookup: {
+            from: 'people',
+            localField: 'person',
+            foreignField: '_id',
+            as: 'personData'
+          }
+        },
+        {
+          $unwind: {
+            path: '$personData',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $match: totalUsersQuery
+        },
+        {
+          $count: 'total'
+        }
+      ]);
 
+      const total = totalUsers.length > 0 ? totalUsers[0].total : 0;
+
+      // Return in the format expected by the frontend
       return {
         users,
         pagination: {
-          total: totalUsers,
-          page: Number.parseInt(page),
-          limit: Number.parseInt(limit),
-          pages: Math.ceil(totalUsers / limit),
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / limit),
         },
       };
     } catch (err) {
@@ -154,8 +245,8 @@ class AdminService {
         admins,
         pagination: {
           total: totalAdmins,
-          page: Number(page),
-          limit: Number(limit),
+          page: parseInt(page),
+          limit: parseInt(limit),
           pages: Math.ceil(totalAdmins / limit),
         },
       };
@@ -262,7 +353,8 @@ class AdminService {
           select: "firstName lastName email", // Sélectionner les champs nécessaires
         })
         .skip(skip)
-        .limit(limit);
+        .limit(limit)
+        .lean();
 
       // Compter le nombre total de demandes
       const totalCount = await AccountStatusRequest.countDocuments(query);
@@ -271,13 +363,68 @@ class AdminService {
         requests,
         pagination: {
           total: totalCount,
-          page: Number(page),
-          limit: Number(limit),
+          page: parseInt(page),
+          limit: parseInt(limit),
           pages: Math.ceil(totalCount / limit),
         },
       };
     } catch (err) {
       console.error("Error in getAccountStatusRequests:", err);
+      throw new Error(err.message);
+    }
+  }
+
+  async getUserAccountStatusRequests(userId, page = 1, limit = 10) {
+    try {
+      const skip = (page - 1) * limit;
+      
+      // Check if user exists
+      const user = await User.findById(userId);
+      if (!user) throw new Error("User not found");
+      
+      // Get requests with pagination
+      const requests = await AccountStatusRequest.find({ user: userId })
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 })
+        .lean();
+        
+      // Count total requests for this user
+      const totalCount = await AccountStatusRequest.countDocuments({ user: userId });
+      
+      return {
+        requests,
+        pagination: {
+          total: totalCount,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(totalCount / limit),
+        },
+      };
+    } catch (err) {
+      console.error("Error in getUserAccountStatusRequests:", err);
+      throw new Error(err.message);
+    }
+  }
+
+  async getUserAccountStatusRequest(userId) {
+    try {
+      // Check if user exists
+      const user = await User.findById(userId);
+      if (!user) throw new Error("User not found");
+      
+      // Get the most recent request
+      const request = await AccountStatusRequest.findOne({ user: userId })
+        .sort({ createdAt: -1 })
+        .lean();
+        
+      if (!request) {
+        throw new Error("No account status change request found");
+      }
+      
+      return request;
+    } catch (err) {
+      console.error("Error in getUserAccountStatusRequest:", err);
       throw new Error(err.message);
     }
   }
