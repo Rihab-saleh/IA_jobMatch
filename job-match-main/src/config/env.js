@@ -9,13 +9,11 @@ export const env = {
   authTokenName: "auth_token",
 
   // Feature flags
-  enableAIRecommendations:  "true",
+  enableAiRecommendations: import.meta.env.VITE_ENABLE_AI_RECOMMENDATIONS === "true",
+  enableJobRecommendations: import.meta.env.VITE_ENABLE_JOB_RECOMMENDATIONS === "true",
 
-  // Other config
-  maxFileUploadSize: 5 * 1024 * 1024, // 5MB
-
-  // Development helpers
-  isDevelopment: "development",
-  isProduction: "production",
+  // Environment
+  isDevelopment: import.meta.env.NODE_ENV === "development",
+  isProduction: import.meta.env.NODE_ENV === "production"
 }
 
