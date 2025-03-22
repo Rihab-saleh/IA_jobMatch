@@ -1,409 +1,437 @@
-// src/pages/AdminPage.js
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { Button } from "../components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Input } from "../components/ui/input";
+import { useState, useEffect } from "react"
+import { Button } from "../components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
+import { Input } from "../components/ui/input"
 import {
   Briefcase,
-  Plus,
   Search,
-  Filter,
-  ArrowUpRight,
   Trash2,
-  Edit,
-  Eye,
   RefreshCw,
   Sparkles,
   User,
-} from "lucide-react";
-import { adminService } from "../services/admin-service";
+  ToggleLeft,
+  ToggleRight,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react"
+import { adminService } from "../services/admin-service"
 
 export default function AdminPage() {
-  const [jobs, setJobs] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [apiIntegrations, setApiIntegrations] = useState([
-    { id: 1, name: "Adzuna API", status: "Connected", lastSync: "2 hours ago", jobsImported: 2458 },
-    { id: 2, name: "LinkedIn Jobs API", status: "Disconnected", lastSync: "Never" }
-  ]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [state, setState] = useState({
+    jobs: [],
+    users: [],
+    apiIntegrations: [
+      { id: 1, name: "Adzuna API", status: "Connected", lastSync: "2 hours ago" },
+      { id: 2, name: "LinkedIn Jobs API", status: "Disconnected", lastSync: "Never" },
+    ],
+    aiConfig: { apiKey: "", model: "gpt-4" },
+    currentPage: 1,
+    totalPages: 1,
+    searchQuery: "",
+    loading: true,
+    error: null,
+    activeTab: "users",
+  })
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [scrapedJobs, externalJobs, usersData] = await Promise.all([
+        setState((prev) => ({ ...prev, loading: true, error: null }))
+
+        const [jobsResponse, usersResponse] = await Promise.all([
           adminService.getAllScrapedJobs(),
-          adminService.getAllExternalJobs(),
-          adminService.getAllUsers()
-        ]);
+          adminService.getAllUsers({
+            page: state.currentPage,
+            limit: 10,
+            search: state.searchQuery,
+          }),
+        ])
 
-        // Fix: Handle potentially undefined data arrays
-        const scrapedJobsArray = scrapedJobs.data || [];
-        const externalJobsArray = externalJobs.data || [];
-        const usersArray = usersData.data || [];
+        // Handle the nested data structure from the API
+        // The API returns { data: { users: [...], pagination: {...} } }
+        const userData = usersResponse.data || usersResponse
 
-        setJobs([
-          ...scrapedJobsArray.map(job => ({ ...job, source: 'scraped' })),
-          ...externalJobsArray.map(job => ({ ...job, source: 'external' }))
-        ]);
-        setUsers(usersArray);
-        setLoading(false);
+        if (!userData?.users) {
+          throw new Error("Format des utilisateurs invalide")
+        }
+
+        setState((prev) => ({
+          ...prev,
+          users: userData.users,
+          jobs: jobsResponse?.results || jobsResponse?.data?.results || [],
+          totalPages: userData.pagination?.pages || 1,
+          loading: false,
+        }))
       } catch (err) {
-        setError(err.message);
-        setLoading(false);
+        console.error("Error fetching data:", err)
+        setState((prev) => ({
+          ...prev,
+          error: err.message,
+          loading: false,
+        }))
       }
-    };
-
-    fetchData();
-  }, []);
-
-  const deleteJob = async (id) => {
-    try {
-      await adminService.deleteJob(id);
-      setJobs(jobs.filter(job => job.id !== id));
-    } catch (err) {
-      setError(err.message);
     }
-  };
 
-  const deleteUser = async (id) => {
+    fetchData()
+  }, [state.activeTab, state.currentPage, state.searchQuery])
+
+  const handleUserAction = async (action, userId) => {
     try {
-      await adminService.deleteUser(id);
-      setUsers(users.filter(user => user.id !== id));
+      if (action === "delete") {
+        await adminService.deleteUser(userId)
+        setState((prev) => ({
+          ...prev,
+          users: prev.users.filter((user) => user._id !== userId),
+        }))
+      }
+      if (action === "toggle") {
+        await adminService.toggleUserStatus(userId)
+        setState((prev) => ({
+          ...prev,
+          users: prev.users.map((user) => (user._id === userId ? { ...user, isActive: !user.isActive } : user)),
+        }))
+      }
     } catch (err) {
-      setError(err.message);
+      setState((prev) => ({ ...prev, error: err.message }))
     }
-  };
+  }
 
-  const toggleApiStatus = async (id) => {
-    setApiIntegrations(apiIntegrations?.map(api => 
-      api.id === id ? { ...api, status: api.status === "Connected" ? "Disconnected" : "Connected" } : api
-    ) || []);
-  };
+  const handleJobDeletion = async (jobId) => {
+    try {
+      await adminService.deleteJob(jobId)
+      setState((prev) => ({
+        ...prev,
+        jobs: prev.jobs.filter((job) => job._id !== jobId),
+      }))
+    } catch (err) {
+      setState((prev) => ({ ...prev, error: err.message }))
+    }
+  }
 
-  if (loading) return <div className="text-center py-8">Chargement...</div>;
-  if (error) return <div className="text-center py-8 text-red-500">Erreur : {error}</div>;
+  const handleApiToggle = async (apiId) => {
+    setState((prev) => ({
+      ...prev,
+      apiIntegrations: prev.apiIntegrations.map((api) =>
+        api.id === apiId ? { ...api, status: api.status === "Connected" ? "Disconnected" : "Connected" } : api,
+      ),
+    }))
+  }
+
+  const handleAIConfigSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      await adminService.configureAI(state.aiConfig)
+      setState((prev) => ({ ...prev, error: null }))
+      alert("Configuration IA sauvegardée avec succès !")
+    } catch (err) {
+      setState((prev) => ({ ...prev, error: err.message }))
+    }
+  }
+
+  const handleSearch = (e) => {
+    setState((prev) => ({ ...prev, searchQuery: e.target.value, currentPage: 1 }))
+  }
+
+  const handleTabChange = (tab) => {
+    setState((prev) => ({ ...prev, activeTab: tab, currentPage: 1, searchQuery: "" }))
+  }
+
+  if (state.loading) return <LoadingSpinner />
+  if (state.error) return <ErrorDisplay message={state.error} />
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2">Tableau de bord administrateur</h1>
-        
-        {/* Cartes de statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard 
-            title="Offres d'emploi" 
-            value={jobs.length} 
-            trend="12%"
-            icon={<Briefcase className="h-5 w-5" />}
-          />
-          <StatCard
-            title="Utilisateurs"
-            value={users.length}
-            trend="8%"
-            icon={<User className="h-5 w-5" />}
-          />
-          <StatCard
-            title="Candidatures"
-            value={3845}
-            trend="15%"
-            icon={<Sparkles className="h-5 w-5" />}
-          />
-          <StatCard
-            title="API Connectées"
-            value={`${apiIntegrations.filter(api => api.status === "Connected").length}/${apiIntegrations.length}`}
-            trend="75%"
-            icon={<RefreshCw className="h-5 w-5" />}
-          />
-        </div>
+        <h1 className="text-3xl font-bold mb-8">Tableau de bord administrateur</h1>
 
-        <Tabs defaultValue="jobs">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
+        <StatsOverview
+          jobsCount={state.jobs.length}
+          usersCount={state.users.length}
+          activeApis={state.apiIntegrations.filter((api) => api.status === "Connected").length}
+          totalApis={state.apiIntegrations.length}
+        />
+
+        <Tabs value={state.activeTab} onValueChange={handleTabChange}>
+          <TabsList className="grid grid-cols-4 mb-8">
             <TabsTrigger value="jobs">Offres</TabsTrigger>
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
             <TabsTrigger value="api">API</TabsTrigger>
-            <TabsTrigger value="ia">Configuration IA</TabsTrigger>
+            <TabsTrigger value="ia">IA</TabsTrigger>
           </TabsList>
 
-          {/* Onglet Offres */}
           <TabsContent value="jobs">
             <DashboardSection
               title="Gestion des offres"
-              searchPlaceholder="Rechercher des offres..."
-              addButtonLink="/post-job"
-              addButtonText="Ajouter une offre"
-              columns={['Offre', 'Candidats', 'Statut', 'Source', 'Date', 'Actions']}
+              searchValue={state.searchQuery}
+              onSearch={handleSearch}
+              pagination={{
+                current: state.currentPage,
+                total: state.totalPages,
+                onPrev: () => setState((prev) => ({ ...prev, currentPage: Math.max(1, prev.currentPage - 1) })),
+                onNext: () =>
+                  setState((prev) => ({ ...prev, currentPage: Math.min(prev.totalPages, prev.currentPage + 1) })),
+              }}
             >
-              {jobs && jobs.length > 0 ? jobs.map(job => (
-                <tr key={job.id}>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <div className="bg-gray-100 p-2 rounded-full">
-                        <Briefcase className="h-5 w-5 text-gray-600" />
-                      </div>
-                      <div className="ml-4">
-                        <div className="font-medium">{job.title}</div>
-                        <div className="text-sm text-gray-500">{job.company} • {job.location}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{job.applicants}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={job.status} />
-                  </TableCell>
-                  <TableCell>{job.source === 'scraped' ? 'Scrapé' : 'Externe'}</TableCell>
-                  <TableCell>{new Date(job.postedDate).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <ActionButtons 
-                      onDelete={() => deleteJob(job.id)}
-                      onEdit={() => {/* Implémentez l'édition */}}
-                      onView={() => {/* Implémentez la visualisation */}}
-                    />
-                  </TableCell>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan="6" className="px-6 py-4 text-center">Aucune offre disponible</td>
-                </tr>
-              )}
+              <JobsTable jobs={state.jobs} onDelete={handleJobDeletion} />
             </DashboardSection>
           </TabsContent>
 
-          {/* Onglet Utilisateurs */}
           <TabsContent value="users">
             <DashboardSection
               title="Gestion des utilisateurs"
-              searchPlaceholder="Rechercher des utilisateurs..."
-              addButtonText="Ajouter un utilisateur"
-              columns={['Utilisateur', 'Rôle', 'Statut', 'Inscription', 'Candidatures', 'Actions']}
+              searchValue={state.searchQuery}
+              onSearch={handleSearch}
+              pagination={{
+                current: state.currentPage,
+                total: state.totalPages,
+                onPrev: () => setState((prev) => ({ ...prev, currentPage: Math.max(1, prev.currentPage - 1) })),
+                onNext: () =>
+                  setState((prev) => ({ ...prev, currentPage: Math.min(prev.totalPages, prev.currentPage + 1) })),
+              }}
             >
-              {users && users.length > 0 ? users.map(user => (
-                <tr key={user.id}>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <div className="bg-gray-100 p-2 rounded-full">
-                        <User className="h-5 w-5 text-gray-600" />
-                      </div>
-                      <div className="ml-4">
-                        <div className="font-medium">{user.name}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{user.role}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={user.status} />
-                  </TableCell>
-                  <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell>{user.applications?.length || 0}</TableCell>
-                  <TableCell>
-                    <ActionButtons 
-                      onDelete={() => deleteUser(user.id)}
-                      onEdit={() => {/* Implémentez l'édition */}}
-                      onView={() => {/* Implémentez la visualisation */}}
-                    />
-                  </TableCell>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan="6" className="px-6 py-4 text-center">Aucun utilisateur disponible</td>
-                </tr>
-              )}
+              <UsersTable users={state.users} onAction={handleUserAction} />
             </DashboardSection>
           </TabsContent>
 
-          {/* Onglet API */}
           <TabsContent value="api">
-            <div className="bg-white rounded-lg border p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold">Intégrations API</h2>
-                <Button className="bg-purple-600 hover:bg-purple-700">
-                  <Plus className="mr-2 h-4 w-4" /> Ajouter une API
-                </Button>
-              </div>
-
-              {apiIntegrations && apiIntegrations.length > 0 ? apiIntegrations.map(api => (
-                <div key={api.id} className="border rounded-lg p-4 mb-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="font-semibold">{api.name}</h3>
-                      <div className="flex items-center gap-2 mt-2">
-                        <StatusBadge status={api.status} />
-                        {api.status === 'Connected' && (
-                          <span className="text-sm text-gray-500">
-                            Dernière synchronisation : {api.lastSync}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      {api.status === 'Connected' ? (
-                        <>
-                          <Button variant="outline" onClick={() => toggleApiStatus(api.id)}>
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            Synchroniser
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            onClick={() => toggleApiStatus(api.id)}
-                          >
-                            Déconnecter
-                          </Button>
-                        </>
-                      ) : (
-                        <Button onClick={() => toggleApiStatus(api.id)}>
-                          Connecter
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )) : (
-                <div className="text-center py-4">Aucune API disponible</div>
-              )}
-            </div>
+            <DashboardSection title="Intégrations API">
+              <ApiIntegrationList apis={state.apiIntegrations} onToggle={handleApiToggle} />
+            </DashboardSection>
           </TabsContent>
 
-          {/* Onglet Configuration IA */}
           <TabsContent value="ia">
-            <div className="bg-white rounded-lg border p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <h2 className="text-xl font-semibold">Configuration de l'IA</h2>
-                <Sparkles className="h-5 w-5 text-purple-600" />
-              </div>
-
-              <div className="space-y-6">
-                <div className="border rounded-lg p-4">
-                  <h3 className="font-semibold mb-4">Configuration OpenAI</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Clé API</label>
-                      <Input type="password" placeholder="sk-..." />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Modèle</label>
-                      <select className="w-full border rounded-md p-2">
-                        <option>gpt-4</option>
-                        <option>gpt-3.5-turbo</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex justify-end">
-                    <Button className="bg-purple-600 hover:bg-purple-700">
-                      Sauvegarder
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <DashboardSection title="Configuration IA">
+              <AIConfigForm
+                config={state.aiConfig}
+                onChange={(e) =>
+                  setState((prev) => ({
+                    ...prev,
+                    aiConfig: { ...prev.aiConfig, [e.target.name]: e.target.value },
+                  }))
+                }
+                onSubmit={handleAIConfigSubmit}
+              />
+            </DashboardSection>
           </TabsContent>
         </Tabs>
       </div>
     </div>
-  );
+  )
 }
 
-// Composants réutilisables
-const StatCard = ({ title, value, trend, icon }) => (
-  <Card>
+const LoadingSpinner = () => (
+  <div className="text-center py-12">
+    <RefreshCw className="h-8 w-8 animate-spin mx-auto" />
+    <p className="mt-4">Chargement des données...</p>
+  </div>
+)
+
+const ErrorDisplay = ({ message }) => (
+  <div className="text-center py-8 bg-red-50 rounded-lg">
+    <div className="text-red-600 font-medium">Erreur : {message}</div>
+    <Button className="mt-4" onClick={() => window.location.reload()}>
+      Réessayer
+    </Button>
+  </div>
+)
+
+const StatsOverview = ({ jobsCount, usersCount, activeApis, totalApis }) => (
+  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    <StatCard title="Offres actives" value={jobsCount} icon={<Briefcase />} />
+    <StatCard title="Utilisateurs" value={usersCount} icon={<User />} />
+    <StatCard title="API actives" value={`${activeApis}/${totalApis}`} icon={<RefreshCw />} />
+    <StatCard title="Modèle IA" value="GPT-4" icon={<Sparkles />} />
+  </div>
+)
+
+const StatCard = ({ title, value, icon }) => (
+  <Card className="hover:shadow-lg transition-shadow">
     <CardHeader className="pb-2">
-      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <CardTitle className="text-sm font-medium flex items-center gap-2">
+        {icon}
+        {title}
+      </CardTitle>
     </CardHeader>
     <CardContent>
       <div className="text-2xl font-bold">{value}</div>
-      <div className="flex items-center mt-2 text-sm">
-        {icon}
-        <span className="ml-2 text-green-500">{trend}</span>
-      </div>
     </CardContent>
   </Card>
-);
+)
 
-const DashboardSection = ({ title, searchPlaceholder, addButtonLink, addButtonText, columns, children }) => (
-  <div className="bg-white rounded-lg border p-6">
+const DashboardSection = ({ title, children, searchValue, onSearch, pagination }) => (
+  <div className="bg-white rounded-lg border p-6 shadow-sm">
     <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
       <h2 className="text-xl font-semibold">{title}</h2>
-      <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-        <div className="relative flex-grow">
+      {onSearch && (
+        <div className="relative flex-grow max-w-md">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input placeholder={searchPlaceholder} className="pl-9" />
+          <Input placeholder="Rechercher..." className="pl-9" value={searchValue} onChange={onSearch} />
         </div>
-        <Button variant="outline">
-          <Filter className="mr-2 h-4 w-4" />
-          Filtrer
-        </Button>
-        {addButtonLink ? (
-          <Link to={addButtonLink}>
-            <Button className="bg-purple-600 hover:bg-purple-700">
-              <Plus className="mr-2 h-4 w-4" />
-              {addButtonText}
-            </Button>
-          </Link>
-        ) : (
-          <Button className="bg-purple-600 hover:bg-purple-700">
-            <Plus className="mr-2 h-4 w-4" />
-            {addButtonText}
+      )}
+    </div>
+
+    {children}
+
+    {pagination && (
+      <div className="mt-6 flex justify-between items-center">
+        <div className="text-sm text-gray-500">
+          Page {pagination.current} sur {pagination.total}
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={pagination.onPrev} disabled={pagination.current === 1}>
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            Précédent
           </Button>
-        )}
+          <Button variant="outline" onClick={pagination.onNext} disabled={pagination.current === pagination.total}>
+            Suivant
+            <ChevronRight className="h-4 w-4 ml-2" />
+          </Button>
+        </div>
       </div>
-    </div>
+    )}
+  </div>
+)
 
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr className="bg-gray-50 border-b">
-            {columns && columns.map((col, index) => (
-              <th key={index} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                {col}
-              </th>
-            ))}
+const UsersTable = ({ users, onAction }) => (
+  <div className="overflow-x-auto">
+    <table className="w-full">
+      <thead>
+        <tr className="bg-gray-50 border-b text-left text-xs uppercase text-gray-500">
+          <th className="px-6 py-3">Nom complet</th>
+          <th className="px-6 py-3">Email</th>
+          <th className="px-6 py-3">Statut</th>
+          <th className="px-6 py-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-200">
+        {users.length > 0 ? (
+          users.map((user) => (
+            <tr key={user._id} className="hover:bg-gray-50">
+              <td className="px-6 py-4">
+                {user.firstName} {user.lastName}
+              </td>
+              <td className="px-6 py-4">{user.email}</td>
+              <td className="px-6 py-4">
+                <StatusBadge active={user.isActive} />
+              </td>
+              <td className="px-6 py-4">
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onAction("toggle", user._id)}
+                    title="Modifier statut"
+                  >
+                    {user.isActive ? (
+                      <ToggleRight className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <ToggleLeft className="h-4 w-4 text-gray-500" />
+                    )}
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => onAction("delete", user._id)} title="Supprimer">
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+              Aucun utilisateur trouvé
+            </td>
           </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {children}
-        </tbody>
-      </table>
-    </div>
+        )}
+      </tbody>
+    </table>
+  </div>
+)
 
-    <div className="mt-6 flex justify-between items-center">
-      <div className="text-sm text-gray-500">Affichage de 1 à 10 éléments</div>
-      <div className="flex gap-2">
-        <Button variant="outline">Précédent</Button>
-        <Button variant="outline">Suivant</Button>
+const JobsTable = ({ jobs, onDelete }) => (
+  <div className="overflow-x-auto">
+    <table className="w-full">
+      <thead>
+        <tr className="bg-gray-50 border-b text-left text-xs uppercase text-gray-500">
+          <th className="px-6 py-3">Titre</th>
+          <th className="px-6 py-3">Entreprise</th>
+          <th className="px-6 py-3">Localisation</th>
+          <th className="px-6 py-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-200">
+        {jobs.length > 0 ? (
+          jobs.map((job) => (
+            <tr key={job._id} className="hover:bg-gray-50">
+              <td className="px-6 py-4 font-medium">{job.title}</td>
+              <td className="px-6 py-4">{job.company?.display_name}</td>
+              <td className="px-6 py-4">{job.location?.display_name}</td>
+              <td className="px-6 py-4">
+                <Button variant="ghost" size="icon" onClick={() => onDelete(job._id)} title="Supprimer">
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+              Aucune offre trouvée
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+)
+
+const ApiIntegrationList = ({ apis, onToggle }) => (
+  <div className="space-y-4">
+    {apis.map((api) => (
+      <div key={api.id} className="border rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold">{api.name}</h3>
+            <p className="text-sm text-gray-500 mt-1">Dernière synchronisation : {api.lastSync}</p>
+          </div>
+          <Button variant={api.status === "Connected" ? "destructive" : "default"} onClick={() => onToggle(api.id)}>
+            {api.status === "Connected" ? "Déconnecter" : "Connecter"}
+          </Button>
+        </div>
+      </div>
+    ))}
+  </div>
+)
+
+const AIConfigForm = ({ config, onChange, onSubmit }) => (
+  <form onSubmit={onSubmit} className="space-y-6 max-w-2xl">
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-2">Clé API OpenAI</label>
+        <Input type="password" name="apiKey" value={config.apiKey} onChange={onChange} placeholder="sk-..." required />
+      </div>
+      <div>
+        <label className="block text-sm font-medium mb-2">Modèle</label>
+        <select name="model" value={config.model} onChange={onChange} className="w-full border rounded-md p-2" required>
+          <option value="gpt-4">GPT-4</option>
+          <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+        </select>
       </div>
     </div>
-  </div>
-);
+    <Button type="submit" className="bg-purple-600 hover:bg-purple-700">
+      Sauvegarder la configuration
+    </Button>
+  </form>
+)
 
-const TableCell = ({ children }) => (
-  <td className="px-6 py-4 whitespace-nowrap">{children}</td>
-);
-
-const StatusBadge = ({ status }) => (
-  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-    status === 'Active' || status === 'Connected' 
-      ? 'bg-green-100 text-green-800' 
-      : 'bg-gray-100 text-gray-800'
-  }`}>
-    {status}
+const StatusBadge = ({ active }) => (
+  <span
+    className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+      active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+    }`}
+  >
+    {active ? "Actif" : "Inactif"}
   </span>
-);
-
-const ActionButtons = ({ onView, onEdit, onDelete }) => (
-  <div className="flex gap-2">
-    <Button variant="ghost" size="icon" onClick={onView}>
-      <Eye className="h-4 w-4" />
-    </Button>
-    <Button variant="ghost" size="icon" onClick={onEdit}>
-      <Edit className="h-4 w-4 text-blue-500" />
-    </Button>
-    <Button variant="ghost" size="icon" onClick={onDelete}>
-      <Trash2 className="h-4 w-4 text-red-500" />
-    </Button>
-  </div>
-);
+)

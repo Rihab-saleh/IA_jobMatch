@@ -108,12 +108,18 @@ const toggleUserStatus = async (req, res) => {
 // Récupérer tous les utilisateurs
 const getAllUsers = async (req, res) => {
   try {
-    const users = await AdminService.getAllUsers();
-    res.json(users);
+    const page = Number.parseInt(req.query.page) || 1
+    const limit = Number.parseInt(req.query.limit) || 10
+    const search = req.query.search || ""
+
+    const result = await AdminService.getAllUsers(page, limit)
+
+    // Wrap the response in a data property to match frontend expectations
+    res.json({ data: result })
   } catch (error) {
-    handleError(res, error, "An error occurred while retrieving all users");
+    handleError(res, error, "An error occurred while retrieving all users")
   }
-};
+}
 
 // Configurer l'IA (exemple)
 const configureAI = async (req, res) => {
