@@ -41,11 +41,16 @@ export default function AdminPage() {
           adminService.getAllUsers()
         ]);
 
+        // Fix: Handle potentially undefined data arrays
+        const scrapedJobsArray = scrapedJobs.data || [];
+        const externalJobsArray = externalJobs.data || [];
+        const usersArray = usersData.data || [];
+
         setJobs([
-          ...scrapedJobs.data?.map(job => ({ ...job, source: 'scraped' })),
-          ...externalJobs.data?.map(job => ({ ...job, source: 'external' }))
+          ...scrapedJobsArray.map(job => ({ ...job, source: 'scraped' })),
+          ...externalJobsArray.map(job => ({ ...job, source: 'external' }))
         ]);
-        setUsers(usersData.data);
+        setUsers(usersArray);
         setLoading(false);
       } catch (err) {
         setError(err.message);
@@ -77,7 +82,7 @@ export default function AdminPage() {
   const toggleApiStatus = async (id) => {
     setApiIntegrations(apiIntegrations?.map(api => 
       api.id === id ? { ...api, status: api.status === "Connected" ? "Disconnected" : "Connected" } : api
-    ));
+    ) || []);
   };
 
   if (loading) return <div className="text-center py-8">Chargement...</div>;
@@ -133,7 +138,7 @@ export default function AdminPage() {
               addButtonText="Ajouter une offre"
               columns={['Offre', 'Candidats', 'Statut', 'Source', 'Date', 'Actions']}
             >
-              {jobs?.map(job => (
+              {jobs && jobs.length > 0 ? jobs.map(job => (
                 <tr key={job.id}>
                   <TableCell>
                     <div className="flex items-center">
@@ -160,7 +165,11 @@ export default function AdminPage() {
                     />
                   </TableCell>
                 </tr>
-              ))}
+              )) : (
+                <tr>
+                  <td colSpan="6" className="px-6 py-4 text-center">Aucune offre disponible</td>
+                </tr>
+              )}
             </DashboardSection>
           </TabsContent>
 
@@ -172,7 +181,7 @@ export default function AdminPage() {
               addButtonText="Ajouter un utilisateur"
               columns={['Utilisateur', 'Rôle', 'Statut', 'Inscription', 'Candidatures', 'Actions']}
             >
-              {users?.map(user => (
+              {users && users.length > 0 ? users.map(user => (
                 <tr key={user.id}>
                   <TableCell>
                     <div className="flex items-center">
@@ -199,7 +208,11 @@ export default function AdminPage() {
                     />
                   </TableCell>
                 </tr>
-              ))}
+              )) : (
+                <tr>
+                  <td colSpan="6" className="px-6 py-4 text-center">Aucun utilisateur disponible</td>
+                </tr>
+              )}
             </DashboardSection>
           </TabsContent>
 
@@ -213,7 +226,7 @@ export default function AdminPage() {
                 </Button>
               </div>
 
-              {apiIntegrations?.map(api => (
+              {apiIntegrations && apiIntegrations.length > 0 ? apiIntegrations.map(api => (
                 <div key={api.id} className="border rounded-lg p-4 mb-4">
                   <div className="flex justify-between items-center">
                     <div>
@@ -250,7 +263,9 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-center py-4">Aucune API disponible</div>
+              )}
             </div>
           </TabsContent>
 
@@ -265,7 +280,7 @@ export default function AdminPage() {
               <div className="space-y-6">
                 <div className="border rounded-lg p-4">
                   <h3 className="font-semibold mb-4">Configuration OpenAI</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-2">Clé API</label>
                       <Input type="password" placeholder="sk-..." />
@@ -342,7 +357,7 @@ const DashboardSection = ({ title, searchPlaceholder, addButtonLink, addButtonTe
       <table className="w-full">
         <thead>
           <tr className="bg-gray-50 border-b">
-            {columns?.map((col, index) => (
+            {columns && columns.map((col, index) => (
               <th key={index} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 {col}
               </th>
