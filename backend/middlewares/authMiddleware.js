@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
 const User = require("../models/user_model");
+const Admin = require("../models/admin_model");
 const Person = require("../models/person_model");
 
 dotenv.config();
@@ -27,8 +28,8 @@ const publicRoutes = new Set([
 const userMiddleware = (req, res, next) => {
   console.log("User Middleware: Checking user ownership and role");
 
-  const requestedUserId = req.params.userId;
-  const authUserId = req.user?._id;
+  const requestedUserId = req.params.id;
+  const authUserId = req.user?._id || req.admin?._id;
   const authUserRole = req.user?.role;
 
   // Vérifier que l'utilisateur authentifié correspond à l'ID dans l'URL
@@ -39,8 +40,13 @@ const userMiddleware = (req, res, next) => {
 
   // Vérifier que l'utilisateur a le rôle "user"
   if (authUserRole !== "user") {
-    console.log("User Middleware: User does not have the required role. Role:", authUserRole);
-    return res.status(403).json({ error: "Access restricted to users with role 'user'" });
+    console.log(
+      "User Middleware: User does not have the required role. Role:",
+      authUserRole
+    );
+    return res
+      .status(403)
+      .json({ error: "Access restricted to users with role 'user'" });
   }
 
   console.log("User Middleware: User ownership and role verified");
@@ -74,7 +80,9 @@ const authMiddleware = async (req, res, next) => {
 
   // Check if the header follows the Bearer token format
   if (!authHeader.startsWith("Bearer ")) {
-    console.log("Auth Middleware: Invalid Authorization format, expected 'Bearer token'");
+    console.log(
+      "Auth Middleware: Invalid Authorization format, expected 'Bearer token'"
+    );
     return res.status(401).json({ error: "Invalid token format" });
   }
 
@@ -90,7 +98,10 @@ const authMiddleware = async (req, res, next) => {
   try {
     console.log("Auth Middleware: Verifying token");
     const decoded = jwt.verify(token, SECRET_KEY);
-    console.log("Auth Middleware: Decoded token:", JSON.stringify(decoded, null, 2));
+    console.log(
+      "Auth Middleware: Decoded token:",
+      JSON.stringify(decoded, null, 2)
+    );
 
     // Check if the token contains a user ID (could be either id or userId)
     const userId = decoded.id || decoded.userId;
@@ -108,7 +119,9 @@ const authMiddleware = async (req, res, next) => {
 
     // If found in User model, get the associated Person data
     if (user) {
-      console.log("Auth Middleware: User found in User model, getting Person data");
+      console.log(
+        "Auth Middleware: User found in User model, getting Person data"
+      );
       personData = await Person.findById(user.person).select("-password");
 
       if (!personData) {
@@ -123,23 +136,40 @@ const authMiddleware = async (req, res, next) => {
         role: personData.role,
       };
     } else {
-      // If not found in User model, check in Person model (for admin users)
-      console.log("Auth Middleware: User not found in User model, checking Person model");
-      personData = await Person.findById(userId).select("-password");
+      // If not found in User model, check in Admin model
+      const admin = await Admin.findById(userId);
+      if (admin) {
+        console.log("Auth Middleware: User found in Admin model");
+        req.user = {
+          _id: userId, // Use the ID from the token directly
+          role: "admin",
+        };
+      } else {
+        // If not found in User or Admin model, check in Person model (for other users)
+        console.log(
+          "Auth Middleware: User not found in User or Admin model, checking Person model"
+        );
+        personData = await Person.findById(userId).select("-password");
 
-      if (!personData) {
-        console.log("Auth Middleware: User not found in any model");
-        return res.status(401).json({ error: "User not found" });
+        if (!personData) {
+          console.log("Auth Middleware: User not found in any model");
+          return res.status(401).json({ error: "User not found" });
+        }
+
+        // Set user object with necessary data
+        req.user = {
+          _id: userId, // Use the ID from the token directly
+          role: personData.role,
+        };
       }
-
-      // Set user object with necessary data
-      req.user = {
-        _id: userId, // Use the ID from the token directly
-        role: personData.role,
-      };
     }
 
-    console.log("Auth Middleware: User authenticated", req.user._id, "Role:", req.user.role);
+    console.log(
+      "Auth Middleware: User authenticated",
+      req.user._id,
+      "Role:",
+      req.user.role
+    );
     next();
   } catch (err) {
     console.log("Auth Middleware: Error", err.message);
@@ -168,7 +198,10 @@ const adminMiddleware = (req, res, next) => {
     return res.status(401).json({ error: "Authentication required" });
   }
   if (req.user.role !== "admin") {
-    console.log("Admin Middleware: User is not an admin. User role:", req.user.role);
+    console.log(
+      "Admin Middleware: User is not an admin. User role:",
+      req.user.role
+    );
     return res.status(403).json({ error: "Admin access required" });
   }
   console.log("Admin Middleware: Admin access granted");

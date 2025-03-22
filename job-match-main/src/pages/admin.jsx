@@ -42,8 +42,8 @@ export default function AdminPage() {
         ]);
 
         setJobs([
-          ...scrapedJobs.data.map(job => ({ ...job, source: 'scraped' })),
-          ...externalJobs.data.map(job => ({ ...job, source: 'external' }))
+          ...scrapedJobs.data?.map(job => ({ ...job, source: 'scraped' })),
+          ...externalJobs.data?.map(job => ({ ...job, source: 'external' }))
         ]);
         setUsers(usersData.data);
         setLoading(false);
@@ -75,7 +75,7 @@ export default function AdminPage() {
   };
 
   const toggleApiStatus = async (id) => {
-    setApiIntegrations(apiIntegrations.map(api => 
+    setApiIntegrations(apiIntegrations?.map(api => 
       api.id === id ? { ...api, status: api.status === "Connected" ? "Disconnected" : "Connected" } : api
     ));
   };
@@ -133,7 +133,7 @@ export default function AdminPage() {
               addButtonText="Ajouter une offre"
               columns={['Offre', 'Candidats', 'Statut', 'Source', 'Date', 'Actions']}
             >
-              {jobs.map(job => (
+              {jobs?.map(job => (
                 <tr key={job.id}>
                   <TableCell>
                     <div className="flex items-center">
@@ -172,7 +172,7 @@ export default function AdminPage() {
               addButtonText="Ajouter un utilisateur"
               columns={['Utilisateur', 'Rôle', 'Statut', 'Inscription', 'Candidatures', 'Actions']}
             >
-              {users.map(user => (
+              {users?.map(user => (
                 <tr key={user.id}>
                   <TableCell>
                     <div className="flex items-center">
@@ -213,7 +213,7 @@ export default function AdminPage() {
                 </Button>
               </div>
 
-              {apiIntegrations.map(api => (
+              {apiIntegrations?.map(api => (
                 <div key={api.id} className="border rounded-lg p-4 mb-4">
                   <div className="flex justify-between items-center">
                     <div>
@@ -342,7 +342,7 @@ const DashboardSection = ({ title, searchPlaceholder, addButtonLink, addButtonTe
       <table className="w-full">
         <thead>
           <tr className="bg-gray-50 border-b">
-            {columns.map((col, index) => (
+            {columns?.map((col, index) => (
               <th key={index} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 {col}
               </th>

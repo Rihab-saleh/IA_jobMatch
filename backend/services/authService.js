@@ -1,13 +1,14 @@
-const bcrypt = require("bcryptjs")
-const jwt = require("jsonwebtoken")
-const dotenv = require("dotenv")
-const Person = require("../models/person_model")
-const User = require("../models/user_model")
-const Admin = require("../models/admin_model")
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const dotenv = require("dotenv");
+const Person = require("../models/person_model");
+const Admin = require("../models/admin_model");
+const User = require("../models/user_model");
 
-dotenv.config()
-const SECRET_KEY = process.env.JWT_SECRET || "your_secret_key"
-const REFRESH_SECRET_KEY = process.env.JWT_REFRESH_SECRET || "your_refresh_secret_key"
+dotenv.config();
+const SECRET_KEY = process.env.JWT_SECRET || "your_secret_key";
+const REFRESH_SECRET_KEY =
+  process.env.JWT_REFRESH_SECRET || "your_refresh_secret_key";
 
 /**
  * Generate JWT token for authentication
@@ -15,18 +16,20 @@ const REFRESH_SECRET_KEY = process.env.JWT_REFRESH_SECRET || "your_refresh_secre
  * @param {string} role - User role
  * @returns {string} JWT token
  */
-const generateToken = (userId, role) => {
-  return jwt.sign({ id: userId, userId: userId, role: role }, SECRET_KEY, { expiresIn: "1h" })
-}
+const generateToken = (id, role, firstName, lastName, email) => {
+  return jwt.sign({ id, role, firstName, lastName, email }, SECRET_KEY, {
+    expiresIn: "2h",
+  });
+};
 
 /**
  * Generate refresh token for long-lived sessions
  * @param {string} userId - User ID to include in refresh token
  * @returns {string} Refresh token
  */
-const generateRefreshToken = (userId) => {
-  return jwt.sign({ id: userId }, REFRESH_SECRET_KEY, { expiresIn: "7d" })
-}
+const generateRefreshToken = (id) => {
+  return jwt.sign({ id: id }, REFRESH_SECRET_KEY, { expiresIn: "7d" });
+};
 
 /**
  * Handle user signup
@@ -34,25 +37,25 @@ const generateRefreshToken = (userId) => {
  * @returns {Object} User data and tokens
  */
 const signup = async (userData) => {
-  const { firstName, lastName, email, password, age } = userData
+  const { firstName, lastName, email, password, age } = userData;
 
   // Validate required fields
   if (!firstName || !lastName || !email || !password) {
-    throw new Error("All fields are required")
+    throw new Error("All fields are required");
   }
 
   // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    throw new Error("Invalid email format")
+    throw new Error("Invalid email format");
   }
 
   // Check if user already exists
-  const existingPerson = await Person.findOne({ email })
-  if (existingPerson) throw new Error("User already exists")
+  const existingPerson = await Person.findOne({ email });
+  if (existingPerson) throw new Error("User already exists");
 
   // Hash password
-  const hashedPassword = await bcrypt.hash(password, 10)
+  const hashedPassword = await bcrypt.hash(password, 10);
 
   // Create new person
   const newPerson = new Person({
@@ -63,96 +66,104 @@ const signup = async (userData) => {
     password: hashedPassword,
     role: "user",
     accountStatusRequests: [],
-  })
+  });
 
-  await newPerson.save()
+  await newPerson.save();
 
   // Create new user
   const newUser = new User({
     person: newPerson._id,
-  })
+  });
 
-  await newUser.save()
+  await newUser.save();
 
   // Generate token and refresh token
-  const token = generateToken(newUser._id, newPerson.role)
-  const refreshToken = generateRefreshToken(newUser._id)
+  const token = generateToken(
+    newUser._id,
+    newPerson.firstName,
+    newPerson.LastName,
+    newPerson.email,
+    newPerson.role
+  );
+  const refreshToken = generateRefreshToken(newUser._id);
 
   return {
     token,
     refreshToken,
     userId: newUser._id,
-  }
-}
+  };
+};
 
 const login = async (loginData) => {
   try {
-    const { email, password } = loginData
+    const { email, password } = loginData;
     if (typeof email !== "string" || typeof password !== "string") {
-      throw new Error("Invalid email or password format")
+      throw new Error("Invalid email or password format");
     }
 
-    console.log("Logging in with email:", email)
-
-    const person = await Person.findOne({ email: email.trim() })
+    const person = await Person.findOne({ email: email.trim() });
 
     if (!person) {
-      console.log("User not found")
-      throw new Error("User not found")
+      throw new Error("User not found");
     }
 
-    console.log("User found:", person)
-
-    const isMatch = await bcrypt.compare(password, person.password)
+    const isMatch = await bcrypt.compare(password, person.password);
     if (!isMatch) {
-      console.log("Invalid password")
-      throw new Error("Invalid credentials")
+      throw new Error("Invalid password");
     }
 
-    console.log("Password matched")
-
-    let userId
-
-    // Check if the person is an admin
+    let token;
+    let refreshToken;
     if (person.role === "admin") {
-      const admin = await Admin.findOne({ person: person._id })
+      const admin = await Admin.findOne({ person: person._id });
+
       if (!admin) {
-        console.log("Admin record not found, creating one")
-        // Create admin record if it doesn't exist
-        const newAdmin = new Admin({
-          person: person._id,
-        })
-        await newAdmin.save()
-        userId = newAdmin._id
-      } else {
-        userId = admin._id
+        throw new Error("Admin data not found");
       }
+      token = generateToken(
+        admin._id,
+        person.firstName,
+        person.LastName,
+        person.email,
+        person.role
+      );
+      refreshToken = generateRefreshToken(admin._id);
+      return {
+        token,
+        refreshToken,
+        id: admin._id,
+        role: person.role,
+        email: person.email,
+        fullName: `${person.firstName} ${person.lastName}`,
+      };
     } else {
-      // Regular user flow
-      const user = await User.findOne({ person: person._id })
+      const user = await User.findOne({ person: person._id });
+
       if (!user) {
-        throw new Error("User data not found")
+        throw new Error("User data not found");
       }
-      userId = user._id
-    }
-
-    const token = generateToken(userId, person.role)
-    const refreshToken = generateRefreshToken(userId)
-
-    console.log("Generated token:", token)
-    console.log("Generated refresh token:", refreshToken)
-
-    return {
-      token,
-      refreshToken,
-      userId: userId,
-      role: person.role,
+      token = generateToken(
+        user._id,
+        person.firstName,
+        person.LastName,
+        person.email,
+        person.role
+      );
+      refreshToken = generateRefreshToken(user._id);
+      return {
+        token,
+        refreshToken,
+        email: person.email,
+        fullName: `${person.firstName} ${person.lastName}`,
+        id: user._id,
+        role: person.role,
+      };
     }
   } catch (error) {
-    console.error("Login error:", error.message)
-    throw error
+    console.error("Login error:", error.message);
+    throw error;
   }
-}
+};
 
-module.exports = { signup, login }
+module.exports = { signup, login };
 
