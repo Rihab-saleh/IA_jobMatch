@@ -1,23 +1,44 @@
 "use client"
 
-import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { Link, useNavigate, useLocation } from "react-router-dom"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Checkbox } from "../components/ui/checkbox"
 import { useAuth } from "../contexts/auth-context"
+import { AlertCircle, CheckCircle, Eye, EyeOff } from "lucide-react"
 
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const searchParams = new URLSearchParams(location.search)
+  const registrationSuccess = searchParams.get("registered") === "true"
+  const emailFromRegistration = searchParams.get("email") || ""
+
   const [formData, setFormData] = useState({
-    email: "",
+    email: emailFromRegistration,
     password: "",
     rememberMe: false,
   })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [showSuccessMessage, setShowSuccessMessage] = useState(registrationSuccess)
+
+  useEffect(() => {
+    if (registrationSuccess) {
+      navigate(location.pathname, { replace: true })
+    }
+  }, [registrationSuccess, navigate, location.pathname])
+
+  useEffect(() => {
+    if (showSuccessMessage) {
+      const timer = setTimeout(() => setShowSuccessMessage(false), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [showSuccessMessage])
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -31,8 +52,8 @@ export default function Login() {
     setError(null)
     let isValid = true
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setError("Veuillez entrer une adresse email valide")
+    if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
+      setError("Format d'email invalide")
       isValid = false
     }
 
@@ -47,19 +68,17 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validateForm()) return
-    
+
     setLoading(true)
     try {
       const result = await login(formData.email, formData.password)
-      console.log("Résultat de la connexion:", result) // Debugging
-      if (result.success) {
-        console.log("Redirection vers:", result.role === "admin" ? "/admin" : "/dashboard") // Debugging
+      if (result?.success) {
         navigate(result.role === "admin" ? "/admin" : "/dashboard")
       } else {
-        setError(result.error || "Une erreur s'est produite")
+        setError(result?.error || "Identifiants incorrects")
       }
     } catch (err) {
-      setError(err.message || "Une erreur s'est produite")
+      setError("Erreur de connexion au serveur")
     } finally {
       setLoading(false)
     }
@@ -69,106 +88,106 @@ export default function Login() {
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-4xl mx-auto">
         <div className="flex flex-col md:flex-row items-center gap-8">
-          {/* Section Formulaire */}
           <div className="w-full md:max-w-md">
-            <h1 className="text-3xl font-bold mb-2">Connectez-vous à votre compte</h1>
-            <p className="text-gray-600 mb-8">Bienvenue ! Veuillez vous connecter pour continuer.</p>
+            <h1 className="text-3xl font-bold mb-2">Connexion</h1>
+            
+            {showSuccessMessage && (
+              <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-md flex items-center">
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Inscription réussie ! Connectez-vous maintenant.
+              </div>
+            )}
 
-            <div className="bg-white rounded-lg shadow-md p-8">
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md">
-                  {error}
-                </div>
-              )}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md flex items-center">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                {error}
+              </div>
+            )}
 
-              <form className="space-y-6" onSubmit={handleSubmit}>
-                {/* Champ Email */}
-                <div>
-                  <label className="block text-lg font-medium mb-2">
-                    Email
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              <div>
+                <label className="block text-lg font-medium mb-2">
+                  Email
+                  <Input
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="exemple@email.com"
+                    className="w-full mt-1"
+                    required
+                  />
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-lg font-medium mb-2">
+                  Mot de passe
+                  <div className="relative mt-1">
                     <Input
-                      name="email"
-                      type="email"
-                      value={formData.email}
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
                       onChange={handleChange}
-                      placeholder="Entrez votre email"
-                      className="w-full mt-1"
+                      placeholder="••••••••"
+                      className="w-full pr-12"
                       required
                     />
-                  </label>
-                </div>
-
-                {/* Champ Mot de Passe */}
-                <div>
-                  <label className="block text-lg font-medium mb-2">
-                    Mot de passe
-                    <div className="relative mt-1">
-                      <Input
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        value={formData.password}
-                        onChange={handleChange}
-                        placeholder="Entrez votre mot de passe"
-                        className="w-full pr-16"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-700 font-medium"
-                      >
-                        {showPassword ? "Cacher" : "Afficher"}
-                      </button>
-                    </div>
-                  </label>
-                </div>
-
-                {/* Case à Cocher "Se Souvenir de Moi" */}
-                <div className="flex justify-between items-center">
-                  <label className="flex items-center space-x-2">
-                    <Checkbox
-                      name="rememberMe"
-                      checked={formData.rememberMe}
-                      onCheckedChange={(checked) => 
-                        setFormData(prev => ({ ...prev, rememberMe: checked }))
-                      }
-                    />
-                    <span>Se souvenir de moi</span>
-                  </label>
-                  <Link to="/forgot-password" className="text-purple-700 font-medium">
-                    Mot de passe oublié ?
-                  </Link>
-                </div>
-
-                {/* Bouton de Connexion */}
-                <Button 
-                  type="submit" 
-                  className="w-full bg-purple-700 hover:bg-purple-800 py-6 text-lg"
-                  disabled={loading}
-                >
-                  {loading ? "Connexion en cours..." : "Se connecter"}
-                </Button>
-              </form>
-
-              {/* Lien d'Inscription */}
-              <div className="mt-8 text-center">
-                <p className="text-gray-600">
-                  Vous n'avez pas de compte ?{" "}
-                  <Link to="/register" className="text-purple-700 font-medium">
-                    Inscrivez-vous
-                  </Link>
-                </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5 text-gray-500" />
+                      ) : (
+                        <Eye className="h-5 w-5 text-gray-500" />
+                      )}
+                    </button>
+                  </div>
+                </label>
               </div>
+
+              <div className="flex justify-between items-center">
+                <label className="flex items-center space-x-2">
+                  <Checkbox
+                    name="rememberMe"
+                    checked={formData.rememberMe}
+                    onCheckedChange={(checked) => 
+                      setFormData(prev => ({ ...prev, rememberMe: checked }))
+                    }
+                  />
+                  <span>Se souvenir de moi</span>
+                </label>
+                <Link to="/forgot-password" className="text-purple-700 font-medium">
+                  Mot de passe oublié ?
+                </Link>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full bg-purple-700 hover:bg-purple-800 py-6 text-lg"
+                disabled={loading}
+              >
+                {loading ? "Connexion..." : "Se connecter"}
+              </Button>
+            </form>
+
+            <div className="mt-8 text-center">
+              <p className="text-gray-600">
+                Pas de compte ?{" "}
+                <Link to="/register" className="text-purple-700 font-medium">
+                  S'inscrire
+                </Link>
+              </p>
             </div>
           </div>
 
-          {/* Section Illustration */}
           <div className="hidden md:block w-full max-w-md">
             <img
               src="/login-illustration.svg"
-              alt="Illustration de connexion"
-              width={400}
-              height={400}
+              alt="Illustration connexion"
               className="mx-auto"
             />
           </div>
