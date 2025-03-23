@@ -96,6 +96,7 @@ const addFormation = async (req, res) => {
 }
 
 const addExperience = async (req, res) => {
+  console.log(req.body)
   processRequest(res, async () => {
     const targetUserId = req.params.userId
     if (!validateUserId(targetUserId, res) || !validatePermission(req, targetUserId, res)) return

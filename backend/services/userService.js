@@ -227,7 +227,7 @@ class UserService {
     const { user } = await this.getUserAndPerson(userId)
     const profile = await this.getOrCreateProfile(userId)
 
-    if (!experienceData.title || !experienceData.company) throw new Error("Le titre et l'entreprise sont requis")
+   // if (!experienceData.title || !experienceData.company) throw new Error("Le titre et l'entreprise sont requis")
 
     profile.experiences.push(experienceData)
     await profile.save()

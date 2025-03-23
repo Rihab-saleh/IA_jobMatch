@@ -28,10 +28,10 @@ const publicRoutes = new Set([
 const userMiddleware = (req, res, next) => {
   console.log("User Middleware: Checking user ownership and role");
 
-  const requestedUserId = req.params.id;
-  const authUserId = req.user?._id || req.admin?._id;
+  const requestedUserId = req.params.userId
+  const authUserId = req.user?._id ;
   const authUserRole = req.user?.role;
-
+console.log("reqecc", req.user,"----", "partams :",req.params)
   // Vérifier que l'utilisateur authentifié correspond à l'ID dans l'URL
   if (!authUserId || requestedUserId !== authUserId.toString()) {
     console.log("User Middleware: Unauthorized access attempt");
