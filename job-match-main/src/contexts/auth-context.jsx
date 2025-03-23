@@ -49,6 +49,8 @@ export function AuthProvider({ children }) {
             originalRequest._retry = true;
             const { data } = await api.post("/auth/refresh");
             localStorage.setItem("auth_token", data.token);
+            
+            localStorage.setItem("userId", data.id)
             return api(originalRequest);
           } catch (refreshError) {
             localStorage.removeItem("auth_token");
@@ -73,7 +75,7 @@ export function AuthProvider({ children }) {
         }
 
         const { data } = await api.get("/auth/verify");
-
+console.log("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", data)
         setState({
           user: {
             ...data.user,
