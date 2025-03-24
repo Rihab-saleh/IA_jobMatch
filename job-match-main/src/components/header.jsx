@@ -57,6 +57,7 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
     { path: "/", label: "Home" },
     { path: "/jobs", label: "Find Jobs" },
     { path: "/recommendations", label: "Recommendations" },
+    { path: "/dashboard", label: "dashboard" },
     { path: "/cv-builder", label: "CV Builder" },
   ]
 
