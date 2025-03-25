@@ -49,19 +49,20 @@ const AdminHeader = ({ logout }) => {
 }
 
 const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout, userRole, user }) => {
-  const { pathname } = useLocation()
-  const isActive = (path) => pathname === path
+  const location = useLocation()
+  const isActive = (path) => location.pathname === path
 
-  // Liens principaux
+  // Main navigation links
   const userLinks = [
     { path: "/", label: "Home" },
     { path: "/jobs", label: "Find Jobs" },
+    { path: "/dashboard", label: "Dashboard" },
     { path: "/recommendations", label: "Recommendations" },
-    { path: "/dashboard", label: "dashboard" },
     { path: "/cv-builder", label: "CV Builder" },
+    { path: "/post-job", label: "Post Job" },
   ]
 
-  // Liens du compte utilisateur
+  // User account links
   const accountLinks = [
     { path: "/profile", label: "Profile", icon: User },
     { path: "/settings", label: "Settings", icon: Settings },
@@ -75,7 +76,7 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
           <span className="text-lg font-bold text-purple-700 tracking-wide">Job Match</span>
         </Link>
 
-        {/* Navigation desktop */}
+        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-4">
           {userLinks.map(({ path, label }) => (
             <Link
@@ -147,6 +148,7 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
             </Link>
           )}
 
+          {/* Mobile Menu Button */}
           <button
             className="md:hidden p-1 text-gray-600 hover:text-purple-700"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -157,7 +159,7 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
         </div>
       </div>
 
-      {/* Menu mobile */}
+      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t">
           <div className="container mx-auto px-4 py-3">
@@ -209,10 +211,17 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { isAuthenticated, logout, userRole, user } = useAuth()
-  const { pathname } = useLocation()
+  const { isAuthenticated, logout, user } = useAuth()
+  const location = useLocation()
 
-  if (pathname.startsWith("/admin")) {
+  // Get user role directly from user object
+  const userRole = user?.role || null
+
+  // For debugging - remove in production
+  console.log("Auth state:", { isAuthenticated, user, userRole, path: location.pathname })
+
+  // Render different header based on path
+  if (location.pathname.startsWith("/admin")) {
     return <AdminHeader logout={logout} />
   }
 
