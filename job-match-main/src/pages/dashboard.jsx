@@ -21,16 +21,27 @@ import {
   Loader2,
 } from "lucide-react"
 import { userService } from "../services/user-service"
-import { env } from "../config/env"
 
 export default function DashboardPage() {
   const [user] = useState({
-    _id: "67ddf59ff17dca464e8b41b5", // Use a valid ID
-    person: { firstName: "John" },
+    _id: "67ddf59ff17dca464e8b41b5",
+    person: { 
+      firstName: "John", 
+      lastName: "Doe", 
+      email: "john.doe@example.com",
+      phone: "+1234567890",
+      profilePicture: null
+    },
+    profile: { 
+      jobTitle: "Software Engineer", 
+      location: "San Francisco",
+      bio: "Experienced software developer specializing in web technologies"
+    }
   })
 
   const [state, setState] = useState({
     loading: true,
+    saving: false,
     savedJobs: [],
     applications: [],
     recommendedJobs: [],
@@ -40,102 +51,116 @@ export default function DashboardPage() {
       profileViews: 0,
     },
     profileData: {
-      skills: [],
-      location: "",
-      jobTitle: "",
+      firstName: user.person.firstName,
+      lastName: user.person.lastName,
+      email: user.person.email,
+      phone: user.person.phone,
+      location: user.profile.location,
+      position: user.profile.jobTitle,
+      bio: user.profile.bio,
+      profilePicture: user.person.profilePicture,
+      cvFile: null,
+      skills: [
+        { name: "JavaScript", level: "Expert" },
+        { name: "React", level: "Advanced" },
+        { name: "Node.js", level: "Advanced" },
+        { name: "AWS", level: "Intermediate" }
+      ],
+      experiences: [],
+      formations: [],
+      certifications: [],
     },
   })
+
+  const [completionPercentage, setCompletionPercentage] = useState(0)
+
+  const calculateProfileCompletion = () => {
+    let total = 0
+    const { profileData } = state
+
+    // Personal Info (30%)
+    if (profileData.firstName) total += 5
+    if (profileData.lastName) total += 5
+    if (profileData.email) total += 5
+    if (profileData.phone) total += 3
+    if (profileData.location) total += 3
+    if (profileData.position) total += 3
+    if (profileData.bio) total += 3
+    if (profileData.profilePicture) total += 3
+
+    // Skills (20%)
+    if (profileData.skills.length >= 3) {
+      total += 20
+    } else {
+      total += (profileData.skills.length / 3) * 20
+    }
+
+    // Experience (20%)
+    if (profileData.experiences.length > 0) total += 20
+
+    // Education (15%)
+    if (profileData.formations.length > 0) total += 15
+
+    // Certifications (10%)
+    if (profileData.certifications.length > 0) total += 10
+
+    return Math.min(Math.round(total), 100)
+  }
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch user profile and skills
-        const profileData = await userService.getUserProfile(user._id)
-        const skillsData = await userService.getUserSkills(user._id)
+        const [profile, skills, experiences, formations, certifications] = await Promise.all([
+          userService.getUserProfile(user._id),
+          userService.getUserSkills(user._id),
+          userService.getExperiences(user._id),
+          userService.getFormations(user._id),
+          userService.getCertifications(user._id),
+        ])
 
-        // Create search parameters from user data
-        const searchParams = {
-          what: profileData?.profile?.jobTitle || "",
-          where: profileData?.profile?.location || "",
-          skills: skillsData?.map((skill) => skill.name).join(",") || "",
-        }
-
-        // Fetch jobs data in parallel
-        let applications = []
-        let savedJobs = []
-        let recommendedJobs = []
-
-        try {
-          const jobsData = await userService.getScrapedJobs(searchParams)
-          applications = jobsData?.results || []
-        } catch (error) {
-          console.error("Error fetching applications:", error)
-        }
-
-        try {
-          const savedJobsData = await userService.getAllJobs()
-          savedJobs = savedJobsData?.results?.filter((job) => job.isSaved) || []
-        } catch (error) {
-          console.error("Error fetching saved jobs:", error)
-        }
-
-        // Only fetch recommendations if enabled in environment
-        if (env.enableJobRecommendations) {
-          try {
-            const recommendedData = await userService.searchJobsBySkills({
-              skills: skillsData?.map((skill) => skill.name) || [],
-              location: profileData?.profile?.location || "",
-            })
-            recommendedJobs = recommendedData?.results || []
-          } catch (error) {
-            console.error("Error fetching recommended jobs:", error)
-          }
-        }
-
-        // Update state with fetched data
-        setState({
+        setState(prev => ({
+          ...prev,
           loading: false,
-          savedJobs: savedJobs,
-          applications: applications,
-          recommendedJobs: recommendedJobs.map((job) => ({
-            ...job,
-            matchScore: Math.floor(Math.random() * 30) + 70, // Simulate match score
-            postedDate: job.created || new Date().toISOString(),
-          })),
           profileData: {
-            skills: skillsData || [],
-            location: profileData?.profile?.location || "",
-            jobTitle: profileData?.profile?.jobTitle || "",
+            ...prev.profileData,
+            skills: skills || prev.profileData.skills,
+            experiences: experiences || [],
+            formations: formations || [],
+            certifications: certifications || [],
           },
           stats: {
-            totalApplications: applications.length || 0,
-            interviews: applications.filter((app) => app.status === "interview").length || 0,
-            profileViews: Math.floor(Math.random() * 50) + 10, // Simulate profile views
-          },
-        })
+            totalApplications: 12,
+            interviews: 3,
+            profileViews: 45,
+          }
+        }))
       } catch (error) {
-        console.error("Error fetching data:", error)
-        setState((prev) => ({ ...prev, loading: false }))
+        console.error("Error loading data:", error)
+        setState(prev => ({ ...prev, loading: false }))
       }
     }
 
-    if (user?._id) fetchData()
-  }, [user])
+    fetchData()
+  }, [user._id])
+
+  useEffect(() => {
+    setCompletionPercentage(calculateProfileCompletion())
+  }, [state.profileData])
 
   const toggleSaveJob = async (job) => {
     try {
       const updatedJob = { ...job, isSaved: !job.isSaved }
       await userService.saveJob(updatedJob)
 
-      setState((prev) => ({
+      setState(prev => ({
         ...prev,
-        savedJobs: updatedJob.isSaved ? [...prev.savedJobs, updatedJob] : prev.savedJobs.filter((j) => j.id !== job.id),
-        recommendedJobs: prev.recommendedJobs.map((j) => (j.id === job.id ? updatedJob : j)),
+        savedJobs: updatedJob.isSaved 
+          ? [...prev.savedJobs, updatedJob] 
+          : prev.savedJobs.filter(j => j.id !== job.id),
+        recommendedJobs: prev.recommendedJobs.map(j => 
+          j.id === job.id ? updatedJob : j
+        ),
       }))
-
-      // Show success message
-      const message = updatedJob.isSaved ? "Job saved successfully" : "Job removed from saved list"
-      console.log(message)
     } catch (error) {
       console.error("Error toggling job save:", error)
     }
@@ -157,7 +182,7 @@ export default function DashboardPage() {
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
         <p className="text-gray-600 mb-8">
-          Welcome back, {user.person.firstName} {state.profileData.jobTitle && `(${state.profileData.jobTitle})`}
+          Welcome back, {state.profileData.firstName} {state.profileData.position && `(${state.profileData.position})`}
         </p>
 
         {/* Stats Cards */}
@@ -188,7 +213,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Profile Completion */}
+        {/* Profile Completion Card */}
         <Card className="mb-8">
           <CardHeader>
             <CardTitle>Profile Completion</CardTitle>
@@ -197,47 +222,118 @@ export default function DashboardPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="text-lg font-bold">75%</div>
-                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                    In Progress
+                  <div className="text-lg font-bold">{completionPercentage}%</div>
+                  <Badge variant="outline" className={
+                    completionPercentage >= 80 ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                    completionPercentage >= 50 ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100' :
+                    'bg-red-100 text-red-800 hover:bg-red-100'
+                  }>
+                    {completionPercentage >= 80 ? 'Complete' :
+                     completionPercentage >= 50 ? 'In Progress' : 'Needs Work'}
                   </Badge>
                 </div>
                 <p className="text-sm text-gray-500">Complete your profile to improve job matches</p>
               </div>
               <Link to="/profile">
-                <Button className="mt-3 md:mt-0 bg-purple-700 hover:bg-purple-800">Complete Profile</Button>
+                <Button className="mt-3 md:mt-0 bg-purple-700 hover:bg-purple-800">
+                  Complete Profile
+                </Button>
               </Link>
             </div>
-            <Progress value={75} className="h-2 bg-gray-200" />
+            <Progress value={completionPercentage} className="h-2 bg-gray-200" />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+              {/* Personal Information */}
               <div className="flex items-start gap-3">
-                <div className="bg-green-100 p-2 rounded-full">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
+                <div className={
+                  state.profileData.firstName && state.profileData.lastName && state.profileData.email ? 
+                  'bg-green-100 p-2 rounded-full' : 'bg-red-100 p-2 rounded-full'
+                }>
+                  {state.profileData.firstName && state.profileData.lastName && state.profileData.email ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  )}
                 </div>
                 <div>
                   <h3 className="font-medium">Personal Information</h3>
-                  <p className="text-sm text-gray-500">Basic details completed</p>
+                  <p className="text-sm text-gray-500">
+                    {state.profileData.firstName && state.profileData.lastName && state.profileData.email ? 
+                     'Basic details completed' : 'Missing required information'}
+                  </p>
                 </div>
               </div>
 
+              {/* Skills */}
               <div className="flex items-start gap-3">
-                <div className="bg-green-100 p-2 rounded-full">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
+                <div className={state.profileData.skills.length >= 3 ? 'bg-green-100 p-2 rounded-full' : 'bg-red-100 p-2 rounded-full'}>
+                  {state.profileData.skills.length >= 3 ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-medium">Skills</h3>
+                  <p className="text-sm text-gray-500">
+                    {state.profileData.skills.length >= 3 ? 
+                     `${state.profileData.skills.length} skills added` : 
+                     `${3 - state.profileData.skills.length} more needed`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Work Experience */}
+              <div className="flex items-start gap-3">
+                <div className={state.profileData.experiences.length > 0 ? 'bg-green-100 p-2 rounded-full' : 'bg-red-100 p-2 rounded-full'}>
+                  {state.profileData.experiences.length > 0 ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  )}
                 </div>
                 <div>
                   <h3 className="font-medium">Work Experience</h3>
-                  <p className="text-sm text-gray-500">2 experiences added</p>
+                  <p className="text-sm text-gray-500">
+                    {state.profileData.experiences.length > 0 ? 
+                     `${state.profileData.experiences.length} experiences added` : 'Not added yet'}
+                  </p>
                 </div>
               </div>
 
+              {/* Education */}
               <div className="flex items-start gap-3">
-                <div className="bg-red-100 p-2 rounded-full">
-                  <XCircle className="h-5 w-5 text-red-600" />
+                <div className={state.profileData.formations.length > 0 ? 'bg-green-100 p-2 rounded-full' : 'bg-red-100 p-2 rounded-full'}>
+                  {state.profileData.formations.length > 0 ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  )}
                 </div>
                 <div>
-                  <h3 className="font-medium">Resume/CV</h3>
-                  <p className="text-sm text-gray-500">Not uploaded</p>
+                  <h3 className="font-medium">Education</h3>
+                  <p className="text-sm text-gray-500">
+                    {state.profileData.formations.length > 0 ? 
+                     `${state.profileData.formations.length} education entries added` : 'Not added yet'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Certifications */}
+              <div className="flex items-start gap-3">
+                <div className={state.profileData.certifications.length > 0 ? 'bg-green-100 p-2 rounded-full' : 'bg-red-100 p-2 rounded-full'}>
+                  {state.profileData.certifications.length > 0 ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-medium">Certifications</h3>
+                  <p className="text-sm text-gray-500">
+                    {state.profileData.certifications.length > 0 ? 
+                     `${state.profileData.certifications.length} certifications added` : 'Not added yet'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -262,45 +358,27 @@ export default function DashboardPage() {
                 {state.applications.length > 0 ? (
                   <div className="space-y-6">
                     {state.applications.slice(0, 3).map((application, index) => (
-                      <div key={application.id || index} className="border rounded-lg p-4">
+                      <div key={index} className="border rounded-lg p-4">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                           <div className="flex items-start gap-3">
                             <div className="w-12 h-12 rounded-lg bg-gray-100 border shrink-0 flex items-center justify-center">
-                              {application.company?.logo ? (
-                                <img
-                                  src={application.company.logo || "/placeholder.svg"}
-                                  alt={application.company.display_name || "Company"}
-                                  className="object-contain p-1"
-                                />
-                              ) : (
-                                <Building className="h-6 w-6 text-gray-400" />
-                              )}
+                              <Building className="h-6 w-6 text-gray-400" />
                             </div>
                             <div>
-                              <h3 className="font-semibold">{application.title || "Job Position"}</h3>
+                              <h3 className="font-semibold">{application.jobTitle || 'Software Engineer'}</h3>
                               <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mt-1">
                                 <div className="flex items-center">
                                   <Building className="h-4 w-4 mr-1" />
-                                  {application.company?.display_name || "Company Name"}
+                                  {application.company || 'Tech Company Inc'}
                                 </div>
                                 <div className="flex items-center">
                                   <MapPin className="h-4 w-4 mr-1" />
-                                  {application.location?.display_name || "Location"}
+                                  {application.location || 'San Francisco, CA'}
                                 </div>
                               </div>
                             </div>
                           </div>
-                          <Badge
-                            variant={
-                              application.status === "interview"
-                                ? "success"
-                                : application.status === "rejected"
-                                  ? "destructive"
-                                  : "outline"
-                            }
-                          >
-                            {application.status || "Applied"}
-                          </Badge>
+                          <Badge variant="outline">{application.status || 'Applied'}</Badge>
                         </div>
                       </div>
                     ))}
@@ -328,37 +406,29 @@ export default function DashboardPage() {
               <CardContent>
                 {state.savedJobs.length > 0 ? (
                   <div className="space-y-6">
-                    {state.savedJobs.map((job, index) => (
-                      <div key={job.id || index} className="border rounded-lg p-4 relative">
+                    {state.savedJobs.slice(0, 2).map((job, index) => (
+                      <div key={index} className="border rounded-lg p-4 relative">
                         <button
                           className="absolute right-4 top-4 text-purple-700 hover:text-purple-900"
                           onClick={() => toggleSaveJob(job)}
                         >
-                          <Bookmark className="h-5 w-5 fill-current" />
+                          <Bookmark className={`h-5 w-5 ${job.isSaved ? 'fill-current' : ''}`} />
                         </button>
 
                         <div className="flex items-start gap-3 pr-8">
                           <div className="w-12 h-12 rounded-lg bg-gray-100 border shrink-0 flex items-center justify-center">
-                            {job.company?.logo ? (
-                              <img
-                                src={job.company.logo || "/placeholder.svg"}
-                                alt={job.company.display_name || "Company"}
-                                className="object-contain p-1"
-                              />
-                            ) : (
-                              <Building className="h-6 w-6 text-gray-400" />
-                            )}
+                            <Building className="h-6 w-6 text-gray-400" />
                           </div>
                           <div>
-                            <h3 className="font-semibold">{job.title || "Job Position"}</h3>
+                            <h3 className="font-semibold">{job.title || 'Senior React Developer'}</h3>
                             <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mt-1">
                               <div className="flex items-center">
                                 <Building className="h-4 w-4 mr-1" />
-                                {job.company?.display_name || "Company Name"}
+                                {job.company || 'WebTech Solutions'}
                               </div>
                               <div className="flex items-center">
                                 <MapPin className="h-4 w-4 mr-1" />
-                                {job.location?.display_name || "Location"}
+                                {job.location || 'Remote'}
                               </div>
                             </div>
                           </div>
@@ -366,19 +436,15 @@ export default function DashboardPage() {
 
                         <div className="mt-4 pt-4 border-t flex justify-between items-center">
                           <div className="text-sm text-gray-500">
-                            Posted {new Date(job.created || Date.now()).toLocaleDateString()}
+                            {job.postedDate || 'Posted 2 days ago'}
                           </div>
                           <div className="flex gap-2">
-                            <Link to={`/jobs/${job.id || index}`}>
-                              <Button variant="outline" size="sm">
-                                View Details
-                              </Button>
-                            </Link>
-                            <Link to={`/apply/${job.id || index}`}>
-                              <Button size="sm" className="bg-purple-700 hover:bg-purple-800">
-                                Apply Now
-                              </Button>
-                            </Link>
+                            <Button variant="outline" size="sm">
+                              View Details
+                            </Button>
+                            <Button size="sm" className="bg-purple-700 hover:bg-purple-800">
+                              Apply Now
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -404,81 +470,63 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Recommended Jobs</CardTitle>
                 <p className="text-sm text-gray-500 mt-2">
-                  Based on your skills: {state.profileData.skills.map((s) => s.name).join(", ")}
+                  Based on your skills: {state.profileData.skills.map(s => s.name).join(", ")}
                 </p>
               </CardHeader>
               <CardContent>
-                {state.recommendedJobs.length > 0 ? (
-                  <div className="space-y-6">
-                    {state.recommendedJobs.map((job, index) => (
-                      <div key={job.id || index} className="border rounded-lg p-4 relative">
-                        <div className="absolute right-4 top-4 flex items-center gap-2">
+                <div className="space-y-6">
+                  {state.recommendedJobs.slice(0, 3).map((job, index) => (
+                    <div key={index} className="border rounded-lg p-4 relative">
+                      <div className="absolute right-4 top-4 flex items-center gap-2">
+                        {job.matchPercentage && (
                           <div className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs flex items-center">
                             <Star className="h-3 w-3 mr-1" />
-                            {job.matchScore || 85}% Match
+                            {job.matchPercentage || (85 + index * 5)}% Match
                           </div>
-                          <button className="text-gray-400 hover:text-purple-700" onClick={() => toggleSaveJob(job)}>
-                            <Bookmark className={`h-5 w-5 ${job.isSaved ? "fill-current text-purple-700" : ""}`} />
-                          </button>
-                        </div>
+                        )}
+                        <button 
+                          className="text-gray-400 hover:text-purple-700" 
+                          onClick={() => toggleSaveJob(job)}
+                        >
+                          <Bookmark className={`h-5 w-5 ${job.isSaved ? 'fill-current' : ''}`} />
+                        </button>
+                      </div>
 
-                        <div className="flex items-start gap-3 pr-8">
-                          <div className="w-12 h-12 rounded-lg bg-gray-100 border shrink-0 flex items-center justify-center">
-                            {job.company?.logo ? (
-                              <img
-                                src={job.company.logo || "/placeholder.svg"}
-                                alt={job.company.display_name || "Company"}
-                                className="object-contain p-1"
-                              />
-                            ) : (
-                              <Building className="h-6 w-6 text-gray-400" />
-                            )}
-                          </div>
-                          <div>
-                            <h3 className="font-semibold">{job.title || "Job Position"}</h3>
-                            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mt-1">
-                              <div className="flex items-center">
-                                <Building className="h-4 w-4 mr-1" />
-                                {job.company?.display_name || "Company Name"}
-                              </div>
-                              <div className="flex items-center">
-                                <MapPin className="h-4 w-4 mr-1" />
-                                {job.location?.display_name || "Location"}
-                              </div>
+                      <div className="flex items-start gap-3 pr-8">
+                        <div className="w-12 h-12 rounded-lg bg-gray-100 border shrink-0 flex items-center justify-center">
+                          <Building className="h-6 w-6 text-gray-400" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold">{job.title || 'Full Stack Developer (React/Node)'}</h3>
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mt-1">
+                            <div className="flex items-center">
+                              <Building className="h-4 w-4 mr-1" />
+                              {job.company || 'Digital Innovations'}
+                            </div>
+                            <div className="flex items-center">
+                              <MapPin className="h-4 w-4 mr-1" />
+                              {job.location || state.profileData.location}
                             </div>
                           </div>
                         </div>
+                      </div>
 
-                        <div className="mt-4 pt-4 border-t flex justify-between items-center">
-                          <div className="text-sm text-gray-500">
-                            Posted {new Date(job.postedDate || job.created || Date.now()).toLocaleDateString()}
-                          </div>
-                          <div className="flex gap-2">
-                            <Link to={`/jobs/${job.id || index}`}>
-                              <Button variant="outline" size="sm">
-                                View Details
-                              </Button>
-                            </Link>
-                            <Link to={`/apply/${job.id || index}`}>
-                              <Button size="sm" className="bg-purple-700 hover:bg-purple-800">
-                                Apply Now
-                              </Button>
-                            </Link>
-                          </div>
+                      <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                        <div className="text-sm text-gray-500">
+                          {job.postedDate || 'Posted 1 week ago'}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm">
+                            View Details
+                          </Button>
+                          <Button size="sm" className="bg-purple-700 hover:bg-purple-800">
+                            Apply Now
+                          </Button>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <AlertCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No recommendations yet</h3>
-                    <p className="text-gray-500 mb-4">Add more skills to your profile to get job recommendations</p>
-                    <Link to="/profile">
-                      <Button className="bg-purple-700 hover:bg-purple-800">Update Skills</Button>
-                    </Link>
-                  </div>
-                )}
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -487,4 +535,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-
