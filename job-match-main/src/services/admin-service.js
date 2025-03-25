@@ -55,11 +55,15 @@ export const adminService = {
   },
 
   // Gestion des jobs
-  getAllScrapedJobs() {
-    return api.get("/jobs/scraped/all");
+  getAllJobs() {
+    return api.get('/jobs'); 
+  },
+  getAllScrapedJobs(params) {
+    return api.get("/jobs/scraped/all", { params })
   },
 
-  getAllExternalJobs() {
-    return api.get("/jobs/external/all");
-  }
+  getAllExternalJobs(params) {
+    return api.get("/jobs/external/all", { params })
+  },
+  
 };
