@@ -121,5 +121,22 @@ export const userService = {
   getScrapedJobs(params) {
     return api.get("jobs/scraped", { params })
   },
+  getCertifications(userId) {
+    return api.get(`users/certifications/${userId}`)
+  },
+
+
+  addCertification(userId, certificationData) {
+    return api.post(`users/certifications/${userId}`, certificationData)
+  },
+
+  updateCertification(userId, certificationId, certificationData) {
+    return api.put(`users/certifications/${userId}/${certificationId}`, certificationData)
+  },
+
+
+  deleteCertification(userId, certificationId) {
+    return api.delete(`users/certifications/${userId}/${certificationId}`)
+  },
 }
 

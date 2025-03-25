@@ -6,7 +6,8 @@ import { Input } from "../components/ui/input"
 import { Textarea } from "../components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Badge } from "../components/ui/badge"
-
+import { Progress } from "../components/ui/progress"
+import { CheckCircle, XCircle } from "lucide-react"
 import {
   PlusCircle,
   X,
@@ -26,7 +27,6 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { useAuth } from "../contexts/auth-context"
-
 import {
   Dialog,
   DialogContent,
@@ -74,6 +74,51 @@ function ProfilePage() {
     currentItem: null,
   })
 
+  const [completionPercentage, setCompletionPercentage] = useState(0)
+
+  const calculateProfileCompletion = () => {
+    let total = 0
+
+    // Personal Info (30%)
+    if (state.profileData.firstName) total += 5
+    if (state.profileData.lastName) total += 5
+    if (state.profileData.email) total += 5
+    if (state.profileData.phone) total += 3
+    if (state.profileData.location) total += 3
+    if (state.profileData.position) total += 3
+    if (state.profileData.bio) total += 3
+    if (state.profilePicture) total += 3
+
+    // Skills (20%)
+    if (state.skills.length >= 3) {
+      total += 20
+    } else {
+      total += (state.skills.length / 3) * 20
+    }
+
+    // Experience (25%)
+    if (state.experiences.length > 0) total += 25
+
+    // Education (15%)
+    if (state.formations.length > 0) total += 15
+
+    // Certifications (10%)
+    if (state.certifications.length > 0) total += 10
+
+    return Math.min(Math.round(total), 100)
+  }
+
+  useEffect(() => {
+    setCompletionPercentage(calculateProfileCompletion())
+  }, [
+    state.profileData,
+    state.profilePicture,
+    state.skills,
+    state.experiences,
+    state.formations,
+    state.certifications
+  ])
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/login", {
@@ -96,11 +141,12 @@ function ProfilePage() {
           return
         }
 
-        const [profile, skills, experiences, formations] = await Promise.all([
+        const [profile, skills, experiences, formations, certifications] = await Promise.all([
           userService.getUserProfile(user._id),
           userService.getUserSkills(user._id).catch(() => []),
           userService.getExperiences(user._id).catch(() => []),
           userService.getFormations(user._id).catch(() => []),
+          userService.getCertifications(user._id).catch(() => []),
         ])
 
         if (isMounted) {
@@ -119,7 +165,7 @@ function ProfilePage() {
             skills: Array.isArray(skills) ? skills : [],
             experiences: Array.isArray(experiences) ? experiences : [],
             formations: Array.isArray(formations) ? formations : [],
-            certifications: [], // API doesn't seem to have certifications endpoint
+            certifications: Array.isArray(certifications) ? certifications : [],
             loading: false,
             error: null,
           }))
@@ -180,7 +226,7 @@ function ProfilePage() {
         })
 
         const newSkill = {
-          _id: Date.now().toString(), // Temporary ID until refresh
+          _id: Date.now().toString(),
           name: state.newSkill,
           level: state.skillLevel,
         }
@@ -359,6 +405,63 @@ function ProfilePage() {
     }
   }
 
+  const handleCertificationOperation = async (operation, data = null) => {
+    if (!user || !user._id) {
+      toast.error("You must be logged in to perform this action")
+      return
+    }
+
+    try {
+      if (operation === "add") {
+        const response = await userService.addCertification(user._id, data)
+
+        setState((prev) => ({
+          ...prev,
+          certifications: [...prev.certifications, response],
+          activeDialog: null,
+          currentItem: null,
+        }))
+        toast.success("Certification added")
+      }
+
+      if (operation === "update" && state.currentItem) {
+        await userService.updateCertification(user._id, state.currentItem._id, data)
+
+        setState((prev) => ({
+          ...prev,
+          certifications: prev.certifications.map((cert) => 
+            cert._id === state.currentItem._id ? { ...cert, ...data } : cert
+          ),
+          activeDialog: null,
+          currentItem: null,
+        }))
+        toast.success("Certification updated")
+      }
+
+      if (operation === "delete" && data) {
+        await userService.deleteCertification(user._id, data._id)
+
+        setState((prev) => ({
+          ...prev,
+          certifications: prev.certifications.filter((cert) => cert._id !== data._id),
+          activeDialog: null,
+          currentItem: null,
+        }))
+        toast.success("Certification deleted")
+      }
+
+      if (operation === "edit" && data) {
+        setState((prev) => ({
+          ...prev,
+          activeDialog: "certification",
+          currentItem: data,
+        }))
+      }
+    } catch (error) {
+      toast.error(`Error: ${error.message}`)
+    }
+  }
+
   const handleFileOperation = async (operation, file = null) => {
     if (!user || !user._id) {
       toast.error("You must be logged in to perform this action")
@@ -414,7 +517,10 @@ function ProfilePage() {
 
     try {
       setState((prev) => ({ ...prev, saving: true }))
-      await userService.updateUserProfile(user._id, state.profileData)
+      await userService.updateUserProfile(user._id, {
+        ...state.profileData,
+        phoneNumber: state.profileData.phone
+      })
       toast.success("Profile updated successfully")
     } catch (error) {
       if (error.message === "Unauthorized") {
@@ -503,6 +609,16 @@ function ProfilePage() {
       <div className="max-w-5xl mx-auto">
         <h1 className="text-3xl font-bold mb-2">My Profile</h1>
         <p className="text-gray-600 mb-8">Complete your profile to get personalized job recommendations</p>
+
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-medium">Profile Completeness: {completionPercentage}%</span>
+            <span className="text-sm text-purple-700">
+              {completionPercentage < 50 ? "Keep going!" : completionPercentage < 80 ? "Looking good!" : "Excellent!"}
+            </span>
+          </div>
+          <Progress value={completionPercentage} className="h-2" />
+        </div>
 
         <Tabs defaultValue="personal" className="w-full">
           <TabsList className="grid w-full grid-cols-5 mb-8">
@@ -762,7 +878,7 @@ function ProfilePage() {
                         </span>
                       )}
                     </div>
-                    <div className="absolute right-0 top-0 bottom-0 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute right-0 top-0 bottom-0 flex items-center pr-1 bg-gradient-to-l from-purple-100 to-transparent w-16 justify-end">
                       <button
                         onClick={() => handleSkillOperation("edit", skill)}
                         className="p-1 text-purple-600 hover:text-purple-800"
@@ -896,7 +1012,7 @@ function ProfilePage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-gray-500 hover:text-purple-600"
+                              className="h-8 w-8 text-gray-500 hover:text-purple-600 hover:bg-purple-50"
                               onClick={() => handleExperienceOperation("edit", experience)}
                             >
                               <Edit className="h-4 w-4" />
@@ -904,7 +1020,7 @@ function ProfilePage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-gray-500 hover:text-red-600"
+                              className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50"
                               onClick={() => handleExperienceOperation("delete", experience)}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1028,14 +1144,14 @@ function ProfilePage() {
                           <div>
                             <CardTitle className="text-lg text-blue-900">{education.degree}</CardTitle>
                             <CardDescription className="text-base font-medium text-blue-700">
-                              {education.institution}
+                              {education.school}
                             </CardDescription>
                           </div>
                           <div className="flex gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-gray-500 hover:text-blue-600"
+                              className="h-8 w-8 text-gray-500 hover:text-blue-600 hover:bg-blue-50"
                               onClick={() => handleFormationOperation("edit", education)}
                             >
                               <Edit className="h-4 w-4" />
@@ -1043,7 +1159,7 @@ function ProfilePage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-gray-500 hover:text-red-600"
+                              className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50"
                               onClick={() => handleFormationOperation("delete", education)}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1102,9 +1218,7 @@ function ProfilePage() {
                   <DialogTrigger asChild>
                     <Button
                       className="bg-purple-700 hover:bg-purple-800"
-                      onClick={() =>
-                        setState((prev) => ({ ...prev, activeDialog: "certification", currentItem: null }))
-                      }
+                      onClick={() => setState((prev) => ({ ...prev, activeDialog: "certification", currentItem: null }))}
                     >
                       <PlusCircle className="h-4 w-4 mr-2" />
                       Add Certification
@@ -1124,17 +1238,11 @@ function ProfilePage() {
                       <CertificationForm
                         certification={state.currentItem}
                         onSubmit={(data) => {
-                          // Note: API doesn't seem to have certification endpoints
-                          // This is a placeholder for future implementation
-                          setState((prev) => ({
-                            ...prev,
-                            certifications: state.currentItem
-                              ? prev.certifications.map((cert) => (cert.id === state.currentItem.id ? data : cert))
-                              : [...prev.certifications, { ...data, id: Date.now().toString() }],
-                            activeDialog: null,
-                            currentItem: null,
-                          }))
-                          toast.success(state.currentItem ? "Certification updated" : "Certification added")
+                          if (state.currentItem) {
+                            handleCertificationOperation("update", data)
+                          } else {
+                            handleCertificationOperation("add", data)
+                          }
                         }}
                         onCancel={() => setState((prev) => ({ ...prev, activeDialog: null, currentItem: null }))}
                       />
@@ -1161,7 +1269,7 @@ function ProfilePage() {
                 <div className="space-y-4">
                   {state.certifications.map((certification) => (
                     <Card
-                      key={certification.id}
+                      key={certification._id}
                       className="overflow-hidden border-gray-200 hover:shadow-md transition-shadow"
                     >
                       <CardHeader className="pb-3 bg-gradient-to-r from-green-50 to-white">
@@ -1176,28 +1284,16 @@ function ProfilePage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-gray-500 hover:text-green-600"
-                              onClick={() =>
-                                setState((prev) => ({
-                                  ...prev,
-                                  activeDialog: "certification",
-                                  currentItem: certification,
-                                }))
-                              }
+                              className="h-8 w-8 text-gray-500 hover:text-green-600 hover:bg-green-50"
+                              onClick={() => handleCertificationOperation("edit", certification)}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-gray-500 hover:text-red-600"
-                              onClick={() => {
-                                setState((prev) => ({
-                                  ...prev,
-                                  certifications: prev.certifications.filter((cert) => cert.id !== certification.id),
-                                }))
-                                toast.success("Certification deleted")
-                              }}
+                              className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50"
+                              onClick={() => handleCertificationOperation("delete", certification)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1466,7 +1562,7 @@ function ExperienceForm({ experience, onSubmit, onCancel }) {
 
 function EducationForm({ education, onSubmit, onCancel }) {
   const [formData, setFormData] = useState({
-    institution: education?.institution || "",
+    school: education?.school || "",
     degree: education?.degree || "",
     fieldOfStudy: education?.fieldOfStudy || "",
     location: education?.location || "",
@@ -1506,13 +1602,13 @@ function EducationForm({ education, onSubmit, onCancel }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="institution" className="text-sm font-medium text-gray-700">
+          <Label htmlFor="school" className="text-sm font-medium text-gray-700">
             Institution *
           </Label>
           <Input
-            id="institution"
-            name="institution"
-            value={formData.institution}
+            id="school"
+            name="school"
+            value={formData.school}
             onChange={handleChange}
             className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
             required
@@ -1822,4 +1918,3 @@ function CertificationForm({ certification, onSubmit, onCancel }) {
 }
 
 export default ProfilePage
-

@@ -415,6 +415,72 @@ const deleteProfilePicture = async (req, res) => {
     }
   })
 }
+const getCertifications = async (req, res) => {
+  processRequest(res, async () => {
+    const userId = req.params.userId;
+    if (!validateUserId(userId, res)) return;
+    const certifications = await userService.getCertifications(userId);
+    res.status(200).json(certifications);
+  });
+};
+
+const addCertification = async (req, res) => {
+  processRequest(res, async () => {
+    const targetUserId = req.params.userId;
+    if (!validateUserId(targetUserId, res) || !validatePermission(req, targetUserId, res)) return;
+
+    // Convert string dates to Date objects if needed
+    const certificationData = {
+      ...req.body,
+      issueDate: req.body.issueDate ? new Date(req.body.issueDate) : null,
+      expirationDate: req.body.expirationDate ? new Date(req.body.expirationDate) : null
+    };
+
+    const certification = await userService.addCertification(targetUserId, certificationData);
+    res.status(201).json(certification);
+  });
+};
+
+const updateCertification = async (req, res) => {
+  processRequest(res, async () => {
+    const targetUserId = req.params.userId;
+    if (!validateUserId(targetUserId, res) || !validatePermission(req, targetUserId, res)) return;
+
+    const certificationId = req.params.certificationId;
+    if (!certificationId) {
+      return res.status(400).json({ message: "Certification ID is required" });
+    }
+
+    // Convert string dates to Date objects if needed
+    const certificationData = {
+      ...req.body,
+      issueDate: req.body.issueDate ? new Date(req.body.issueDate) : undefined,
+      expirationDate: req.body.expirationDate ? new Date(req.body.expirationDate) : undefined
+    };
+
+    const certification = await userService.updateCertification(
+      targetUserId, 
+      certificationId, 
+      certificationData
+    );
+    res.status(200).json(certification);
+  });
+};
+
+const deleteCertification = async (req, res) => {
+  processRequest(res, async () => {
+    const targetUserId = req.params.userId;
+    if (!validateUserId(targetUserId, res) || !validatePermission(req, targetUserId, res)) return;
+
+    const certificationId = req.params.certificationId;
+    if (!certificationId) {
+      return res.status(400).json({ message: "Certification ID is required" });
+    }
+
+    const result = await userService.deleteCertification(targetUserId, certificationId);
+    res.status(200).json(result);
+  });
+};
 
 module.exports = {
   getUserProfile,
@@ -439,4 +505,8 @@ module.exports = {
   requestAccountStatusChange,
   uploadProfilePicture,
   deleteProfilePicture,
+  getCertifications,
+  addCertification,
+  updateCertification,
+  deleteCertification,
 }

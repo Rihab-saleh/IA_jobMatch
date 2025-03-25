@@ -3,7 +3,7 @@ const Person = require("../models/person_model")
 const Profile = require("../models/profile_model")
 const Recommendation = require("../models/recommendation_model")
 const AccountStatusRequest = require("../models/accountstatus_request")
-
+const Certification = require('../models/certification_model');
 class UserService {
   async getOrCreateProfile(userId) {
     let profile = await Profile.findOne({ userId: userId })
@@ -351,6 +351,72 @@ class UserService {
     return {
       profilePicture: person.profilePicture,
     }
+  }
+  async getCertifications(userId) {
+    const profile = await Profile.findOne({ userId })
+      .populate('certifications')
+      .exec();
+    return profile ? profile.certifications : [];
+  }
+  
+  async addCertification(userId, certificationData) {
+    // Validate required fields
+    if (!certificationData.name || !certificationData.issuer || !certificationData.issueDate) {
+      throw new Error("Name, issuer, and issue date are required");
+    }
+  
+    // Create new certification document
+    const certification = new Certification({
+      user: userId,
+      ...certificationData
+    });
+  
+    await certification.save();
+  
+    // Add certification reference to profile
+    const profile = await this.getOrCreateProfile(userId);
+    profile.certifications.push(certification._id);
+    await profile.save();
+  
+    return certification;
+  }
+  
+  async updateCertification(userId, certificationId, certificationData) {
+    // Find and update certification
+    const certification = await Certification.findOneAndUpdate(
+      { _id: certificationId, user: userId },
+      certificationData,
+      { new: true }
+    );
+  
+    if (!certification) {
+      throw new Error("Certification not found or you don't have permission");
+    }
+  
+    return certification;
+  }
+  
+  async deleteCertification(userId, certificationId) {
+    // Remove certification document
+    const certification = await Certification.findOneAndDelete({
+      _id: certificationId,
+      user: userId
+    });
+  
+    if (!certification) {
+      throw new Error("Certification not found or you don't have permission");
+    }
+  
+    // Remove reference from profile
+    const profile = await Profile.findOne({ userId });
+    if (profile) {
+      profile.certifications = profile.certifications.filter(
+        certId => certId.toString() !== certificationId
+      );
+      await profile.save();
+    }
+  
+    return { message: "Certification deleted successfully" };
   }
 }
 

@@ -6,7 +6,17 @@ const personSchema = new mongoose.Schema(
     lastName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     age: { type: Number, required: false },
-    phoneNumber: { type: String, required: false },
+    phoneNumber: { 
+      type: String, 
+      required: false,
+      validate: {
+        validator: function(v) {
+          // Validation simple pour numéro de téléphone (peut être adapté)
+          return /^[0-9]{10,15}$/.test(v)
+        },
+        message: props => `${props.value} n'est pas un numéro de téléphone valide!`
+      }
+    },
     password: { type: String, required: true },
     isActive: { type: Boolean, default: true },
     profilePicture: {
