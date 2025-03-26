@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { Link, useLocation } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Search, Menu, X, Bell, User, Settings, LogOut } from "lucide-react"
 import { useAuth } from "../contexts/auth-context"
 
-const AdminHeader = ({ logout }) => {
+const AdminHeader = ({ logout, fullName }) => {
   return (
     <header className="border-b bg-white sticky top-0 z-50">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -23,7 +23,7 @@ const AdminHeader = ({ logout }) => {
             </button>
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
               <div className="px-4 py-2 text-sm text-gray-700 border-b">
-                Admin Account
+                {fullName || "Admin Account"}
                 <span className="ml-2 px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded-full">Admin</span>
               </div>
               <Link
@@ -48,25 +48,44 @@ const AdminHeader = ({ logout }) => {
   )
 }
 
-const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout, userRole, user }) => {
+const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout, userRole, fullName }) => {
   const location = useLocation()
   const isActive = (path) => location.pathname === path
 
-  // Main navigation links
-  const userLinks = [
-    { path: "/", label: "Home" },
-    { path: "/jobs", label: "Find Jobs" },
-    { path: "/dashboard", label: "Dashboard" },
-    { path: "/recommendations", label: "Recommendations" },
-    { path: "/cv-builder", label: "CV Builder" },
-    { path: "/post-job", label: "Post Job" },
-  ]
+  // Define navigation links for different roles
+  const allLinks = {
+    default: [{ path: "/", label: "Home" }],
+    user: [
+      { path: "/", label: "Home" },
+      { path: "/jobs", label: "Find Jobs" },
+      { path: "/dashboard", label: "Dashboard" },
+      { path: "/recommendations", label: "Recommendations" },
+      { path: "/cv-builder", label: "CV Builder" },
+    ],
+  }
 
-  // User account links
+  // Determine which links to show based on role
+  let userLinks = allLinks.default
+
+  // Force user links for testing - remove this in production
+  if (isAuthenticated) {
+    userLinks = allLinks.user
+    console.log("Forcing user links for authenticated user")
+  }
+
+  // User account links - only shown to authenticated users
   const accountLinks = [
     { path: "/profile", label: "Profile", icon: User },
     { path: "/settings", label: "Settings", icon: Settings },
   ]
+
+  // For debugging - add this to see what's happening
+  console.log("UserHeader rendering with:", {
+    isAuthenticated,
+    userRole,
+    fullName,
+    showingLinks: userLinks.map((l) => l.label).join(", "),
+  })
 
   return (
     <header className="border-b bg-white sticky top-0 z-50">
@@ -104,17 +123,16 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
                   <button className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
                     <User className="h-4 w-4" />
                   </button>
-                  {user && user.person && (
-                    <span className="ml-2 hidden md:block text-sm font-medium">
-                      {user.person.firstName} {user.person.lastName}
-                    </span>
-                  )}
+                  {fullName && <span className="ml-2 hidden md:block text-sm font-medium">{fullName}</span>}
                 </div>
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
                   <div className="px-4 py-2 text-sm text-gray-700 border-b">
                     My Account
                     {userRole === "admin" && (
                       <span className="ml-2 px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded-full">Admin</span>
+                    )}
+                    {userRole === "user" && (
+                      <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">User</span>
                     )}
                   </div>
 
@@ -211,18 +229,36 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { isAuthenticated, logout, user } = useAuth()
+  const { isAuthenticated, logout, user, getUserRole, getFullName } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
 
-  // Get user role directly from user object
-  const userRole = user?.role || null
+  // Get user role using the method from context
+  const userRole = getUserRole()
 
-  // For debugging - remove in production
-  console.log("Auth state:", { isAuthenticated, user, userRole, path: location.pathname })
+  // Get full name using the method from context
+  const fullName = getFullName()
 
-  // Render different header based on path
-  if (location.pathname.startsWith("/admin")) {
-    return <AdminHeader logout={logout} />
+  // Add debugging to see what's happening
+  useEffect(() => {
+    console.log("Header component state:", {
+      isAuthenticated,
+      userRole,
+      fullName,
+      user: user ? JSON.stringify(user) : "null",
+    })
+  }, [isAuthenticated, userRole, fullName, user])
+
+  // Redirect admin users to admin dashboard if they try to access user pages
+  useEffect(() => {
+    if (isAuthenticated && userRole === "admin" && !location.pathname.startsWith("/admin")) {
+      navigate("/admin")
+    }
+  }, [isAuthenticated, userRole, location.pathname, navigate])
+
+  // Render different header based on path or role
+  if (location.pathname.startsWith("/admin") || userRole === "admin") {
+    return <AdminHeader logout={logout} fullName={fullName} />
   }
 
   return (
@@ -232,7 +268,7 @@ export default function Header() {
       isAuthenticated={isAuthenticated}
       logout={logout}
       userRole={userRole}
-      user={user}
+      fullName={fullName}
     />
   )
 }
