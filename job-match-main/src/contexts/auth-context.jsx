@@ -12,7 +12,9 @@ export const AuthContext = createContext({
   loading: true,
   login: () => {},
   register: () => {},
-  logout: () => {}
+  logout: () => {},
+  getUserRole: () => {},
+  getFullName: () => {},
 });
 
 // Create the AuthProvider component
@@ -164,9 +166,24 @@ console.log("----------------------------------------------", await authService.
     });
     window.location.href = "/login"; // Redirect to login page after logout
   };
+  const getUserRole = () => {
+    if (!state.user) return null
+    // Access role from the decoded token
+    return state.user.role || null
+  }
+
+  // Get user full name from decoded token
+  const getFullName = () => {
+    if (!state.user) return ""
+    // Access firstName and lastName from the decoded token
+    const firstName = state.user.firstName || state.user.first_name || ""
+    const lastName = state.user.lastName || state.user.last_name || ""
+    return `${firstName} ${lastName}`.trim()
+  }
 
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, getUserRole,
+      getFullName}}>
       {children}
     </AuthContext.Provider>
   );
