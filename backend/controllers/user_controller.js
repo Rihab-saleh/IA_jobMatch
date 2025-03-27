@@ -2,7 +2,8 @@ const userService = require("../services/userService")
 const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
-
+const mongoose = require('mongoose'); 
+const Language = require('../models/language_model');
 // Create upload directory if it doesn't exist
 const uploadDir = path.join(__dirname, '../public/uploads/profiles')
 if (!fs.existsSync(uploadDir)) {
@@ -481,6 +482,82 @@ const deleteCertification = async (req, res) => {
     res.status(200).json(result);
   });
 };
+const getLanguages = async (req, res) => {
+  processRequest(res, async () => {
+    const userId = req.params.userId;
+    if (!validateUserId(userId, res)) return;
+    const languages = await userService.getLanguages(userId);
+    res.status(200).json(languages);
+  });
+};
+
+const addLanguage = async (req, res) => {
+  processRequest(res, async () => {
+    const targetUserId = req.params.userId;
+    if (!validateUserId(targetUserId, res) || !validatePermission(req, targetUserId, res)) return;
+
+    const language = await userService.addLanguage(targetUserId, req.body);
+    res.status(201).json(language);
+  });
+};
+
+// In your updateLanguage controller
+const updateLanguage = async (req, res) => {
+  try {
+    const { userId, languageId } = req.params;
+    
+    // Validate ObjectId first
+    if (!mongoose.Types.ObjectId.isValid(languageId)) {
+      return res.status(400).json({ message: "Invalid language ID format" });
+    }
+
+    const updated = await Language.findOneAndUpdate(
+      { _id: languageId, user: userId },
+      req.body,
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Language not found" });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ 
+      message: "Error updating language",
+      error: error.message 
+    });
+  }
+};
+const deleteLanguage = async (req, res) => {
+  processRequest(res, async () => {
+    const targetUserId = req.params.userId;
+    if (!validateUserId(targetUserId, res) || !validatePermission(req, targetUserId, res)) return;
+
+    const languageId = req.params.languageId;
+    if (!languageId) {
+      return res.status(400).json({ message: "Language ID is required" });
+    }
+
+    const result = await userService.deleteLanguage(targetUserId, languageId);
+    res.status(200).json(result);
+  });
+};
+
+// Numéro de téléphone
+const updatePhoneNumber = async (req, res) => {
+  processRequest(res, async () => {
+    const targetUserId = req.params.userId;
+    if (!validateUserId(targetUserId, res) || !validatePermission(req, targetUserId, res)) return;
+
+    if (!req.body.phoneNumber) {
+      return res.status(400).json({ message: "Phone number is required" });
+    }
+
+    const result = await userService.updatePhoneNumber(targetUserId, req.body.phoneNumber);
+    res.status(200).json(result);
+  });
+};
 
 module.exports = {
   getUserProfile,
@@ -509,4 +586,9 @@ module.exports = {
   addCertification,
   updateCertification,
   deleteCertification,
+  getLanguages,
+  addLanguage,
+  updateLanguage,
+  deleteLanguage,
+  updatePhoneNumber
 }
