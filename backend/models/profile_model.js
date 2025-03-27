@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const experienceSchema = require('./experience_model').schema;
 const formationSchema = require('./formation_model').schema;
-
+const languageSchema = require('./language_model').schema;
 const skillSchema = require('./skill_model').schema;
 
 const profileSchema = new mongoose.Schema({
@@ -13,6 +13,7 @@ const profileSchema = new mongoose.Schema({
   },
   experiences: [experienceSchema],
   formations: [formationSchema],
+  languages: [languageSchema],
   certifications: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Certification'

@@ -4,6 +4,7 @@ const Profile = require("../models/profile_model")
 const Recommendation = require("../models/recommendation_model")
 const AccountStatusRequest = require("../models/accountstatus_request")
 const Certification = require('../models/certification_model');
+const Language = require('../models/language_model');
 class UserService {
   async getOrCreateProfile(userId) {
     let profile = await Profile.findOne({ userId: userId })
@@ -418,7 +419,66 @@ class UserService {
   
     return { message: "Certification deleted successfully" };
   }
+  async getLanguages(userId) {
+    return await Language.find({ user: userId }).sort({ createdAt: -1 });
+  }
+
+  async addLanguage(userId, languageData) {
+    if (!languageData.name || !languageData.level) {
+      throw new Error("Name and level are required");
+    }
+
+    const language = new Language({
+      user: userId,
+      ...languageData
+    });
+
+    await language.save();
+    return language;
+  }
+
+  async updateLanguage(userId, languageId, languageData) {
+    const language = await Language.findOneAndUpdate(
+      { _id: languageId, user: userId },
+      languageData,
+      { new: true }
+    );
+
+    if (!language) {
+      throw new Error("Language not found or you don't have permission");
+    }
+
+    return language;
+  }
+
+  async deleteLanguage(userId, languageId) {
+    const language = await Language.findOneAndDelete({
+      _id: languageId,
+      user: userId
+    });
+
+    if (!language) {
+      throw new Error("Language not found or you don't have permission");
+    }
+
+    return { message: "Language deleted successfully" };
+  }
+
+  // Méthode pour mettre à jour le numéro de téléphone
+  async updatePhoneNumber(userId, phoneNumber) {
+    const { person } = await this.getUserAndPerson(userId);
+    
+    person.phoneNumber = phoneNumber;
+    await person.save();
+    
+    return { 
+      phoneNumber: person.phoneNumber,
+      message: "Phone number updated successfully" 
+    };
+  }
+  
 }
+
 
 module.exports = new UserService()
 

@@ -488,75 +488,53 @@ export default function DashboardPage() {
 
           {/* Recommended Jobs Tab */}
           <TabsContent value="recommended">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recommended Jobs</CardTitle>
-              <p className="text-sm text-gray-500 mt-2">
-                Based on your skills: {state.profileData.skills.map((s) => s.name).join(", ")}
-                {state.profileData.location && ` in ${state.profileData.location}`}
-              </p>
-            </CardHeader>
-            <CardContent>
-              {state.recommendedJobs.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Recommended Jobs</CardTitle>
+                <p className="text-sm text-gray-500 mt-2">
+                  Based on your skills: {state.profileData.skills.map((s) => s.name).join(", ")}
+                </p>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-6">
-                  {state.recommendedJobs.map((job, index) => (
-                    <div key={job.id || index} className="border rounded-lg p-4 relative">
+                  {state.recommendedJobs.slice(0, 3).map((job, index) => (
+                    <div key={index} className="border rounded-lg p-4 relative">
                       <div className="absolute right-4 top-4 flex items-center gap-2">
-                        {job.matchScore && (
+                        {job.matchPercentage && (
                           <div className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs flex items-center">
                             <Star className="h-3 w-3 mr-1" />
-                            {Math.round(job.matchScore * 100)}% Match
+                            {job.matchPercentage || 85 + index * 5}% Match
                           </div>
                         )}
-                        <button 
-                          className="text-gray-400 hover:text-purple-700" 
-                          onClick={() => toggleSaveJob(job)}
-                        >
-                          <Bookmark className={`h-5 w-5 ${job.isSaved ? "fill-current text-purple-700" : ""}`} />
+                        <button className="text-gray-400 hover:text-purple-700" onClick={() => toggleSaveJob(job)}>
+                          <Bookmark className={`h-5 w-5 ${job.isSaved ? "fill-current" : ""}`} />
                         </button>
                       </div>
 
                       <div className="flex items-start gap-3 pr-8">
                         <div className="w-12 h-12 rounded-lg bg-gray-100 border shrink-0 flex items-center justify-center">
-                          {job.companyLogo ? (
-                            <img src={job.companyLogo} alt={job.company} className="w-full h-full object-contain" />
-                          ) : (
-                            <Building className="h-6 w-6 text-gray-400" />
-                          )}
+                          <Building className="h-6 w-6 text-gray-400" />
                         </div>
                         <div>
-                          <h3 className="font-semibold">{job.title}</h3>
+                          <h3 className="font-semibold">{job.title || "Full Stack Developer (React/Node)"}</h3>
                           <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mt-1">
                             <div className="flex items-center">
                               <Building className="h-4 w-4 mr-1" />
-                              {job.company}
+                              {job.company || "Digital Innovations"}
                             </div>
-                            {job.location && (
-                              <div className="flex items-center">
-                                <MapPin className="h-4 w-4 mr-1" />
-                                {job.location}
-                              </div>
-                            )}
+                            <div className="flex items-center">
+                              <MapPin className="h-4 w-4 mr-1" />
+                              {job.location || state.profileData.location}
+                            </div>
                           </div>
-                          {job.skills && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {job.skills.slice(0, 5).map((skill, i) => (
-                                <Badge key={i} variant="outline" className="text-xs">
-                                  {skill}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       </div>
 
                       <div className="mt-4 pt-4 border-t flex justify-between items-center">
-                        <div className="text-sm text-gray-500">
-                          {job.postedDate || "Recently posted"}
-                        </div>
+                        <div className="text-sm text-gray-500">{job.postedDate || "Posted 1 week ago"}</div>
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm" asChild>
-                            <Link to={`/jobs/${job.id}`}>View Details</Link>
+                          <Button variant="outline" size="sm">
+                            View Details
                           </Button>
                           <Button size="sm" className="bg-purple-700 hover:bg-purple-800">
                             Apply Now
@@ -566,25 +544,10 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <AlertCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No job recommendations found</h3>
-                  <p className="text-gray-500 mb-4">
-                    {state.profileData.skills.length === 0
-                      ? "Add skills to your profile to get personalized recommendations"
-                      : "Try adjusting your skills or location preferences"}
-                  </p>
-                  <Link to="/profile">
-                    <Button className="bg-purple-700 hover:bg-purple-800">
-                      Update Profile
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )
