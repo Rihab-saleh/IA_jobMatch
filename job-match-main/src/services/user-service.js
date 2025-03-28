@@ -138,5 +138,25 @@ export const userService = {
   deleteCertification(userId, certificationId) {
     return api.delete(`users/certifications/${userId}/${certificationId}`)
   },
+  getLanguages(userId) {
+    return api.get(`users/languages/${userId}`)
+  },
+
+  addLanguage(userId, languageData) {
+    return api.post(`users/languages/${userId}`, languageData)
+  },
+
+  updateLanguage(userId, languageId, languageData) {
+    return api.put(`users/languages/${userId}/${languageId}`, languageData)
+  },
+
+  deleteLanguage(userId, languageId) {
+    return api.delete(`users/languages/${userId}/${languageId}`)
+  },
+
+  // API pour le numéro de téléphone
+  updatePhoneNumber(userId, phoneData) {
+    return api.put(`users/profile/${userId}/phone`, phoneData)
+  },
 }
 
