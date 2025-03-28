@@ -1,13 +1,14 @@
-const User = require("../models/user_model")
-const Person = require("../models/person_model")
-const Profile = require("../models/profile_model")
-const Recommendation = require("../models/recommendation_model")
-const AccountStatusRequest = require("../models/accountstatus_request")
+const User = require("../models/user_model");
+const Person = require("../models/person_model");
+const Profile = require("../models/profile_model");
+const Recommendation = require("../models/recommendation_model");
+const AccountStatusRequest = require("../models/accountstatus_request");
 const Certification = require('../models/certification_model');
 const Language = require('../models/language_model');
+
 class UserService {
   async getOrCreateProfile(userId) {
-    let profile = await Profile.findOne({ userId: userId })
+    let profile = await Profile.findOne({ userId: userId });
 
     if (!profile) {
       profile = new Profile({
@@ -18,35 +19,36 @@ class UserService {
         location: "Non spécifié",
         jobTitle: "Non spécifié",
         bio: "",
-      })
-      await profile.save()
+        certifications: []
+      });
+      await profile.save();
     }
 
-    return profile
+    return profile;
   }
 
   async getUserAndPerson(userId) {
-    const user = await User.findById(userId)
-    if (!user) throw new Error("Utilisateur non trouvé")
+    const user = await User.findById(userId);
+    if (!user) throw new Error("Utilisateur non trouvé");
 
-    const person = await Person.findById(user.person).select("-password")
-    if (!person) throw new Error("Données personnelles non trouvées")
+    const person = await Person.findById(user.person).select("-password");
+    if (!person) throw new Error("Données personnelles non trouvées");
 
-    return { user, person }
+    return { user, person };
   }
 
   async updateProfileFields(profile, profileData) {
-    const fields = ["location", "jobTitle", "experiences", "formations", "skills", "bio"]
+    const fields = ["location", "jobTitle", "experiences", "formations", "skills", "bio"];
     fields.forEach((field) => {
-      if (profileData[field] !== undefined) profile[field] = profileData[field]
-    })
-    await profile.save()
-    return profile
+      if (profileData[field] !== undefined) profile[field] = profileData[field];
+    });
+    await profile.save();
+    return profile;
   }
 
   async getUserProfile(userId) {
-    const { user, person } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
+    const { user, person } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
 
     return {
       user: {
@@ -72,21 +74,21 @@ class UserService {
         createdAt: profile.createdAt,
         updatedAt: profile.updatedAt,
       },
-    }
+    };
   }
 
   async updateUserProfile(userId, profileData) {
-    const { user, person } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
+    const { user, person } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
 
     // Update person data if provided
-    if (profileData.firstName) person.firstName = profileData.firstName
-    if (profileData.lastName) person.lastName = profileData.lastName
-    if (profileData.email) person.email = profileData.email
-    if (profileData.phoneNumber !== undefined) person.phoneNumber = profileData.phoneNumber
+    if (profileData.firstName) person.firstName = profileData.firstName;
+    if (profileData.lastName) person.lastName = profileData.lastName;
+    if (profileData.email) person.email = profileData.email;
+    if (profileData.phoneNumber !== undefined) person.phoneNumber = profileData.phoneNumber;
 
-    await person.save()
-    await this.updateProfileFields(profile, profileData)
+    await person.save();
+    await this.updateProfileFields(profile, profileData);
 
     return {
       user: {
@@ -112,247 +114,295 @@ class UserService {
         createdAt: profile.createdAt,
         updatedAt: profile.updatedAt,
       },
-    }
+    };
   }
 
   async deleteUserProfile(userId) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await Profile.findOne({ userId: userId })
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await Profile.findOne({ userId: userId });
 
-    if (!profile) return { message: "Profil non trouvé, rien à supprimer" }
+    if (!profile) return { message: "Profil non trouvé, rien à supprimer" };
 
-    await Profile.findByIdAndDelete(profile._id)
-    return { message: "Profil supprimé avec succès" }
+    await Profile.findByIdAndDelete(profile._id);
+    return { message: "Profil supprimé avec succès" };
   }
 
+  // Skills Methods
   async getUserSkills(userId) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
-    return profile.skills
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
+    return profile.skills;
   }
 
   async addUserSkill(userId, skillData) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
 
-    if (!skillData.name) throw new Error("Le nom de la compétence est requis")
+    if (!skillData.name) throw new Error("Le nom de la compétence est requis");
 
     const newSkill = {
       name: skillData.name,
       level: skillData.level || "Débutant",
-    }
+    };
 
-    profile.skills.push(newSkill)
-    await profile.save()
-    return newSkill
+    profile.skills.push(newSkill);
+    await profile.save();
+    return newSkill;
   }
 
   async updateUserSkill(userId, skillId, skillData) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
 
-    const skillIndex = profile.skills.findIndex((skill) => skill._id.toString() === skillId)
-    if (skillIndex === -1) throw new Error("Compétence non trouvée")
+    const skillIndex = profile.skills.findIndex((skill) => skill._id.toString() === skillId);
+    if (skillIndex === -1) throw new Error("Compétence non trouvée");
 
     Object.keys(skillData).forEach((key) => {
-      profile.skills[skillIndex][key] = skillData[key]
-    })
+      profile.skills[skillIndex][key] = skillData[key];
+    });
 
-    await profile.save()
-    return profile.skills[skillIndex]
+    await profile.save();
+    return profile.skills[skillIndex];
   }
 
   async removeUserSkill(userId, skillId) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
 
-    const skillExists = profile.skills.some((skill) => skill._id.toString() === skillId)
-    if (!skillExists) throw new Error("Compétence non trouvée")
+    const skillExists = profile.skills.some((skill) => skill._id.toString() === skillId);
+    if (!skillExists) throw new Error("Compétence non trouvée");
 
-    profile.skills = profile.skills.filter((skill) => skill._id.toString() !== skillId)
-    await profile.save()
-    return { message: "Compétence supprimée avec succès" }
+    profile.skills = profile.skills.filter((skill) => skill._id.toString() !== skillId);
+    await profile.save();
+    return { message: "Compétence supprimée avec succès" };
   }
 
+  // Formations Methods
   async getFormations(userId) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
-    return profile.formations
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
+    return profile.formations;
   }
 
   async addFormation(userId, formationData) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
-
-    if (!formationData.title) throw new Error("Le titre de la formation est requis")
-
-    profile.formations.push(formationData)
-    await profile.save()
-    return profile.formations[profile.formations.length - 1]
+    try {
+      if (!userId || !formationData?.school || !formationData?.degree) {
+        throw new Error("Missing required fields: userId, school, or degree");
+      }
+  
+      // Normalize school and degree for case-insensitive comparison
+      const school = formationData.school.trim().toLowerCase();
+      const degree = formationData.degree.trim().toLowerCase();
+  
+      // Get or create profile
+      const profile = await this.getOrCreateProfile(userId);
+  
+      // Check for existing formation
+      const existingFormation = profile.formations.some(
+        (formation) =>
+          formation.school.trim().toLowerCase() === school &&
+          formation.degree.trim().toLowerCase() === degree
+      );
+  
+      if (existingFormation) {
+        throw new Error("Formation with the same school and degree already exists");
+      }
+  
+      // Add new formation
+      profile.formations.push({
+        ...formationData,
+        // You might want to add timestamps
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+  
+      await profile.save();
+      
+      // Return the newly added formation
+      return profile.formations[profile.formations.length - 1];
+    } catch (error) {
+      console.error("Error in userService.addFormation:", error);
+      // Enhance the error with more context
+      throw new Error(`Failed to add formation: ${error.message}`);
+    }
   }
 
   async updateFormation(userId, formationId, formationData) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
 
-    const formationIndex = profile.formations.findIndex((formation) => formation._id.toString() === formationId)
-    if (formationIndex === -1) throw new Error("Formation non trouvée")
+    const formationIndex = profile.formations.findIndex((formation) => formation._id.toString() === formationId);
+    if (formationIndex === -1) throw new Error("Formation non trouvée");
 
     Object.keys(formationData).forEach((key) => {
-      profile.formations[formationIndex][key] = formationData[key]
-    })
+      profile.formations[formationIndex][key] = formationData[key];
+    });
 
-    await profile.save()
-    return profile.formations[formationIndex]
+    await profile.save();
+    return profile.formations[formationIndex];
   }
 
   async deleteFormation(userId, formationId) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
 
-    const formationIndex = profile.formations.findIndex((formation) => formation._id.toString() === formationId)
-    if (formationIndex === -1) throw new Error("Formation non trouvée")
+    const formationIndex = profile.formations.findIndex((formation) => formation._id.toString() === formationId);
+    if (formationIndex === -1) throw new Error("Formation non trouvée");
 
-    profile.formations.splice(formationIndex, 1)
-    await profile.save()
-    return { message: "Formation supprimée avec succès" }
+    profile.formations.splice(formationIndex, 1);
+    await profile.save();
+    return { message: "Formation supprimée avec succès" };
   }
 
+  // Experiences Methods
   async getExperiences(userId) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
-    return profile.experiences
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
+    return profile.experiences;
   }
 
   async addExperience(userId, experienceData) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
 
-   // if (!experienceData.title || !experienceData.company) throw new Error("Le titre et l'entreprise sont requis")
-
-    profile.experiences.push(experienceData)
-    await profile.save()
-    return profile.experiences[profile.experiences.length - 1]
+    profile.experiences.push(experienceData);
+    await profile.save();
+    return profile.experiences[profile.experiences.length - 1];
   }
 
   async updateExperience(userId, experienceId, experienceData) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
 
-    const experienceIndex = profile.experiences.findIndex((experience) => experience._id.toString() === experienceId)
-    if (experienceIndex === -1) throw new Error("Expérience non trouvée")
+    const experienceIndex = profile.experiences.findIndex((experience) => experience._id.toString() === experienceId);
+    if (experienceIndex === -1) throw new Error("Expérience non trouvée");
 
     Object.keys(experienceData).forEach((key) => {
-      profile.experiences[experienceIndex][key] = experienceData[key]
-    })
+      profile.experiences[experienceIndex][key] = experienceData[key];
+    });
 
-    await profile.save()
-    return profile.experiences[experienceIndex]
+    await profile.save();
+    return profile.experiences[experienceIndex];
   }
 
   async deleteExperience(userId, experienceId) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
 
-    const experienceIndex = profile.experiences.findIndex((experience) => experience._id.toString() === experienceId)
-    if (experienceIndex === -1) throw new Error("Expérience non trouvée")
+    const experienceIndex = profile.experiences.findIndex((experience) => experience._id.toString() === experienceId);
+    if (experienceIndex === -1) throw new Error("Expérience non trouvée");
 
-    profile.experiences.splice(experienceIndex, 1)
-    await profile.save()
-    return { message: "Expérience supprimée avec succès" }
+    profile.experiences.splice(experienceIndex, 1);
+    await profile.save();
+    return { message: "Expérience supprimée avec succès" };
   }
 
+  // Profile Info Methods
   async updateJobTitle(userId, jobTitle) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
 
-    profile.jobTitle = jobTitle
-    await profile.save()
-    return { jobTitle: profile.jobTitle }
+    profile.jobTitle = jobTitle;
+    await profile.save();
+    return { jobTitle: profile.jobTitle };
   }
 
   async updateLocation(userId, location) {
-    const { user } = await this.getUserAndPerson(userId)
-    const profile = await this.getOrCreateProfile(userId)
+    const { user } = await this.getUserAndPerson(userId);
+    const profile = await this.getOrCreateProfile(userId);
 
-    profile.location = location
-    await profile.save()
-    return { location: profile.location }
+    profile.location = location;
+    await profile.save();
+    return { location: profile.location };
   }
 
+  async updatePhoneNumber(userId, phoneNumber) {
+    const { person } = await this.getUserAndPerson(userId);
+    
+    person.phoneNumber = phoneNumber;
+    await person.save();
+    
+    return { 
+      phoneNumber: person.phoneNumber,
+      message: "Phone number updated successfully" 
+    };
+  }
+
+  // Jobs and Recommendations Methods
   async getUserJobs(userId) {
-    const { user } = await this.getUserAndPerson(userId)
-    const recommendations = await Recommendation.find({ user: userId, status: "Accepted" }).populate("job")
-    return recommendations.map((rec) => rec.job)
+    const { user } = await this.getUserAndPerson(userId);
+    const recommendations = await Recommendation.find({ user: userId, status: "Accepted" }).populate("job");
+    return recommendations.map((rec) => rec.job);
   }
 
   async getUserRecommendations(userId) {
-    const { user } = await this.getUserAndPerson(userId)
-    return await Recommendation.find({ user: userId }).populate("job")
+    const { user } = await this.getUserAndPerson(userId);
+    return await Recommendation.find({ user: userId }).populate("job");
   }
 
   async requestAccountStatusChange(userId, requestType, reason) {
-    const { user, person } = await this.getUserAndPerson(userId)
+    const { user, person } = await this.getUserAndPerson(userId);
 
     if (!requestType || requestType !== "deactivate")
-      throw new Error("Seules les demandes de désactivation sont prises en charge")
+      throw new Error("Seules les demandes de désactivation sont prises en charge");
 
-    if (!person.accountStatusRequests) person.accountStatusRequests = []
+    if (!person.accountStatusRequests) person.accountStatusRequests = [];
 
-    const hasPendingRequest = person.accountStatusRequests.some((request) => request.status === "pending")
-    if (hasPendingRequest) throw new Error("Vous avez déjà une demande de changement de statut en attente")
+    const hasPendingRequest = person.accountStatusRequests.some((request) => request.status === "pending");
+    if (hasPendingRequest) throw new Error("Vous avez déjà une demande de changement de statut en attente");
 
     const newRequest = {
       requestType,
       reason,
       status: "pending",
       createdAt: new Date(),
-    }
+    };
 
-    person.accountStatusRequests.push(newRequest)
-    await person.save()
+    person.accountStatusRequests.push(newRequest);
+    await person.save();
 
     const accountStatusRequest = new AccountStatusRequest({
       user: userId,
       requestType,
       reason,
       status: "pending",
-    })
+    });
 
-    await accountStatusRequest.save()
+    await accountStatusRequest.save();
 
     return {
       message: `Votre demande de désactivation de compte a été soumise et est en attente d'approbation par un administrateur`,
       request: newRequest,
-    }
+    };
   }
 
   async getUserAccountStatusRequests(userId) {
-    const { user, person } = await this.getUserAndPerson(userId)
+    const { user, person } = await this.getUserAndPerson(userId);
 
     if (!person.accountStatusRequests || person.accountStatusRequests.length === 0) {
-      return []
+      return [];
     }
 
-    return person.accountStatusRequests
+    return person.accountStatusRequests;
   }
 
-  // Méthode pour la photo de profil
+  // Profile Picture Methods
   async updateProfilePicture(userId, pictureData) {
-    const { user, person } = await this.getUserAndPerson(userId)
+    const { user, person } = await this.getUserAndPerson(userId);
 
-    // Mettre à jour les données de la photo de profil
     person.profilePicture = {
       url: pictureData.url,
       publicId: pictureData.publicId,
-    }
+    };
 
-    await person.save()
+    await person.save();
 
     return {
       profilePicture: person.profilePicture,
-    }
+    };
   }
+
+  // Certifications Methods
   async getCertifications(userId) {
     const profile = await Profile.findOne({ userId })
       .populate('certifications')
@@ -361,12 +411,10 @@ class UserService {
   }
   
   async addCertification(userId, certificationData) {
-    // Validate required fields
     if (!certificationData.name || !certificationData.issuer || !certificationData.issueDate) {
       throw new Error("Name, issuer, and issue date are required");
     }
   
-    // Create new certification document
     const certification = new Certification({
       user: userId,
       ...certificationData
@@ -374,7 +422,6 @@ class UserService {
   
     await certification.save();
   
-    // Add certification reference to profile
     const profile = await this.getOrCreateProfile(userId);
     profile.certifications.push(certification._id);
     await profile.save();
@@ -383,7 +430,6 @@ class UserService {
   }
   
   async updateCertification(userId, certificationId, certificationData) {
-    // Find and update certification
     const certification = await Certification.findOneAndUpdate(
       { _id: certificationId, user: userId },
       certificationData,
@@ -398,7 +444,6 @@ class UserService {
   }
   
   async deleteCertification(userId, certificationId) {
-    // Remove certification document
     const certification = await Certification.findOneAndDelete({
       _id: certificationId,
       user: userId
@@ -408,7 +453,6 @@ class UserService {
       throw new Error("Certification not found or you don't have permission");
     }
   
-    // Remove reference from profile
     const profile = await Profile.findOne({ userId });
     if (profile) {
       profile.certifications = profile.certifications.filter(
@@ -419,15 +463,13 @@ class UserService {
   
     return { message: "Certification deleted successfully" };
   }
+
+  // Languages Methods
   async getLanguages(userId) {
     return await Language.find({ user: userId }).sort({ createdAt: -1 });
   }
 
   async addLanguage(userId, languageData) {
-    if (!languageData.name || !languageData.level) {
-      throw new Error("Name and level are required");
-    }
-
     const language = new Language({
       user: userId,
       ...languageData
@@ -463,22 +505,6 @@ class UserService {
 
     return { message: "Language deleted successfully" };
   }
-
-  // Méthode pour mettre à jour le numéro de téléphone
-  async updatePhoneNumber(userId, phoneNumber) {
-    const { person } = await this.getUserAndPerson(userId);
-    
-    person.phoneNumber = phoneNumber;
-    await person.save();
-    
-    return { 
-      phoneNumber: person.phoneNumber,
-      message: "Phone number updated successfully" 
-    };
-  }
-  
 }
 
-
-module.exports = new UserService()
-
+module.exports = new UserService();
