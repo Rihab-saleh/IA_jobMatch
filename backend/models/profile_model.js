@@ -25,7 +25,7 @@ const profileSchema = new mongoose.Schema({
     minlength: 2, 
     maxlength: 100 
   },
-  position: {  // Changed from jobTitle to match frontend
+  jobTitle: {  // Changed from jobTitle to match frontend
     type: String, 
     required: false, 
     minlength: 2, 

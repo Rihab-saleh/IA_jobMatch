@@ -164,7 +164,11 @@ const addFormation = async (req, res) => {
   processRequest(res, async () => {
     const targetUserId = req.params.userId;
     if (!validateUserId(targetUserId, res) || !validatePermission(req, targetUserId, res)) return;
-
+    
+// Validate that req.body.school and req.body.degree are defined
+if (!req.body.school || !req.body.degree) {
+  throw new Error("School and degree are required fields");
+}
     await handlePostRequest(
       res,
       async () => {

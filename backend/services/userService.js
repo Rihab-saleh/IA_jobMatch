@@ -190,9 +190,9 @@ class UserService {
         throw new Error("Missing required fields: userId, school, or degree");
       }
   
-      // Normalize school and degree for case-insensitive comparison
-      const school = formationData.school.trim().toLowerCase();
-      const degree = formationData.degree.trim().toLowerCase();
+      // Ensure school and degree are strings before normalizing
+      const school = String(formationData.school).trim().toLowerCase();
+      const degree = String(formationData.degree).trim().toLowerCase();
   
       // Get or create profile
       const profile = await this.getOrCreateProfile(userId);
@@ -200,8 +200,8 @@ class UserService {
       // Check for existing formation
       const existingFormation = profile.formations.some(
         (formation) =>
-          formation.school.trim().toLowerCase() === school &&
-          formation.degree.trim().toLowerCase() === degree
+          String(formation.school).trim().toLowerCase() === school &&
+          String(formation.degree).trim().toLowerCase() === degree
       );
   
       if (existingFormation) {
@@ -211,22 +211,19 @@ class UserService {
       // Add new formation
       profile.formations.push({
         ...formationData,
-        // You might want to add timestamps
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
   
       await profile.save();
-      
+  
       // Return the newly added formation
       return profile.formations[profile.formations.length - 1];
     } catch (error) {
       console.error("Error in userService.addFormation:", error);
-      // Enhance the error with more context
       throw new Error(`Failed to add formation: ${error.message}`);
     }
   }
-
   async updateFormation(userId, formationId, formationData) {
     const { user } = await this.getUserAndPerson(userId);
     const profile = await this.getOrCreateProfile(userId);
