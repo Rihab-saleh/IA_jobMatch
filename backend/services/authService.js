@@ -16,8 +16,8 @@ const REFRESH_SECRET_KEY =
  * @param {string} role - User role
  * @returns {string} JWT token
  */
-const generateToken = (id, role, firstName, lastName, email) => {
-  return jwt.sign({ id, role, firstName, lastName, email }, SECRET_KEY, {
+const generateToken = (id, role, fullName, email) => {
+  return jwt.sign({ id, role, fullName, email }, SECRET_KEY, {
     expiresIn: "2h",
   });
 };
@@ -80,10 +80,11 @@ const signup = async (userData) => {
   // Generate token and refresh token
   const token = generateToken(
     newUser._id,
-    newPerson.firstName,
-    newPerson.LastName,
-    newPerson.email,
-    newPerson.role
+    newPerson.role,
+    newPerson.firstName + " " + newPerson.lastName,
+    
+    newPerson.email
+   
   );
   const refreshToken = generateRefreshToken(newUser._id);
 
@@ -122,10 +123,11 @@ const login = async (loginData) => {
       }
       token = generateToken(
         admin._id,
-        person.firstName,
-        person.LastName,
+        person.role,
+        person.firstName+" " + person.lastName,
+        
         person.email,
-        person.role
+        
       );
       refreshToken = generateRefreshToken(admin._id);
       return {
@@ -144,18 +146,22 @@ const login = async (loginData) => {
       }
       token = generateToken(
         user._id,
-        person.firstName,
-        person.LastName,
-        person.email,
-        person.role
+        person.role,
+        person.firstName+" " + person.lastName,
+      
+        person.email
+        
       );
+      console.log("Generated token:", token);
+      console.log("*********************************************************************************Decoded token:", jwt.decode(token));
       refreshToken = generateRefreshToken(user._id);
       return {
         token,
+
         refreshToken,
         email: person.email,
         fullName: `${person.firstName} ${person.lastName}`,
-        id: user._id,
+       
         role: person.role,
       };
     }
@@ -164,6 +170,7 @@ const login = async (loginData) => {
     throw error;
   }
 };
+
 
 module.exports = { signup, login };
 

@@ -112,7 +112,7 @@ const getAllUsers = async (req, res) => {
     const limit = Number.parseInt(req.query.limit) || 10
     const search = req.query.search || ""
 
-    const result = await AdminService.getAllUsers(page, limit)
+    const result = await AdminService.getAllUsers(page, limit, search)
 
     // Wrap the response in a data property to match frontend expectations
     res.json({ data: result })
