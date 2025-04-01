@@ -24,9 +24,8 @@ router.get("/users", authMiddleware, adminMiddleware, adminController.getAllUser
 router.post("/ai/configure", authMiddleware, adminMiddleware, adminController.configureAI)
 router.post("/", authMiddleware, adminMiddleware, adminController.createAdmin)
 router.get("/", authMiddleware, adminMiddleware, adminController.getAllAdmins)
-router.get("/:adminId", authMiddleware, adminMiddleware, adminController.getAdminById)
-router.put("/:adminId", authMiddleware, adminMiddleware, adminController.updateAdmin)
-router.delete("/:adminId", authMiddleware, adminMiddleware, adminController.deleteAdmin)
+router.get("/:id", authMiddleware, adminMiddleware, adminController.getAdminById)
+router.put("/:id", authMiddleware, adminMiddleware, adminController.updateAdmin)
+router.delete("/:id", authMiddleware, adminMiddleware, adminController.deleteAdmin)
 
 module.exports = router
-
