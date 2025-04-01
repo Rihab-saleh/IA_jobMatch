@@ -1,11 +1,11 @@
-const userPreferencesService = require('../services/userPreferencesService');
+const userPreferencesService = require('../services/preferenceService');
 
 /**
  * Save or update user preferences
  */
 async function savePreferences(req, res) {
   try {
-    const userId = req.user.id; // Assuming user ID is available in req.user
+    const userId = '67dde12c6b75212cf0dd88ee'; // Assuming user ID is available in req.user
     const preferences = req.body;
     
     const savedPreferences = await userPreferencesService.saveUserPreferences(userId, preferences);

@@ -117,7 +117,24 @@ const getAllJobsFromAdzuna = async (req, res) => {
     )
   }
 }
+const getUnifiedJobs = async (req, res) => {
+  try {
+    const { what = "", where = "", page = "1", limit = "1000000000000" } = req.query
+    const pageNum = Number.parseInt(page)
+    const limitNum = Number.parseInt(limit)
 
+    const jobs = await jobService.getUnifiedJobs(what, where, pageNum, limitNum)
+    res.json(jobs)
+  } catch (error) {
+    console.error("Error fetching jobs from Adzuna:", error)
+    res.status(500).json(
+      createMockResults({
+        page: Number.parseInt(req.query.page) || 1,
+        results_per_page: Number.parseInt(req.query.limit) || 10,
+      }),
+    )
+  }
+}
 // New controller function for scraped jobs
 const getScrapedJobs = async (req, res) => {
   try {
@@ -155,5 +172,6 @@ module.exports = {
   getAllJobsFromAdzuna,
   getScrapedJobs,
   getAllJobsFromScraping,
+  getUnifiedJobs
 }
 
