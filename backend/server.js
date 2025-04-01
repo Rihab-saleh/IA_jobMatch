@@ -6,6 +6,7 @@ const userRoutes = require("./routes/userRoutes")
 const adminRoutes = require("./routes/adminRoutes")
 const recommendationRoutes = require("./routes/recommendationRoutes")
 const jobRoutes = require("./routes/jobRoutes")
+const preferenceRoutes = require("./routes/preferenceRoutes")
 const authRoutes = require("./routes/auth.routes")
 const { authMiddleware, adminMiddleware } = require("./middlewares/authMiddleware")
 const bcrypt = require("bcryptjs")
@@ -89,10 +90,11 @@ connectDB().then(() => {
 app.use("/api/auth", authRoutes)
 
 // Set up protected routes
+app.use("/api/preferences", preferenceRoutes)
 app.use("/api/users", authMiddleware, userRoutes)
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes)
-app.use("/api/recommendations", authMiddleware, recommendationRoutes)
-app.use("/api/jobs", authMiddleware, jobRoutes)
+app.use("/api/recommendations", recommendationRoutes)
+app.use("/api/jobs", jobRoutes)
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')))
 // Global error handler
 app.use((err, req, res, next) => {

@@ -1,15 +1,16 @@
-const fetch = require("node-fetch")
+const fetch = (...args) => import("node-fetch").then(({ default: fetch }) => fetch(...args));
 const Job = require("../models/job_model")
 const axios = require("axios")
 const cheerio = require("cheerio")
 
+const skillsExtractor = require('./skillsExtractor');
 // Use environment variables for API credentials
 const ADZUNA_API_ID = process.env.ADZUNA_API_ID || "5349e2d4"
 const ADZUNA_API_KEY = process.env.ADZUNA_API_KEY || "4915ded7f0af0dab86aeafbb5a6112f0"
 const ADZUNA_BASE_URL = "https://api.adzuna.com/v1/api/jobs/us"
 
 // Helper function for creating mock results
-const createMockResults = ({ what = "", where = "", page = 1, results_per_page = 10 } = {}) => ({
+const createMockResults = ({ what = "", where = "", page = 1, results_per_page = 100000000000000000000000 } = {}) => ({
   count: 0,
   results: [],
   currentPage: page,
@@ -196,9 +197,6 @@ const scrapers = {
       sourceId: `indeed-${Math.random().toString(36).substring(2, 9)}`,
       sourceUrl: rawJob.url,
       isExternal: true,
-      skillsRequired: extractSkillsFromText(rawJob.description),
-      salary: 0,
-      contractType: detectContractType(rawJob.title, rawJob.description),
     }),
   },
 
@@ -220,14 +218,9 @@ const scrapers = {
       description: rawJob.description,
       company: { display_name: rawJob.company },
       location: { display_name: rawJob.location },
-      created: new Date().toISOString(),
       source: "linkedin",
-      sourceId: `linkedin-${Math.random().toString(36).substring(2, 9)}`,
       sourceUrl: rawJob.url,
       isExternal: true,
-      skillsRequired: extractSkillsFromText(rawJob.description),
-      salary: 0,
-      contractType: detectContractType(rawJob.title, rawJob.description),
     }),
   },
 
@@ -254,9 +247,7 @@ const scrapers = {
       sourceId: `google-${Math.random().toString(36).substring(2, 9)}`,
       sourceUrl: rawJob.url,
       isExternal: true,
-      skillsRequired: extractSkillsFromText(rawJob.description),
       salary: 0,
-      contractType: detectContractType(rawJob.title, rawJob.description),
     }),
   },
 }
@@ -264,7 +255,7 @@ const scrapers = {
 // Function to scrape jobs from websites using Axios/Cheerio
 const scrapeJobsFromWebsites = async (query, location, page = 1) => {
   const allJobs = []
-  const sources = ["indeed", "linkedin", "googleJobs"]
+  const sources = ["linkedin"]
 
   // Use sequential scraping to avoid being blocked
   for (const source of sources) {
@@ -551,11 +542,12 @@ const getAllJobs = async (page = 1, limit = 10, userId = null) => {
 }
 
 // Function to get jobs from Adzuna
-const getAllJobsFromAdzuna = async (query, location = "", page = 1, limit = 10) => {
+const getAllJobsFromAdzuna = async (query, location = "", page =1 , limit = 10000000) => {
   try {
     const response = await fetch(
-      `${ADZUNA_BASE_URL}/search/${page}?app_id=${ADZUNA_API_ID}&app_key=${ADZUNA_API_KEY}&what=${encodeURIComponent(query)}&where=${encodeURIComponent(location)}&results_per_page=${limit}`,
-    )
+      `${ADZUNA_BASE_URL}/search/${page}?app_id=${ADZUNA_API_ID}&app_key=${ADZUNA_API_KEY}&what=${encodeURIComponent(query)}&where=${encodeURIComponent(location)}&results_per_page=${limit}`
+    );
+
 
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
 
@@ -572,6 +564,366 @@ const getAllJobsFromAdzuna = async (query, location = "", page = 1, limit = 10) 
   }
 }
 
+
+/**
+ * Unifies job results from different APIs into a consistent format
+ * @param {Object} data - The raw API response
+ * @param {string} source - The source identifier (e.g., 'adzuna', 'scraped', or any future API)
+ * @param {Object} options - Additional options like query, location, page, limit
+ * @returns {Object} - Unified job response
+ */
+function unifyJobResults(data, source, options = {}) {
+  const { query = '', location = '', page = 1, limit = 10 } = options;
+  
+  // Initialize the unified response
+  const unifiedResponse = {
+    jobs: [],
+    pagination: {
+      currentPage: page,
+      totalPages: 0,
+      totalJobs: 0,
+      resultsPerPage: limit
+    },
+    meta: {
+      sources: {},
+      query,
+      location
+    }
+  };
+
+  // Source-specific adapters
+  const adapters = {
+    // Adzuna adapter
+    adzuna: (data) => {
+      if (!data || !data.results || !Array.isArray(data.results)) {
+        return unifiedResponse;
+      }
+
+      const jobs = data.results.map(job => ({
+        id: job.id || `adzuna-${Math.random().toString(36).substring(2, 15)}`,
+        title: job.title || '',
+        description: job.description || '',
+        company: {
+          name: job.company?.display_name || job.company?.name 
+        },
+        location: {
+          name: job.location?.display_name || job.location?.name,
+          area: job.location?.area || []
+        },
+        salary: {
+          min: job.salary_min || null,
+          max: job.salary_max || null,
+          isPredicted: job.salary_is_predicted === '1'
+        },
+        url: job.redirect_url || '',
+        source: 'adzuna',
+        datePosted: job.created || new Date().toISOString(),
+        category: job.category?.label || '',
+        sourceId: job.id,
+        // Preserve original data for future reference
+        _original: job
+      }));
+
+      return {
+        jobs,
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil((data.count || 0) / limit),
+          totalJobs: data.count || 0,
+          resultsPerPage: limit
+        },
+        meta: {
+          sources: {
+            adzuna: data.count || 0
+          },
+          query,
+          location
+        }
+      };
+    },
+    
+    // Scraped jobs adapter
+    scraped: (data) => {
+      if (!data || !data.results || !Array.isArray(data.results)) {
+        return unifiedResponse;
+      }
+
+      const jobs = data.results.map(job => ({
+        id: `scraped-${job.source}-${Math.random().toString(36).substring(2, 15)}`,
+        title: job.title || '',
+        description: job.description || '',
+        company: {
+          name: job.company?.display_name || 'Unknown Company'
+        },
+        location: {
+          name: job.location?.display_name || ''
+        },
+        url: job.sourceUrl || '',
+        source: job.source || 'scraped',
+        datePosted: job.datePosted || new Date().toISOString(),
+        // Preserve original data for future reference
+        _original: job
+      }));
+
+      return {
+        jobs,
+        pagination: {
+          currentPage: data.currentPage || page,
+          totalPages: data.totalPages || Math.ceil((data.count || 0) / limit),
+          totalJobs: data.totalJobs || data.count || 0,
+          resultsPerPage: limit
+        },
+        meta: {
+          sources: data.sources || { scraped: data.count || 0 },
+          query,
+          location
+        }
+      };
+    }
+    
+    // Add more adapters for future APIs here
+    // newapi: (data) => { ... }
+  };
+
+  // Use the appropriate adapter or a generic one if not found
+  if (adapters[source]) {
+    return adapters[source](data);
+  } else {
+    // Generic adapter for unknown sources
+    console.warn(`No specific adapter found for source: ${source}. Using generic adapter.`);
+    
+    // Try to extract jobs from common patterns
+    let jobs = [];
+    let count = 0;
+    
+    // Look for common patterns in job APIs
+    if (data.results && Array.isArray(data.results)) {
+      jobs = data.results;
+      count = data.count || data.total || data.totalJobs || jobs.length;
+    } else if (data.jobs && Array.isArray(data.jobs)) {
+      jobs = data.jobs;
+      count = data.count || data.total || data.totalJobs || jobs.length;
+    } else if (Array.isArray(data)) {
+      jobs = data;
+      count = jobs.length;
+    }
+    
+    // Map to unified format with best-effort property mapping
+    unifiedResponse.jobs = jobs.map(job => {
+      // Try to extract common job properties with fallbacks
+      return {
+        id: job.id || job.jobId || `${source}-${Math.random().toString(36).substring(2, 15)}`,
+        title: job.title || job.jobTitle || job.name || '',
+        description: job.description || job.jobDescription || job.summary || '',
+        company: {
+          name: job.company?.name || job.company?.display_name || job.companyName || 'Unknown Company'
+        },
+        location: {
+          name: job.location?.name || job.location?.display_name || job.locationName || job.place || ''
+        },
+        url: job.url || job.jobUrl || job.link || '',
+        source: source,
+        datePosted: job.datePosted || job.date || job.created || new Date().toISOString(),
+        // Preserve original data for future reference
+        _original: job
+      };
+    });
+    
+    unifiedResponse.pagination = {
+      currentPage: data.page || data.currentPage || page,
+      totalPages: data.pages || data.totalPages || Math.ceil(count / limit),
+      totalJobs: count,
+      resultsPerPage: data.limit || data.pageSize || limit
+    };
+    
+    unifiedResponse.meta.sources = { [source]: count };
+    
+    return unifiedResponse;
+  }
+}
+
+
+/**
+ * Function to get jobs from any source and return in unified format
+ * @param {string} query - Search query
+ * @param {string} location - Location to search in
+ * @param {number} page - Page number
+ * @param {number} limit - Results per page
+ * @param {Array} sources - Array of sources to fetch from
+ * @returns {Promise<Object>} - Unified job response
+ */
+async function getUnifiedJobs(query, location = "", page = 1, limit = 1000000000, sources = ['adzuna', 'scraped']) {
+  // Map of source names to their fetching functions
+  const sourceFetchers = {
+    adzuna: async () => {
+      const data = await getAllJobsFromAdzuna(query, location, page, limit);
+      return unifyJobResults(data, 'adzuna', { query, location, page, limit });
+    },
+    scraped: async () => {
+      const data = await getScrapedJobs(query, location, page, limit);
+      return unifyJobResults(data, 'scraped', { query, location, page, limit });
+    }
+    // Add more sources here as needed
+  };
+  
+  // Fetch from all requested sources in parallel
+  const promises = sources.map(async (source) => {
+    try {
+      if (sourceFetchers[source]) {
+        return await sourceFetchers[source]();
+      } else {
+        console.error(`No fetcher defined for source: ${source}`);
+        return null;
+      }
+    } catch (error) {
+      console.error(`Error fetching from ${source}:`, error);
+      return null;
+    }
+  });
+  
+  const sourceResults = (await Promise.all(promises)).filter(Boolean);
+  
+  // If no results, return empty unified response
+  if (sourceResults.length === 0) {
+    return {
+      jobs: [],
+      pagination: {
+        currentPage: page,
+        totalPages: 0,
+        totalJobs: 0,
+        resultsPerPage: limit
+      },
+      meta: {
+        sources: {},
+        query,
+        location
+      }
+    };
+  }
+  
+  // Combine all jobs from all sources
+  const allJobs = [];
+  const allSources = {};
+  let totalJobs = 0;
+  
+  sourceResults.forEach(result => {
+    allJobs.push(...result.jobs);
+    Object.entries(result.meta.sources).forEach(([source, count]) => {
+      allSources[source] = (allSources[source] || 0) + count;
+      totalJobs += count;
+    });
+  });
+  
+  // Sort and paginate the combined results
+  const sortedJobs = sortJobsByRelevance(allJobs, { what: query, where: location });
+  
+  // Apply pagination to the combined results
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+  const paginatedJobs = sortedJobs.slice(startIndex, endIndex);
+  
+  return {
+    jobs: paginatedJobs,
+    pagination: {
+      currentPage: page,
+      totalPages: Math.ceil(totalJobs / limit),
+      totalJobs,
+      resultsPerPage: limit
+    },
+    meta: {
+      sources: allSources,
+      query,
+      location
+    }
+  };
+}
+
+
+
+
+/////////////////////////
+
+
+
+// Process jobs and save vectors
+async function processJobs(jobs) {
+  console.log(`Processing batch of ${jobs.length} jobs...`);
+
+  const vectors = [];
+
+  for (const job of jobs) {
+    try {
+      // Extract skills from job description
+      const skills = []
+      ///await skillsExtractor.extractSkillsNLP(job.description);
+      console.log(`Extracted skills for job ${job.id}:`, skills);
+      // Create text representation of job for embedding
+      const jobText = `${job.title} ${job.description} ${skills.join(' ')} ${job.location.name} ${job.category}`;
+
+      // Generate embedding
+      const embedding = await vectorSearch.generateEmbedding(jobText);
+
+      // Prepare vector for storage
+      vectors.push({
+        id: job.id || `job-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        vector: embedding,
+        payload: {
+          jobId: job.id,
+          title: job.title,
+          location: job.location.name,
+          skills: skills,
+          jobType: job.category,
+          salary: job.salary,
+          company: job.company.name,
+          postedDate: job.datePosted
+        }
+      });
+    } catch (error) {
+      console.error(`Error processing job ${job.id}:`, error.message);
+    }
+  }
+
+  // Save vectors to storage
+  await vectorSearch.addVectors(vectors);
+
+  return vectors.length;
+}
+
+// Fetch and process jobs in batches
+async function updateJobIndex() {
+  console.log('Updating job index...');
+  try {
+    const query = "";
+    const location = "";
+    const page = "1";
+    const limit = "10";
+    const pageNum = Number.parseInt(page);
+    const limitNum = Number.parseInt(limit);
+
+    const data = await getUnifiedJobs(query, location, pageNum, limitNum);
+    const jobs= data.jobs;
+    console.log(`Fetched ${jobs.length} jobs from external API`);
+    
+    // Process in batches to avoid memory issues
+    const batchSize = 100;
+    let processedCount = 0;
+    
+    for (let i = 0; i < jobs.length; i += batchSize) {
+      const batch = jobs.slice(i, i + batchSize);
+      const batchCount = await processJobs(batch);
+      processedCount += batchCount;
+      console.log(`Processed batch ${i/batchSize + 1} of ${Math.ceil(jobs.length/batchSize)}`);
+    }
+    
+    return processedCount;
+  } catch (error) {
+    console.error('Error updating job index:', error.message);
+    throw error;
+  }
+}
+
+
+
 // Export all functions
 module.exports = {
   searchJobs,
@@ -582,5 +934,9 @@ module.exports = {
   getScrapedJobs,
   getAllJobsFromScraping,
   createMockResults,
+  unifyJobResults,
+  getUnifiedJobs,
+  updateJobIndex,
+  processJobs
 }
 

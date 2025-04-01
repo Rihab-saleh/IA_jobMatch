@@ -1,4 +1,4 @@
-const UserPreferences = require('../models/UserPreferences');
+const UserPreferences = require('../models/UserPreferences_model');
 
 /**
  * Create or update user preferences

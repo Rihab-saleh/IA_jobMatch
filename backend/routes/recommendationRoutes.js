@@ -1,18 +1,40 @@
-const express = require("express")
-const router = express.Router()
-const recommendationController = require("../controllers/recommendation_controller")
-const authMiddleware = require("../middlewares/authMiddleware")
+// routes/recommendationRoutes.js
+const express = require('express');
+const router = express.Router();
+const { getRecommendationsForUser, getRecommendationsFromText } = require('../controllers/recommendation_controller');
 
-// Check if protect middleware is properly defined before using it
-if (typeof authMiddleware.protect === "function") {
-  router.use(authMiddleware.protect)
-} else {
-  console.warn("Warning: Auth protect middleware is not properly defined. Routes will be unprotected.")
-}
+// Get job recommendations for a user
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const limit = parseInt(req?.query.limit) || 10;
+    console.log('User ID:', userId);
+    const recommendations = await getRecommendationsForUser(userId, limit);
+    
+    res.json({ success: true, recommendations });
+  } catch (error) {
+    console.error('Error getting recommendations:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
-router.get("/", recommendationController.getUserRecommendations)
-router.post("/:jobId/accept", recommendationController.acceptRecommendation)
-router.post("/:jobId/reject", recommendationController.rejectRecommendation)
+// Get job recommendations based on profile text
+router.post('/profile', async (req, res) => {
+  try {
+    const { profileText } = req.body;
+    const limit = parseInt(req.query.limit) || 10;
+    
+    if (!profileText) {
+      return res.status(400).json({ success: false, error: 'Profile text is required' });
+    }
+    
+    const recommendations = await getRecommendationsFromText(profileText, limit);
+    
+    res.json({ success: true, recommendations });
+  } catch (error) {
+    console.error('Error getting recommendations from profile:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
-module.exports = router
-
+module.exports = router;
