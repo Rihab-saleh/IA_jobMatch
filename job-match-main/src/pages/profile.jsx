@@ -57,7 +57,7 @@ function ProfilePage() {
       email: "",
       phone: "",
       location: "",
-      position: "",
+      jobTitle: "",
       bio: "",
     },
     profilePicture: null,
@@ -85,7 +85,7 @@ function ProfilePage() {
     if (state.profileData.email) total += 4
     if (state.profileData.phone) total += 3
     if (state.profileData.location) total += 3
-    if (state.profileData.position) total += 3
+    if (state.profileData.jobTitle) total += 3
     if (state.profileData.bio) total += 3
     if (state.profilePicture) total += 1
 
@@ -162,7 +162,7 @@ function ProfilePage() {
           email: profile.user.person.email || "",
           phone: profile.user.person.phoneNumber || "",
           location: profile.profile.location || "",
-          position: profile.profile.position || "",
+          jobTitle: profile.profile.jobTitle || "",
           bio: profile.profile.bio || "",
         },
         profilePicture: profile.user.person.profilePicture?.url || null,
@@ -389,7 +389,7 @@ function ProfilePage() {
     const formData = new FormData(e.target)
     const data = {
       company: formData.get("company"),
-      position: formData.get("position"),
+      jobTitle: formData.get("jobTitle"),
       location: formData.get("location"),
       startDate: formData.get("startDate"),
       endDate: formData.get("current") === "on" ? null : formData.get("endDate"),
@@ -716,7 +716,7 @@ function ProfilePage() {
                 <h2 className="font-bold text-gray-900">
                   {state.profileData.firstName || "Your"} {state.profileData.lastName || "Name"}
                 </h2>
-                {state.profileData.position && <p className="text-gray-600 text-sm">{state.profileData.position}</p>}
+                {state.profileData.jobTitle && <p className="text-gray-600 text-sm">{state.profileData.jobTitle}</p>}
                 <div className="flex items-center mt-1">
                   <span className="text-xs font-medium text-gray-700 mr-2">Profile: {completionPercentage}%</span>
                   <Progress
@@ -777,8 +777,8 @@ function ProfilePage() {
                   <h2 className="text-2xl font-bold text-center text-gray-900">
                     {state.profileData.firstName || "Your"} {state.profileData.lastName || "Name"}
                   </h2>
-                  {state.profileData.position && (
-                    <p className="text-gray-600 text-center font-medium mt-1">{state.profileData.position}</p>
+                  {state.profileData.jobTitle && (
+                    <p className="text-gray-600 text-center font-medium mt-1">{state.profileData.jobTitle}</p>
                   )}
 
                   <div className="w-full mt-4 space-y-3">
@@ -1022,13 +1022,13 @@ function ProfilePage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="position" className="text-gray-700">
-                          Current Position
+                        <Label htmlFor="jobTitle" className="text-gray-700">
+                          Current jobTitle
                         </Label>
                         <Input
-                          id="position"
-                          name="position"
-                          value={state.profileData.position}
+                          id="jobTitle"
+                          name="jobTitle"
+                          value={state.profileData.jobTitle}
                           onChange={handleProfileChange}
                           className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                           placeholder="e.g. Senior Developer"
@@ -1241,7 +1241,7 @@ function ProfilePage() {
                           >
                             <div className="flex flex-col sm:flex-row justify-between">
                               <div>
-                                <h3 className="font-semibold text-lg text-gray-900">{exp.position}</h3>
+                                <h3 className="font-semibold text-lg text-gray-900">{exp.jobTitle}</h3>
                                 <p className="text-purple-700 font-medium">{exp.company}</p>
                                 <div className="flex items-center text-sm text-gray-500 mt-2">
                                   <MapPin className="h-3 w-3 mr-1" />
@@ -1600,13 +1600,13 @@ function ProfilePage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="position" className="text-gray-700">
-                      Position
+                    <Label htmlFor="jobTitle" className="text-gray-700">
+                      jobTitle
                     </Label>
                     <Input
-                      id="position"
-                      name="position"
-                      defaultValue={state.currentItem?.position || ""}
+                      id="jobTitle"
+                      name="jobTitle"
+                      defaultValue={state.currentItem?.jobTitle || ""}
                       className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                       required
                     />

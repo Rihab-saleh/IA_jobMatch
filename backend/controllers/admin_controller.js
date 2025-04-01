@@ -28,53 +28,134 @@ const createAdmin = async (req, res) => {
   }
 };
 
-// Get all admins
-const getAllAdmins = async (req, res) => {
-  try {
-      const admins = await AdminService.getAllAdmins();
-      res.json(admins);
-  } catch (error) {
-      handleError(res, error, 'An error occurred while retrieving admins');
-  }
-};
-
 // Get an admin by ID
 const getAdminById = async (req, res) => {
   try {
-      const adminId = req.params.id;
-      if (!validateId(adminId, res)) return;
+    const adminId = req.params.id;
+    
+    // Validate that ID is provided
+    if (!adminId) {
+      return res.status(400).json({ error: 'Admin ID is required' });
+    }
+    
+    // Validate ID format if using MongoDB ObjectId
+    if (!validateId(adminId, res)) return;
 
-      const admin = await AdminService.getAdminById(adminId);
-      res.json(admin);
+    const admin = await AdminService.getAdminById(adminId);
+    
+    // Check if admin was found
+    if (!admin) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+    
+    res.json(admin);
   } catch (error) {
-      handleError(res, error, 'An error occurred while retrieving the admin');
+    console.error('Error in getAdminById controller:', error);
+    handleError(res, error, 'An error occurred while retrieving the admin');
   }
 };
 
-// Update an admin
+// Get all admins controller correction
+const getAllAdmins = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    
+    const result = await AdminService.getAllAdmins(page, limit, search);
+    res.json(result); // Return the complete result object with admins and pagination
+  } catch (error) {
+    handleError(res, error, 'An error occurred while retrieving admins');
+  }
+};
+
+// Update an admin - Corrected version
 const updateAdmin = async (req, res) => {
   try {
-      const adminId = req.params.id;
-      if (!validateId(adminId, res)) return;
+    const adminId = req.params.id;
+    
+    // Simple validation without sending response yet
+    if (!adminId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Admin ID is required" 
+      });
+    }
 
-      const adminData = req.body;
-      const updatedAdmin = await AdminService.updateAdmin(adminId, adminData);
-      res.json(updatedAdmin);
+    const updateData = req.body;
+    
+    // Call the AdminService method
+    const updatedAdmin = await AdminService.updateAdmin(adminId, updateData);
+
+    // Return success response
+    return res.status(200).json({
+      success: true,
+      message: "Admin updated successfully",
+      data: updatedAdmin
+    });
   } catch (error) {
-      handleError(res, error, 'An error occurred while updating the admin');
+    console.error("Error updating admin:", error);
+    
+    // Handle specific errors
+    if (error.message.includes("not found")) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
+    return res.status(500).json({
+      success: false,
+      message: "Error updating admin",
+      error: error.message
+    });
   }
 };
 
-// Delete an admin
+// Delete an admin - Corrected version
 const deleteAdmin = async (req, res) => {
   try {
-      const adminId = req.params.id;
-      if (!validateId(adminId, res)) return;
+    const adminId = req.params.id;
+    
+    // Simple validation without sending response yet
+    if (!adminId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Admin ID is required" 
+      });
+    }
 
-      await AdminService.deleteAdmin(adminId);
-      res.json({ message: 'Admin deleted successfully' });
+    // Call the AdminService method
+    const result = await AdminService.deleteAdmin(adminId);
+
+    // Return success response
+    return res.status(200).json({
+      success: true,
+      message: "Admin deleted successfully"
+    });
   } catch (error) {
-      handleError(res, error, 'An error occurred while deleting the admin');
+    console.error("Error deleting admin:", error);
+    
+    // Handle specific errors
+    if (error.message.includes("not found")) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
+    if (error.message.includes("last admin")) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
+    return res.status(500).json({
+      success: false,
+      message: "Error deleting admin",
+      error: error.message
+    });
   }
 };
 
@@ -97,9 +178,8 @@ const toggleUserStatus = async (req, res) => {
     const userId = req.params.userId;
     if (!validateId(userId, res)) return;
 
-    const newStatus = req.body.status;
-    await AdminService.toggleUserStatus(userId, newStatus);
-    res.json({ message: "User status updated successfully" });
+    const result = await AdminService.toggleUserStatus(userId);
+    res.json(result);
   } catch (error) {
     handleError(res, error, "An error occurred while toggling user status");
   }
@@ -124,7 +204,9 @@ const getAllUsers = async (req, res) => {
 // Configurer l'IA (exemple)
 const configureAI = async (req, res) => {
   try {
-    res.json({ message: "AI configuration successful" });
+    const aiConfig = req.body;
+    const result = await AdminService.configureAI(aiConfig);
+    res.json(result);
   } catch (error) {
     handleError(res, error, "An error occurred while configuring AI");
   }
@@ -180,8 +262,8 @@ const getUserAccountStatusRequests = async (req, res) => {
     const userId = req.params.userId;
     if (!validateId(userId, res)) return;
 
-    const requests = await AdminService.getUserAccountStatusRequests(userId);
-    res.json(requests);
+    const result = await AdminService.getUserAccountStatusRequests(userId);
+    res.json(result);
   } catch (error) {
     if (error.message === "User not found") {
       return res.status(404).json({ message: "User not found" });

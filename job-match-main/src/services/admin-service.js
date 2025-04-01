@@ -24,8 +24,10 @@ export const adminService = {
     return api.put(`/admin/user/toggleStatus/${userId}`);
   },
 
-  getAllUsers() {
-    return api.get("/admin/users");
+  getAllUsers({ page = 1, limit = 10, search = "" } = {}) {
+    return api.get("/admin/users", { 
+      params: { page, limit, search }
+    });
   },
 
   // Gestion administrateurs
@@ -33,8 +35,10 @@ export const adminService = {
     return api.post("/admin", adminData);
   },
 
-  getAllAdmins() {
-    return api.get("/admin");
+  getAllAdmins(page = 1, limit = 10, search = "") {
+    return api.get("/admin", { 
+      params: { page, limit, search }
+    });
   },
 
   getAdminById(adminId) {

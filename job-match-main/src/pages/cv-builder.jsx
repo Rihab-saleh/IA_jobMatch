@@ -22,6 +22,7 @@ import {
   X,
   Link,
   Globe,
+  Award,
 } from "lucide-react"
 import { userService } from "../services/user-service"
 import { useAuth } from "../contexts/auth-context"
@@ -40,6 +41,8 @@ import { Switch } from "../components/ui/switch"
 import ResumeTemplate from "./resume-template"
 import { formatDate, formatDateForAPI } from "../lib/date-utils"
 import html2pdf from "html2pdf.js"
+import { Badge } from "../components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
 
 export default function CVBuilderPage() {
   const { user, loading: authLoading } = useAuth()
@@ -52,6 +55,7 @@ export default function CVBuilderPage() {
   const [activeDialog, setActiveDialog] = useState(null)
   const [currentItem, setCurrentItem] = useState(null)
   const [newSkill, setNewSkill] = useState("")
+  const [skillLevel, setSkillLevel] = useState("Intermediate")
   const [previewMode, setPreviewMode] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
 
@@ -69,12 +73,9 @@ export default function CVBuilderPage() {
   const [workExperience, setWorkExperience] = useState([])
   const [education, setEducation] = useState([])
   const [skills, setSkills] = useState([])
-  const [languages, setLanguages] = useState([
-    { name: "English", level: "Proficient" },
-    { name: "French", level: "Advanced" },
-    { name: "Arabic", level: "Native" },
-  ])
+  const [languages, setLanguages] = useState([])
   const [training, setTraining] = useState([])
+  const [certifications, setCertifications] = useState([])
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -94,11 +95,13 @@ export default function CVBuilderPage() {
           return
         }
 
-        const [profile, skills, experiences, formations] = await Promise.all([
+        const [profile, skills, experiences, formations, languages, certifications] = await Promise.all([
           userService.getUserProfile(user._id),
           userService.getUserSkills(user._id).catch(() => []),
           userService.getExperiences(user._id).catch(() => []),
           userService.getFormations(user._id).catch(() => []),
+          userService.getLanguages(user._id).catch(() => []),
+          userService.getCertifications(user._id).catch(() => []),
         ])
 
         if (isMounted) {
@@ -115,48 +118,63 @@ export default function CVBuilderPage() {
           })
 
           // Set skills
-          setSkills(Array.isArray(skills) ? skills.map((skill) => skill.name) : [])
+          setSkills(Array.isArray(skills) ? skills : [])
 
           // Set work experience
           setWorkExperience(
             Array.isArray(experiences)
               ? experiences.map((exp) => ({
-                  id: exp._id,
-                  title: exp.title || "",
-                  company: exp.company || "",
-                  location: exp.location || "",
-                  startDate: formatDate(exp.startDate),
-                  endDate: exp.endDate ? formatDate(exp.endDate) : "Present",
-                  description: exp.description || "",
-                  skills: exp.skills || [],
-                }))
-              : [],
+                id: exp._id,
+                title: exp.title || "",
+                company: exp.company || "",
+                location: exp.location || "",
+                startDate: formatDate(exp.startDate),
+                endDate: exp.endDate ? formatDate(exp.endDate) : "Present",
+                description: exp.description || "",
+                skills: exp.skills || [],
+              }))
+              : []
           )
 
           // Set education
           setEducation(
             Array.isArray(formations)
               ? formations.map((edu) => ({
-                  id: edu._id,
-                  degree: edu.degree || "",
-                  institution: edu.institution || "",
-                  location: edu.location || "",
-                  startDate: formatDate(edu.startDate),
-                  endDate: edu.endDate ? formatDate(edu.endDate) : "Present",
-                  description: edu.description || "",
-                  fieldOfStudy: edu.fieldOfStudy || "",
-                }))
-              : [],
+                id: edu._id,
+                degree: edu.degree || "",
+                school: edu.school || "",
+                location: edu.location || "",
+                startDate: formatDate(edu.startDate),
+                endDate: edu.endDate ? formatDate(edu.endDate) : "Present",
+                description: edu.description || "",
+                fieldOfStudy: edu.fieldOfStudy || "",
+              }))
+              : []
           )
 
-          // Set sample training courses if none exist
-          if (!training.length) {
-            setTraining([
-              { name: "Vue.js Training", institution: "Advancia Training Center Tunis" },
-              { name: "NestJs Training", institution: "Clevory Training Center Tunis" },
-              { name: "Full-Stack Javascript (MERN)", institution: "GoMyCode" },
-            ])
-          }
+          // Set languages
+          setLanguages(
+            Array.isArray(languages)
+              ? languages.map((lang) => ({
+                id: lang._id,
+                name: lang.name || "",
+                level: lang.proficiency || "Intermediate",
+              }))
+              : []
+          )
+
+          // Set certifications
+          setCertifications(
+            Array.isArray(certifications)
+              ? certifications.map((cert) => ({
+                id: cert._id,
+                name: cert.name || "",
+                issuer: cert.issuer || "",
+                issueDate: formatDate(cert.issueDate),
+                expirationDate: cert.expirationDate ? formatDate(cert.expirationDate) : "No Expiration",
+              }))
+              : []
+          )
 
           setLoading(false)
         }
@@ -219,35 +237,68 @@ export default function CVBuilderPage() {
     }
   }
 
-  const addSkill = async () => {
+  const openSkillDialog = () => {
+    setActiveDialog("skill")
+    setCurrentItem(null)
+    setNewSkill("")
+    setSkillLevel("Intermediate")
+  }
+
+  const handleAddSkill = async () => {
     if (!user || !user._id) {
       toast.error("You must be logged in to add skills")
       return
     }
 
     if (!newSkill.trim()) {
-      return
-    }
-
-    if (skills.includes(newSkill.trim())) {
-      toast.error("This skill already exists in your profile")
+      toast.error("Please enter a skill name")
       return
     }
 
     try {
       setSaving(true)
 
-      await userService.addUserSkill(user._id, {
+      const response = await userService.addUserSkill(user._id, {
         name: newSkill.trim(),
-        level: "Intermediate", // Default level
+        level: skillLevel,
       })
 
-      setSkills([...skills, newSkill.trim()])
+      setSkills([...skills, { _id: response._id, name: newSkill.trim(), level: skillLevel }])
       setNewSkill("")
+      setSkillLevel("Intermediate")
+      setActiveDialog(null)
       toast.success("Skill added successfully")
     } catch (error) {
       console.error("Error adding skill:", error)
       toast.error("Failed to add skill")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleUpdateSkill = async (skill) => {
+    if (!user || !user._id) {
+      toast.error("You must be logged in to update skills")
+      return
+    }
+
+    try {
+      setSaving(true)
+
+      await userService.updateUserSkill(user._id, skill._id, {
+        name: newSkill.trim(),
+        level: skillLevel,
+      })
+
+      setSkills(skills.map(s => s._id === skill._id ? { ...s, name: newSkill.trim(), level: skillLevel } : s))
+      setNewSkill("")
+      setSkillLevel("Intermediate")
+      setActiveDialog(null)
+      setCurrentItem(null)
+      toast.success("Skill updated successfully")
+    } catch (error) {
+      console.error("Error updating skill:", error)
+      toast.error("Failed to update skill")
     } finally {
       setSaving(false)
     }
@@ -262,17 +313,9 @@ export default function CVBuilderPage() {
     try {
       setSaving(true)
 
-      // Find the skill ID from the user's skills
-      const userSkills = await userService.getUserSkills(user._id)
-      const skillToDelete = userSkills.find((s) => s.name === skillToRemove)
-
-      if (skillToDelete && skillToDelete._id) {
-        await userService.removeUserSkill(user._id, skillToDelete._id)
-        setSkills(skills.filter((skill) => skill !== skillToRemove))
-        toast.success("Skill removed successfully")
-      } else {
-        toast.error("Skill not found in your profile")
-      }
+      await userService.removeUserSkill(user._id, skillToRemove._id)
+      setSkills(skills.filter((skill) => skill._id !== skillToRemove._id))
+      toast.success("Skill removed successfully")
     } catch (error) {
       console.error("Error removing skill:", error)
       toast.error("Failed to remove skill")
@@ -343,15 +386,15 @@ export default function CVBuilderPage() {
           workExperience.map((exp) =>
             exp.id === currentItem.id
               ? {
-                  ...exp,
-                  title: data.title,
-                  company: data.company,
-                  location: data.location,
-                  startDate: data.startDate,
-                  endDate: data.current ? "Present" : data.endDate,
-                  description: data.description,
-                  skills: apiData.skills,
-                }
+                ...exp,
+                title: data.title,
+                company: data.company,
+                location: data.location,
+                startDate: data.startDate,
+                endDate: data.current ? "Present" : data.endDate,
+                description: data.description,
+                skills: apiData.skills,
+              }
               : exp,
           ),
         )
@@ -386,7 +429,7 @@ export default function CVBuilderPage() {
       if (operation === "add") {
         const apiData = {
           degree: data.degree,
-          institution: data.institution,
+          school: data.school,
           location: data.location,
           startDate: formatDateForAPI(data.startDate),
           endDate: data.current ? null : formatDateForAPI(data.endDate),
@@ -401,7 +444,7 @@ export default function CVBuilderPage() {
           {
             id: response._id,
             degree: response.degree,
-            institution: response.institution,
+            school: response.school,
             location: response.location,
             startDate: formatDate(response.startDate),
             endDate: response.endDate ? formatDate(response.endDate) : "Present",
@@ -416,7 +459,7 @@ export default function CVBuilderPage() {
       if (operation === "update" && currentItem) {
         const apiData = {
           degree: data.degree,
-          institution: data.institution,
+          school: data.school,
           location: data.location,
           startDate: formatDateForAPI(data.startDate),
           endDate: data.current ? null : formatDateForAPI(data.endDate),
@@ -430,15 +473,15 @@ export default function CVBuilderPage() {
           education.map((edu) =>
             edu.id === currentItem.id
               ? {
-                  ...edu,
-                  degree: data.degree,
-                  institution: data.institution,
-                  location: data.location,
-                  startDate: data.startDate,
-                  endDate: data.current ? "Present" : data.endDate,
-                  description: data.description,
-                  fieldOfStudy: data.fieldOfStudy,
-                }
+                ...edu,
+                degree: data.degree,
+                school: data.school,
+                location: data.location,
+                startDate: data.startDate,
+                endDate: data.current ? "Present" : data.endDate,
+                description: data.description,
+                fieldOfStudy: data.fieldOfStudy,
+              }
               : edu,
           ),
         )
@@ -461,27 +504,145 @@ export default function CVBuilderPage() {
     }
   }
 
-  const handleTrainingOperation = (operation, data = null, index = null) => {
-    if (operation === "add") {
-      setTraining([...training, { name: data.name, institution: data.institution }])
-    } else if (operation === "update" && index !== null) {
-      const updatedTraining = [...training]
-      updatedTraining[index] = { name: data.name, institution: data.institution }
-      setTraining(updatedTraining)
-    } else if (operation === "delete" && index !== null) {
-      setTraining(training.filter((_, i) => i !== index))
+  const handleLanguageOperation = async (operation, data = null, index = null) => {
+    if (!user || !user._id) {
+      toast.error("You must be logged in to manage languages")
+      return
+    }
+
+    try {
+      setSaving(true)
+
+      if (operation === "add") {
+        const apiData = {
+          name: data.name,
+          proficiency: data.level,
+        }
+
+        const response = await userService.addLanguage(user._id, apiData)
+
+        setLanguages([
+          ...languages,
+          {
+            id: response._id,
+            name: response.name,
+            level: response.proficiency,
+          },
+        ])
+
+        toast.success("Language added successfully")
+      }
+
+      if (operation === "update" && currentItem) {
+        const apiData = {
+          name: data.name,
+          proficiency: data.level,
+        }
+
+        await userService.updateLanguage(user._id, currentItem.id, apiData)
+
+        setLanguages(
+          languages.map((lang) =>
+            lang.id === currentItem.id
+              ? {
+                ...lang,
+                name: data.name,
+                level: data.level,
+              }
+              : lang,
+          ),
+        )
+
+        toast.success("Language updated successfully")
+      }
+
+      if (operation === "delete" && data) {
+        await userService.deleteLanguage(user._id, data.id)
+        setLanguages(languages.filter((lang) => lang.id !== data.id))
+        toast.success("Language deleted successfully")
+      }
+    } catch (error) {
+      console.error("Error managing language:", error)
+      toast.error(`Failed to ${operation} language`)
+    } finally {
+      setSaving(false)
+      setActiveDialog(null)
+      setCurrentItem(null)
     }
   }
 
-  const handleLanguageOperation = (operation, data = null, index = null) => {
-    if (operation === "add") {
-      setLanguages([...languages, { name: data.name, level: data.level }])
-    } else if (operation === "update" && index !== null) {
-      const updatedLanguages = [...languages]
-      updatedLanguages[index] = { name: data.name, level: data.level }
-      setLanguages(updatedLanguages)
-    } else if (operation === "delete" && index !== null) {
-      setLanguages(languages.filter((_, i) => i !== index))
+  const handleCertificationOperation = async (operation, data = null) => {
+    if (!user || !user._id) {
+      toast.error("You must be logged in to manage certifications")
+      return
+    }
+
+    try {
+      setSaving(true)
+
+      if (operation === "add") {
+        const apiData = {
+          name: data.name,
+          issuer: data.issuer,
+          issueDate: formatDateForAPI(data.issueDate),
+          expirationDate: data.expirationDate ? formatDateForAPI(data.expirationDate) : null,
+        }
+
+        const response = await userService.addCertification(user._id, apiData)
+
+        setCertifications([
+          ...certifications,
+          {
+            id: response._id,
+            name: response.name,
+            issuer: response.issuer,
+            issueDate: formatDate(response.issueDate),
+            expirationDate: response.expirationDate ? formatDate(response.expirationDate) : "No Expiration",
+          },
+        ])
+
+        toast.success("Certification added successfully")
+      }
+
+      if (operation === "update" && currentItem) {
+        const apiData = {
+          name: data.name,
+          issuer: data.issuer,
+          issueDate: formatDateForAPI(data.issueDate),
+          expirationDate: data.expirationDate ? formatDateForAPI(data.expirationDate) : null,
+        }
+
+        await userService.updateCertification(user._id, currentItem.id, apiData)
+
+        setCertifications(
+          certifications.map((cert) =>
+            cert.id === currentItem.id
+              ? {
+                ...cert,
+                name: data.name,
+                issuer: data.issuer,
+                issueDate: data.issueDate,
+                expirationDate: data.expirationDate ? data.expirationDate : "No Expiration",
+              }
+              : cert,
+          ),
+        )
+
+        toast.success("Certification updated successfully")
+      }
+
+      if (operation === "delete" && data) {
+        await userService.deleteCertification(user._id, data.id)
+        setCertifications(certifications.filter((cert) => cert.id !== data.id))
+        toast.success("Certification deleted successfully")
+      }
+    } catch (error) {
+      console.error("Error managing certification:", error)
+      toast.error(`Failed to ${operation} certification`)
+    } finally {
+      setSaving(false)
+      setActiveDialog(null)
+      setCurrentItem(null)
     }
   }
 
@@ -491,16 +652,12 @@ export default function CVBuilderPage() {
     try {
       setGeneratingPdf(true)
 
-      // Create a temporary div with proper styling for PDF generation
       const tempDiv = document.createElement("div")
       tempDiv.style.width = "100%"
       tempDiv.style.padding = "20px"
       tempDiv.style.backgroundColor = "white"
 
-      // Clone the resume content
       const resumeContent = resumeRef.current.cloneNode(true)
-
-      // Remove any scaling transforms for PDF generation
       resumeContent.style.transform = "none"
       resumeContent.style.height = "auto"
       resumeContent.style.width = "100%"
@@ -523,9 +680,7 @@ export default function CVBuilderPage() {
 
       await html2pdf().set(opt).from(tempDiv).save()
 
-      // Clean up
       document.body.removeChild(tempDiv)
-
       toast.success("Resume downloaded successfully")
     } catch (error) {
       console.error("Error generating PDF:", error)
@@ -554,7 +709,7 @@ export default function CVBuilderPage() {
           <p className="text-gray-600 mb-6">You must be logged in to access the CV Builder.</p>
           <Button
             onClick={() => navigate("/login", { state: { from: "/cv-builder" } })}
-            className="bg-purple-700 hover:bg-purple-800"
+            className="bg-purple-700 hover:bg-purple-800 text-white"
           >
             Log In
           </Button>
@@ -573,7 +728,7 @@ export default function CVBuilderPage() {
               <Button variant="outline" onClick={() => setPreviewMode(false)}>
                 Back to Editor
               </Button>
-              <Button className="bg-purple-700 hover:bg-purple-800" onClick={generatePDF} disabled={generatingPdf}>
+              <Button className="bg-purple-700 hover:bg-purple-800 text-white" onClick={generatePDF} disabled={generatingPdf}>
                 {generatingPdf ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -597,7 +752,8 @@ export default function CVBuilderPage() {
                 education={education}
                 skills={skills}
                 languages={languages}
-                training={training}
+                training={certifications}
+
               />
             </div>
           </div>
@@ -627,7 +783,7 @@ export default function CVBuilderPage() {
                 <div className="bg-white rounded-lg border p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold">Personal Information</h2>
-                    <Button className="bg-purple-700 hover:bg-purple-800" onClick={savePersonalInfo} disabled={saving}>
+                    <Button className="bg-purple-700 hover:bg-purple-800 text-white" onClick={savePersonalInfo} disabled={saving}>
                       {saving ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -759,7 +915,7 @@ export default function CVBuilderPage() {
                     >
                       <DialogTrigger asChild>
                         <Button
-                          className="bg-purple-700 hover:bg-purple-800"
+                          className="bg-purple-700 hover:bg-purple-800 text-white"
                           onClick={() => {
                             setActiveDialog("experience")
                             setCurrentItem(null)
@@ -912,7 +1068,7 @@ export default function CVBuilderPage() {
                     >
                       <DialogTrigger asChild>
                         <Button
-                          className="bg-purple-700 hover:bg-purple-800"
+                          className="bg-purple-700 hover:bg-purple-800 text-white"
                           onClick={() => {
                             setActiveDialog("education")
                             setCurrentItem(null)
@@ -1001,8 +1157,8 @@ export default function CVBuilderPage() {
 
                           <div className="grid md:grid-cols-2 gap-4 mb-4">
                             <div>
-                              <label className="block text-xs text-gray-500">Institution</label>
-                              <p className="font-medium text-gray-800">{edu.institution}</p>
+                              <label className="block text-xs text-gray-500">school</label>
+                              <p className="font-medium text-gray-800">{edu.school}</p>
                             </div>
                             <div>
                               <label className="block text-xs text-gray-500">Location</label>
@@ -1038,12 +1194,12 @@ export default function CVBuilderPage() {
                   )}
                 </div>
 
-                {/* Training / Courses */}
+                {/* Certifications */}
                 <div className="bg-white rounded-lg border p-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">Training / Courses</h2>
+                    <h2 className="text-xl font-semibold">Certifications</h2>
                     <Dialog
-                      open={activeDialog === "training"}
+                      open={activeDialog === "certification"}
                       onOpenChange={(open) => {
                         if (!open) {
                           setActiveDialog(null)
@@ -1053,78 +1209,77 @@ export default function CVBuilderPage() {
                     >
                       <DialogTrigger asChild>
                         <Button
-                          className="bg-purple-700 hover:bg-purple-800"
+                          className="bg-purple-700 hover:bg-purple-800 text-white"
                           onClick={() => {
-                            setActiveDialog("training")
+                            setActiveDialog("certification")
                             setCurrentItem(null)
                           }}
                         >
                           <PlusCircle className="h-4 w-4 mr-2" />
-                          Add Training
+                          Add Certification
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-white border shadow-lg">
                         <DialogHeader className="bg-green-50 px-6 py-4 border-b border-green-100">
                           <DialogTitle className="text-green-800 text-xl">
-                            {currentItem !== null ? "Edit Training" : "Add New Training"}
+                            {currentItem ? "Edit Certification" : "Add New Certification"}
                           </DialogTitle>
                           <DialogDescription className="text-green-700/70">
-                            Add details about your training or courses
+                            Add details about your professional certifications
                           </DialogDescription>
                         </DialogHeader>
-                        <div className="px-6 py-4">
-                          <TrainingForm
-                            training={currentItem !== null ? training[currentItem] : null}
+                        <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
+                          <CertificationForm
+                            certification={currentItem}
                             onSubmit={(data) => {
-                              if (currentItem !== null) {
-                                handleTrainingOperation("update", data, currentItem)
+                              if (currentItem) {
+                                handleCertificationOperation("update", data)
                               } else {
-                                handleTrainingOperation("add", data)
+                                handleCertificationOperation("add", data)
                               }
-                              setActiveDialog(null)
-                              setCurrentItem(null)
                             }}
                             onCancel={() => {
                               setActiveDialog(null)
                               setCurrentItem(null)
                             }}
+                            isSaving={saving}
                           />
                         </div>
                       </DialogContent>
                     </Dialog>
                   </div>
 
-                  {training.length === 0 ? (
+                  {certifications.length === 0 ? (
                     <div className="text-center py-10 border border-dashed rounded-lg">
-                      <GraduationCap className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-1">No training added yet</h3>
-                      <p className="text-gray-500 mb-4">Add your training and courses to enhance your CV</p>
+                      <Award className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-1">No certifications added yet</h3>
+                      <p className="text-gray-500 mb-4">Add your professional certifications to enhance your CV</p>
                       <Button
                         variant="outline"
                         className="border-purple-700 text-purple-700 hover:bg-purple-50"
                         onClick={() => {
-                          setActiveDialog("training")
+                          setActiveDialog("certification")
                           setCurrentItem(null)
                         }}
                       >
                         <PlusCircle className="h-4 w-4 mr-2" />
-                        Add Training
+                        Add Certification
                       </Button>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {training.map((course, index) => (
-                        <div key={index} className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
-                          <div className="flex justify-between mb-1">
-                            <h3 className="font-semibold text-green-900">{course.name}</h3>
+                    <div className="space-y-4">
+                      {certifications.map((cert) => (
+                        <div key={cert.id} className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
+                          <div className="flex justify-between mb-2">
+                            <h3 className="font-semibold text-green-900">{cert.name || "New Certification"}</h3>
                             <div className="flex gap-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="text-green-600 hover:text-green-800 hover:bg-green-50"
                                 onClick={() => {
-                                  setActiveDialog("training")
-                                  setCurrentItem(index)
+                                  setActiveDialog("certification")
+                                  setCurrentItem(cert)
                                 }}
                               >
                                 <Edit className="h-4 w-4" />
@@ -1133,13 +1288,186 @@ export default function CVBuilderPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => handleTrainingOperation("delete", null, index)}
+                                onClick={() => handleCertificationOperation("delete", cert)}
+                                disabled={saving}
                               >
-                                <Trash2 className="h-4 w-4" />
+                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                               </Button>
                             </div>
                           </div>
-                          <p className="text-gray-700 text-sm">{course.institution}</p>
+
+                          <div className="mb-4">
+                            <label className="block text-xs text-gray-500">Issuer</label>
+                            <p className="font-medium text-gray-800">{cert.issuer}</p>
+                          </div>
+
+                          <div className="grid md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                              <label className="block text-xs text-gray-500">Issue Date</label>
+                              <p className="text-gray-800 flex items-center">
+                                <Calendar className="h-3 w-3 mr-1 text-gray-400" />
+                                {cert.issueDate}
+                              </p>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500">Expiration Date</label>
+                              <p className="text-gray-800 flex items-center">
+                                <Calendar className="h-3 w-3 mr-1 text-gray-400" />
+                                {cert.expirationDate}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Skills */}
+                <div className="bg-white rounded-lg border p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold">Skills</h2>
+                    <Button
+                      className="bg-purple-700 hover:bg-purple-800 text-white"
+                      onClick={openSkillDialog}
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Add Skill
+                    </Button>
+                  </div>
+
+                  <Dialog
+                    open={activeDialog === "skill"}
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        setActiveDialog(null)
+                        setCurrentItem(null)
+                        setNewSkill("")
+                        setSkillLevel("Intermediate")
+                      }
+                    }}
+                  >
+                    <DialogContent className="sm:max-w-[425px] bg-white rounded-lg shadow-lg">
+                      <DialogHeader className="border-b border-gray-200 pb-4">
+                        <DialogTitle className="text-lg font-semibold text-gray-800">
+                          {currentItem ? "Edit Skill" : "Add New Skill"}
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-gray-500">
+                          {currentItem
+                            ? "Update the details of your skill below."
+                            : "Add a new skill to showcase your expertise."}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-6 py-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="skillName" className="text-sm font-medium text-gray-700">
+                            Skill Name
+                          </Label>
+                          <Input
+                            id="skillName"
+                            value={newSkill}
+                            onChange={(e) => setNewSkill(e.target.value)}
+                            placeholder="Enter skill name (e.g., React, Python)"
+                            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="skillLevel" className="text-sm font-medium text-gray-700">
+                            Skill Level
+                          </Label>
+                          <Select
+                            value={skillLevel}
+                            onValueChange={(value) => setSkillLevel(value)}
+                          >
+                            <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                              <SelectValue placeholder="Select skill level" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Beginner">Beginner</SelectItem>
+                              <SelectItem value="Intermediate">Intermediate</SelectItem>
+                              <SelectItem value="Advanced">Advanced</SelectItem>
+                              <SelectItem value="Expert">Expert</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setActiveDialog(null);
+                            setCurrentItem(null);
+                            setNewSkill("");
+                            setSkillLevel("Intermediate");
+                          }}
+                          className="text-gray-700 hover:bg-gray-100"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            if (currentItem) {
+                              handleUpdateSkill(currentItem);
+                            } else {
+                              handleAddSkill();
+                            }
+                          }}
+                          disabled={!newSkill.trim() || saving}
+                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                        >
+                          {saving ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <>{currentItem ? "Update" : "Add"}</>
+                          )}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  {skills.length === 0 ? (
+                    <div className="text-center py-8 border border-dashed rounded-lg">
+                      <p className="text-gray-500">
+                        No skills added yet. Add your professional skills to enhance your CV.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {skills.map((skill) => (
+                        <div
+                          key={skill._id}
+                          className="border rounded-lg p-3 flex justify-between items-center bg-gradient-to-r from-purple-50 to-white hover:shadow-sm transition-shadow"
+                        >
+                          <div>
+                            <span className="font-medium text-purple-800">{skill.name}</span>
+                            <span className="ml-2 text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                              {skill.level}
+                            </span>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                              onClick={() => {
+                                setActiveDialog("skill")
+                                setCurrentItem(skill)
+                                setNewSkill(skill.name)
+                                setSkillLevel(skill.level)
+                              }}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => removeSkill(skill)}
+                              disabled={saving}
+                            >
+                              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1161,7 +1489,7 @@ export default function CVBuilderPage() {
                     >
                       <DialogTrigger asChild>
                         <Button
-                          className="bg-purple-700 hover:bg-purple-800"
+                          className="bg-purple-700 hover:bg-purple-800 text-white"
                           onClick={() => {
                             setActiveDialog("language")
                             setCurrentItem(null)
@@ -1174,7 +1502,7 @@ export default function CVBuilderPage() {
                       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-white border shadow-lg">
                         <DialogHeader className="bg-orange-50 px-6 py-4 border-b border-orange-100">
                           <DialogTitle className="text-orange-800 text-xl">
-                            {currentItem !== null ? "Edit Language" : "Add New Language"}
+                            {currentItem ? "Edit Language" : "Add New Language"}
                           </DialogTitle>
                           <DialogDescription className="text-orange-700/70">
                             Add details about your language proficiency
@@ -1182,15 +1510,13 @@ export default function CVBuilderPage() {
                         </DialogHeader>
                         <div className="px-6 py-4">
                           <LanguageForm
-                            language={currentItem !== null ? languages[currentItem] : null}
+                            language={currentItem}
                             onSubmit={(data) => {
-                              if (currentItem !== null) {
-                                handleLanguageOperation("update", data, currentItem)
+                              if (currentItem) {
+                                handleLanguageOperation("update", data)
                               } else {
                                 handleLanguageOperation("add", data)
                               }
-                              setActiveDialog(null)
-                              setCurrentItem(null)
                             }}
                             onCancel={() => {
                               setActiveDialog(null)
@@ -1221,8 +1547,8 @@ export default function CVBuilderPage() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {languages.map((lang, index) => (
-                        <div key={index} className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
+                      {languages.map((lang) => (
+                        <div key={lang.id} className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
                           <div className="flex justify-between mb-1">
                             <h3 className="font-semibold text-orange-900">{lang.name}</h3>
                             <div className="flex gap-1">
@@ -1232,7 +1558,7 @@ export default function CVBuilderPage() {
                                 className="h-6 w-6 p-0 text-orange-600 hover:text-orange-800 hover:bg-orange-50"
                                 onClick={() => {
                                   setActiveDialog("language")
-                                  setCurrentItem(index)
+                                  setCurrentItem(lang)
                                 }}
                               >
                                 <Edit className="h-3 w-3" />
@@ -1241,7 +1567,7 @@ export default function CVBuilderPage() {
                                 variant="ghost"
                                 size="sm"
                                 className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => handleLanguageOperation("delete", null, index)}
+                                onClick={() => handleLanguageOperation("delete", lang)}
                               >
                                 <Trash2 className="h-3 w-3" />
                               </Button>
@@ -1253,100 +1579,39 @@ export default function CVBuilderPage() {
                     </div>
                   )}
                 </div>
-
-                {/* Skills */}
-                <div className="bg-white rounded-lg border p-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">Skills</h2>
-                    <div className="flex gap-2">
-                      <Input
-                        id="new-skill"
-                        placeholder="Add a skill"
-                        className="w-40"
-                        value={newSkill}
-                        onChange={(e) => setNewSkill(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault()
-                            addSkill()
-                          }
-                        }}
-                      />
-                      <Button className="bg-purple-700 hover:bg-purple-800" onClick={addSkill} disabled={saving}>
-                        {saving ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Add
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {skills.length === 0 ? (
-                    <div className="text-center py-8 border border-dashed rounded-lg">
-                      <p className="text-gray-500">
-                        No skills added yet. Add your professional skills to enhance your CV.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {skills.map((skill) => (
-                        <div
-                          key={skill}
-                          className="border rounded-lg p-3 flex justify-between items-center bg-gradient-to-r from-purple-50 to-white hover:shadow-sm transition-shadow"
-                        >
-                          <span className="font-medium text-purple-800">{skill}</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500 h-6 w-6 p-0 hover:bg-red-50 hover:text-red-700"
-                            onClick={() => removeSkill(skill)}
-                            disabled={saving}
-                          >
-                            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </div>
 
-                      <div className="">
-                      <div className="bg-white rounded-lg border p-4 sticky top-4">
-                   
-                        <div className="space-y-3">
-                        <Button
-                          className="w-full bg-purple-700 hover:bg-purple-800"
-                          onClick={generatePDF}
-                          disabled={generatingPdf}
-                        >
-                          {generatingPdf ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Generating PDF...
-                          </>
-                          ) : (
-                          <>
-                            <Download className="h-4 w-4 mr-2" />
-                            Download PDF
-                          </>
-                          )}
-                        </Button>
-                        <Button variant="outline" className="w-full" onClick={() => setPreviewMode(true)}>
-                          <FileText className="h-4 w-4 mr-2" />
-                          Full Preview
-                        </Button>
-                        </div>
-                      </div>
-                      </div>
-                    </div>
-                    </TabsContent>
+              <div className="">
+                <div className="bg-white rounded-lg border p-4 sticky top-4">
+                  <div className="space-y-3">
+                    <Button
+                      className="w-full bg-purple-700 hover:bg-purple-800 text-white"
+                      onClick={generatePDF}
+                      disabled={generatingPdf}
+                    >
+                      {generatingPdf ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Generating PDF...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 mr-2" />
+                          Download PDF
+                        </>
+                      )}
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={() => setPreviewMode(true)}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Full Preview
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
 
-                    {/* Templates Tab */}
+          {/* Templates Tab */}
           <TabsContent value="templates" className="space-y-6">
             <div className="bg-white rounded-lg border p-6">
               <h2 className="text-xl font-semibold mb-4">Choose a Template</h2>
@@ -1372,7 +1637,7 @@ export default function CVBuilderPage() {
                     <Button
                       variant={activeTemplate === "modern" ? "default" : "outline"}
                       size="sm"
-                      className={activeTemplate === "modern" ? "bg-purple-700 hover:bg-purple-800" : ""}
+                      className={activeTemplate === "modern" ? "bg-purple-700 hover:bg-purple-800 text-white" : ""}
                       onClick={() => setActiveTemplate("modern")}
                     >
                       {activeTemplate === "modern" ? "Selected" : "Select"}
@@ -1398,15 +1663,13 @@ export default function CVBuilderPage() {
                     <Button
                       variant={activeTemplate === "professional" ? "default" : "outline"}
                       size="sm"
-                      className={activeTemplate === "professional" ? "bg-purple-700 hover:bg-purple-800" : ""}
+                      className={activeTemplate === "professional" ? "bg-purple-700 hover:bg-purple-800 text-white" : ""}
                       onClick={() => setActiveTemplate("professional")}
                     >
                       {activeTemplate === "professional" ? "Selected" : "Select"}
                     </Button>
                   </div>
                 </div>
-
-                {/* More templates would go here */}
               </div>
             </div>
           </TabsContent>
@@ -1429,7 +1692,7 @@ export default function CVBuilderPage() {
                     <Upload className="h-10 w-10 text-gray-400 mb-4" />
                     <h3 className="font-medium mb-2">Upload your existing CV</h3>
                     <p className="text-sm text-gray-500 mb-4">Drag and drop your CV file here, or click to browse</p>
-                    <Button className="bg-purple-700 hover:bg-purple-800">Browse Files</Button>
+                    <Button className="bg-purple-700 hover:bg-purple-800 text-white">Browse Files</Button>
                     <p className="text-xs text-gray-500 mt-2">Supported formats: PDF, DOCX, TXT (Max 5MB)</p>
                   </div>
                 </div>
@@ -1437,7 +1700,7 @@ export default function CVBuilderPage() {
 
               <div className="mb-6">
                 <h3 className="font-medium mb-3">Or analyze your current CV</h3>
-                <Button className="bg-purple-700 hover:bg-purple-800">
+                <Button className="bg-purple-700 hover:bg-purple-800 text-white">
                   <Sparkles className="h-4 w-4 mr-2" />
                   Analyze Current CV
                 </Button>
@@ -1458,8 +1721,6 @@ export default function CVBuilderPage() {
                       </p>
                     </div>
                   </div>
-
-                  {/* More features would go here */}
                 </div>
               </div>
             </div>
@@ -1628,7 +1889,7 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving}>
           Cancel
         </Button>
-        <Button type="submit" className="bg-purple-700 hover:bg-purple-800 text-white" disabled={isSaving}>
+        <Button type="submit" className="bg-purple-700 hover:bg-purple-800 text-white text-white" disabled={isSaving}>
           {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {experience ? "Update Experience" : "Add Experience"}
         </Button>
@@ -1640,7 +1901,7 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
 function EducationForm({ education, onSubmit, onCancel, isSaving }) {
   const [formData, setFormData] = useState({
     degree: education?.degree || "",
-    institution: education?.institution || "",
+    school: education?.school || "",
     fieldOfStudy: education?.fieldOfStudy || "",
     location: education?.location || "",
     startDate: education?.startDate || "",
@@ -1667,13 +1928,13 @@ function EducationForm({ education, onSubmit, onCancel, isSaving }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="institution" className="text-sm font-medium text-gray-700">
-            Institution *
+          <Label htmlFor="school" className="text-sm font-medium text-gray-700">
+            school *
           </Label>
           <Input
-            id="institution"
-            name="institution"
-            value={formData.institution}
+            id="school"
+            name="school"
+            value={formData.school}
             onChange={handleChange}
             className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
             required
@@ -1803,10 +2064,12 @@ function EducationForm({ education, onSubmit, onCancel, isSaving }) {
   )
 }
 
-function TrainingForm({ training, onSubmit, onCancel }) {
+function CertificationForm({ certification, onSubmit, onCancel, isSaving }) {
   const [formData, setFormData] = useState({
-    name: training?.name || "",
-    institution: training?.institution || "",
+    name: certification?.name || "",
+    issuer: certification?.issuer || "",
+    issueDate: certification?.issueDate || "",
+    expirationDate: certification?.expirationDate === "No Expiration" ? "" : certification?.expirationDate || "",
   })
 
   const handleChange = (e) => {
@@ -1827,7 +2090,7 @@ function TrainingForm({ training, onSubmit, onCancel }) {
       <div className="grid grid-cols-1 gap-4">
         <div className="space-y-2">
           <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-            Training Name *
+            Certification Name *
           </Label>
           <Input
             id="name"
@@ -1840,26 +2103,58 @@ function TrainingForm({ training, onSubmit, onCancel }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="institution" className="text-sm font-medium text-gray-700">
-            Institution *
+          <Label htmlFor="issuer" className="text-sm font-medium text-gray-700">
+            Issuing Organization *
           </Label>
           <Input
-            id="institution"
-            name="institution"
-            value={formData.institution}
+            id="issuer"
+            name="issuer"
+            value={formData.issuer}
             onChange={handleChange}
             className="border-gray-300 focus:border-green-500 focus:ring-green-500"
             required
           />
         </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="issueDate" className="text-sm font-medium text-gray-700">
+              Issue Date *
+            </Label>
+            <Input
+              id="issueDate"
+              name="issueDate"
+              value={formData.issueDate}
+              onChange={handleChange}
+              placeholder="January 2020"
+              className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="expirationDate" className="text-sm font-medium text-gray-700">
+              Expiration Date
+            </Label>
+            <Input
+              id="expirationDate"
+              name="expirationDate"
+              value={formData.expirationDate}
+              onChange={handleChange}
+              placeholder="December 2023"
+              className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-2 border-t border-gray-200 mt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving}>
           Cancel
         </Button>
-        <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white">
-          {training ? "Update Training" : "Add Training"}
+        <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white" disabled={isSaving}>
+          {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {certification ? "Update Certification" : "Add Certification"}
         </Button>
       </div>
     </form>
@@ -1899,6 +2194,7 @@ function LanguageForm({ language, onSubmit, onCancel }) {
             onChange={handleChange}
             className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
             required
+            placeholder="e.g. English, French, Spanish"
           />
         </div>
 
@@ -1934,4 +2230,3 @@ function LanguageForm({ language, onSubmit, onCancel }) {
     </form>
   )
 }
-
