@@ -33,6 +33,5 @@ router.get("/admin-data", authMiddleware, adminMiddleware, (req, res) => {
   res.status(200).json({ message: "Admin data accessed successfully" })
 })
 
-
 module.exports = router
 

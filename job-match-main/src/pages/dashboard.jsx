@@ -6,7 +6,6 @@ import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Badge } from "../components/ui/badge"
-import { Progress } from "../components/ui/progress"
 import {
   Briefcase,
   CheckCircle,
@@ -243,13 +242,20 @@ export default function DashboardPage() {
                 <Button className="mt-3 md:mt-0 bg-purple-600 hover:bg-purple-700 text-white">Complete Profile</Button>
               </Link>
             </div>
-            <Progress
-              value={completionPercentage}
-              className="h-2 bg-gray-200"
-              indicatorClassName={`${
-                completionPercentage < 30 ? "bg-red-500" : completionPercentage < 70 ? "bg-yellow-500" : "bg-green-500"
-              }`}
-            />
+
+            {/* Custom progress bar implementation */}
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full ${
+                  completionPercentage < 30
+                    ? "bg-red-500"
+                    : completionPercentage < 70
+                      ? "bg-yellow-500"
+                      : "bg-green-500"
+                }`}
+                style={{ width: `${completionPercentage}%` }}
+              ></div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
               {/* Personal Information */}
