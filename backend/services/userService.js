@@ -80,43 +80,29 @@ class UserService {
   async updateUserProfile(userId, profileData) {
     const { user, person } = await this.getUserAndPerson(userId);
     const profile = await this.getOrCreateProfile(userId);
-
-    // Update person data if provided
+  
+    // Update person data (including phone number)
     if (profileData.firstName) person.firstName = profileData.firstName;
     if (profileData.lastName) person.lastName = profileData.lastName;
     if (profileData.email) person.email = profileData.email;
-    if (profileData.phoneNumber !== undefined) person.phoneNumber = profileData.phoneNumber;
-
+    if (profileData.phoneNumber !== undefined) {
+      person.phoneNumber = profileData.phoneNumber;
+    }
+  
     await person.save();
-    await this.updateProfileFields(profile, profileData);
-
-    return {
-      user: {
-        _id: user._id,
-        person: {
-          _id: person._id,
-          firstName: person.firstName,
-          lastName: person.lastName,
-          email: person.email,
-          phoneNumber: person.phoneNumber || "",
-          role: person.role,
-          profilePicture: person.profilePicture || { url: null, publicId: null },
-        },
-      },
-      profile: {
-        _id: profile._id,
-        location: profile.location,
-        jobTitle: profile.jobTitle,
-        experiences: profile.experiences,
-        formations: profile.formations,
-        skills: profile.skills,
-        bio: profile.bio || "",
-        createdAt: profile.createdAt,
-        updatedAt: profile.updatedAt,
-      },
-    };
+  
+    // Update profile data
+    const profileUpdates = {};
+    if (profileData.location !== undefined) profileUpdates.location = profileData.location;
+    if (profileData.jobTitle !== undefined) profileUpdates.jobTitle = profileData.jobTitle;
+    if (profileData.bio !== undefined) profileUpdates.bio = profileData.bio;
+  
+    if (Object.keys(profileUpdates).length > 0) {
+      await Profile.updateOne({ userId: userId }, { $set: profileUpdates });
+    }
+  
+    return this.getUserProfile(userId);
   }
-
   async deleteUserProfile(userId) {
     const { user } = await this.getUserAndPerson(userId);
     const profile = await Profile.findOne({ userId: userId });

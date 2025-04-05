@@ -30,7 +30,15 @@ export const userService = {
   },
 
   updateUserProfile(userId, profileData) {
-    return api.put(`users/profile/${userId}`, profileData)
+    return api.put(`users/profile/${userId}`, {
+      firstName: profileData.firstName,
+      lastName: profileData.lastName,
+      email: profileData.email,
+      phoneNumber: profileData.phone,
+      location: profileData.location,
+      jobTitle: profileData.jobTitle,
+      bio: profileData.bio
+    })
   },
 
   deleteUserProfile(userId) {

@@ -1,94 +1,89 @@
-// src/pages/forgot-password/index.jsx
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button, TextField, Container, Box, Alert } from '@mui/material';
-import { Mail as MailIcon } from '@mui/icons-material';
+import React, { useState } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { Box, Button, TextField, Typography, Container, Alert } from '@mui/material';
 
-export default function ForgotPassword() {
+const API_URL = 'http://localhost:5000/api/auth';
+
+const ForgetPassword = () => {
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     setError('');
-    
-    if (!email) {
-      return setError('Email is required');
-    }
+    setSuccess(false);
 
     try {
-      setLoading(true);
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) throw new Error(data.message || 'Request failed');
-
+      await axios.post(`${API_URL}/forgot-password`, { email });
       setSuccess(true);
-      setTimeout(() => navigate('/login'), 3000);
+      console.log('Check your server console for the reset link');
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.error || 'An error occurred. Please try again.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <Container maxWidth="xs">
+    <Container maxWidth="sm">
       <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <MailIcon color="primary" sx={{ fontSize: 60, mb: 2 }} />
-        <h1>Forgot Password</h1>
+        <Typography component="h1" variant="h5">
+          Forgot Password
+        </Typography>
         
-        {success ? (
-          <Alert severity="success" sx={{ width: '100%', mb: 2 }}>
-            Reset link sent to your email!
+        {success && (
+          <Alert severity="success" sx={{ width: '100%', mt: 2 }}>
+            If an account exists with this email, you'll receive a reset link in the server console.
           </Alert>
-        ) : (
-          <>
-            {error && (
-              <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
-                {error}
-              </Alert>
-            )}
-
-            <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-              <TextField
-                label="Email Address"
-                type="email"
-                fullWidth
-                margin="normal"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoFocus
-              />
-
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                disabled={loading}
-                sx={{ mt: 3, mb: 2 }}
-              >
-                {loading ? 'Sending...' : 'Send Reset Link'}
-              </Button>
-            </Box>
-          </>
+        )}
+        
+        {error && (
+          <Alert severity="error" sx={{ width: '100%', mt: 2 }}>
+            {error}
+          </Alert>
         )}
 
-        <Link to="/login" style={{ textDecoration: 'none' }}>
-          <Button fullWidth variant="text" sx={{ mt: 1 }}>
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3, width: '100%' }}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="email"
+            label="Email Address"
+            name="email"
+            autoComplete="email"
+            autoFocus
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ mt: 3, mb: 2 }}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Sending...' : 'Send Reset Link'}
+          </Button>
+          
+          <Button
+            fullWidth
+            variant="text"
+            sx={{ mt: 1 }}
+            onClick={() => navigate('/login')}
+          >
             Back to Login
           </Button>
-        </Link>
+        </Box>
       </Box>
     </Container>
   );
-}
+};
+
+export default ForgetPassword;

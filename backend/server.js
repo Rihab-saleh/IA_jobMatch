@@ -20,6 +20,14 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "http://localhost:3000", "http://192.168.1.100:5173"],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+)
 app.use(express.json())
 const path = require('path')
 // Function to create the first admin person

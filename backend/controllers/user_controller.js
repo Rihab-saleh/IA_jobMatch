@@ -78,7 +78,14 @@ const updateUserProfile = async (req, res) => {
     const targetUserId = req.params.userId;
     if (!validateUserId(targetUserId, res) || !validatePermission(req, targetUserId, res)) return;
 
-    const updatedProfile = await userService.updateUserProfile(targetUserId, req.body);
+    const updatedProfile = await userService.updateUserProfile(targetUserId, {
+      ...req.body,
+      phoneNumber: req.body.phone, // Make sure phone is mapped to phoneNumber
+      location: req.body.location,
+      jobTitle: req.body.jobTitle,
+      bio: req.body.bio
+    });
+    
     res.status(200).json(updatedProfile);
   });
 };
