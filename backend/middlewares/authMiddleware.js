@@ -26,32 +26,45 @@ const publicRoutes = new Set([
  * Middleware pour vérifier que l'utilisateur accède à ses propres données et a le rôle "user"
  */
 const userMiddleware = (req, res, next) => {
-  console.log("User Middleware: Checking user ownership and role");
+  console.log("User Middleware: Checking user ownership and role")
+  console.log("Request params:", req.params)
+  console.log("Authenticated user:", req.user ? req.user._id : "None")
 
+  if (!req.user) {
+    console.log("User Middleware: No authenticated user found")
+    return res.status(401).json({ error: "Authentication required" })
+  }
+
+  // IMPORTANT: Change from req.params.id to req.params.userId to match your routes
   const requestedUserId = req.params.userId
-  const authUserId = req.user?._id ;
-  const authUserRole = req.user?.role;
-console.log("reqecc", req.user,"----", "partams :",req.params)
-  // Vérifier que l'utilisateur authentifié correspond à l'ID dans l'URL
-  if (!authUserId || requestedUserId !== authUserId.toString()) {
-    console.log("User Middleware: Unauthorized access attempt");
-    return res.status(403).json({ error: "You can only access your own data" });
+  const authUserId = req.user._id
+  const authUserRole = req.user.role
+
+  console.log("Comparing IDs:", requestedUserId, "vs", authUserId.toString())
+
+  // Check if IDs match
+  if (!requestedUserId || requestedUserId !== authUserId.toString()) {
+    console.log("User Middleware: Unauthorized access attempt")
+    console.log("  Requested ID:", requestedUserId)
+    console.log("  Auth User ID:", authUserId.toString())
+    return res.status(403).json({
+      error: "You can only access your own data",
+      requestedId: requestedUserId,
+      yourId: authUserId.toString(),
+    })
   }
 
-  // Vérifier que l'utilisateur a le rôle "user"
+  // Check role
   if (authUserRole !== "user") {
-    console.log(
-      "User Middleware: User does not have the required role. Role:",
-      authUserRole
-    );
-    return res
-      .status(403)
-      .json({ error: "Access restricted to users with role 'user'" });
+    console.log("User Middleware: User does not have the required role. Role:", authUserRole)
+    return res.status(403).json({ error: "Access restricted to users with role 'user'" })
   }
 
-  console.log("User Middleware: User ownership and role verified");
-  next();
-};
+  console.log("User Middleware: User ownership and role verified")
+  next()
+}
+
+
 
 /**
  * Authentication middleware

@@ -6,7 +6,6 @@ import { Input } from "../components/ui/input"
 import { Textarea } from "../components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Badge } from "../components/ui/badge"
-import { Progress } from "../components/ui/progress"
 import { CheckCircle, XCircle } from "lucide-react"
 import {
   PlusCircle,
@@ -78,18 +77,23 @@ function ProfilePage() {
   // Update the calculateProfileCompletion function to include languages
   const calculateProfileCompletion = () => {
     let total = 0
+    let maxTotal = 0
 
     // Personal Info (25%)
-    if (state.profileData.firstName) total += 4
-    if (state.profileData.lastName) total += 4
-    if (state.profileData.email) total += 4
-    if (state.profileData.phone) total += 3
-    if (state.profileData.location) total += 3
-    if (state.profileData.jobTitle) total += 3
-    if (state.profileData.bio) total += 3
-    if (state.profilePicture) total += 1
+    maxTotal += 25
+    let personalInfoScore = 0
+    if (state.profileData.firstName) personalInfoScore += 4
+    if (state.profileData.lastName) personalInfoScore += 4
+    if (state.profileData.email) personalInfoScore += 4
+    if (state.profileData.phone) personalInfoScore += 3
+    if (state.profileData.location) personalInfoScore += 3
+    if (state.profileData.jobTitle) personalInfoScore += 3
+    if (state.profileData.bio) personalInfoScore += 3
+    if (state.profilePicture) personalInfoScore += 1
+    total += personalInfoScore
 
     // Skills (20%)
+    maxTotal += 20
     if (state.skills.length >= 3) {
       total += 20
     } else {
@@ -97,22 +101,29 @@ function ProfilePage() {
     }
 
     // Experience (20%)
+    maxTotal += 20
     if (state.experiences.length > 0) total += 20
 
     // Education (15%)
+    maxTotal += 15
     if (state.formations.length > 0) total += 15
 
     // Certifications (10%)
+    maxTotal += 10
     if (state.certifications.length > 0) total += 10
 
     // Languages (10%)
+    maxTotal += 10
     if (state.languages.length > 0) total += 10
 
-    return Math.min(Math.round(total), 100)
+    console.log("Profile completion calculation:", { total, maxTotal })
+    return Math.min(Math.round((total / maxTotal) * 100), 100)
   }
 
   useEffect(() => {
-    setCompletionPercentage(calculateProfileCompletion())
+    const percentage = calculateProfileCompletion()
+    console.log("Calculated completion percentage:", percentage)
+    setCompletionPercentage(percentage)
   }, [
     state.profileData,
     state.profilePicture,
@@ -379,6 +390,7 @@ function ProfilePage() {
     }))
   }
 
+  // Update the handleExperienceSubmit function to ensure endDate is always a valid date
   const handleExperienceSubmit = async (e) => {
     e.preventDefault()
     if (!user || !user._id) {
@@ -387,13 +399,20 @@ function ProfilePage() {
     }
 
     const formData = new FormData(e.target)
+    const isCurrent = formData.get("current") === "on"
+
+    // Use a far future date for current positions
+    const farFutureDate = "2099-12-31"
+
     const data = {
       company: formData.get("company"),
       jobTitle: formData.get("jobTitle"),
       location: formData.get("location"),
       startDate: formData.get("startDate"),
-      endDate: formData.get("current") === "on" ? null : formData.get("endDate"),
+      // Always provide a date for endDate, use far future date for current positions
+      endDate: isCurrent ? farFutureDate : formData.get("endDate") || farFutureDate,
       description: formData.get("description"),
+      current: isCurrent,
     }
 
     try {
@@ -421,6 +440,7 @@ function ProfilePage() {
     }
   }
 
+  // Update the handleEducationSubmit function to ensure endDate is always a valid date
   const handleEducationSubmit = async (e) => {
     e.preventDefault()
     if (!user || !user._id) {
@@ -430,6 +450,9 @@ function ProfilePage() {
 
     const formData = new FormData(e.target)
     const isCurrent = formData.get("current") === "on"
+
+    // Use a far future date for current education
+    const farFutureDate = "2099-12-31"
 
     // Check if a formation with the same school and degree already exists
     const schoolName = formData.get("institution")
@@ -452,8 +475,10 @@ function ProfilePage() {
       degree: formData.get("degree"),
       fieldOfStudy: formData.get("fieldOfStudy"),
       startDate: formData.get("startDate"),
-      endDate: isCurrent ? null : formData.get("endDate") || null,
+      // Always provide a date for endDate, use far future date for current education
+      endDate: isCurrent ? farFutureDate : formData.get("endDate") || farFutureDate,
       description: formData.get("description"),
+      current: isCurrent,
     }
 
     try {
@@ -525,7 +550,7 @@ function ProfilePage() {
     }
   }
 
-  // Add a handler for language operations
+  // FIX: Modified to ensure level is always provided
   const handleLanguageSubmit = async (e) => {
     e.preventDefault()
     if (!user || !user._id) {
@@ -536,7 +561,9 @@ function ProfilePage() {
     const formData = new FormData(e.target)
     const data = {
       name: formData.get("languageName"),
-      proficiency: formData.get("level"),
+      // FIX: Ensure level is always provided
+      level: formData.get("level") || "Intermediate", // This fixes the "level is required" error
+      proficiency: formData.get("proficiency"),
     }
 
     try {
@@ -618,8 +645,13 @@ function ProfilePage() {
     }
   }
 
+  // Update the formatDate function to handle the far future date
   const formatDate = (dateString) => {
     if (!dateString) return "Present"
+
+    // Check if it's our far future date (2099-12-31)
+    if (dateString.includes("2099")) return "Present"
+
     const date = new Date(dateString)
     return date.toLocaleDateString("en-US", { year: "numeric", month: "short" })
   }
@@ -719,17 +751,18 @@ function ProfilePage() {
                 {state.profileData.jobTitle && <p className="text-gray-600 text-sm">{state.profileData.jobTitle}</p>}
                 <div className="flex items-center mt-1">
                   <span className="text-xs font-medium text-gray-700 mr-2">Profile: {completionPercentage}%</span>
-                  <Progress
-                    value={completionPercentage}
-                    className="h-1.5 w-24 bg-gray-100"
-                    indicatorClassName={`${
-                      completionPercentage < 30
-                        ? "bg-red-500"
-                        : completionPercentage < 70
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
-                    }`}
-                  />
+                  <div className="h-1.5 w-24 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${
+                        completionPercentage < 30
+                          ? "bg-red-500"
+                          : completionPercentage < 70
+                            ? "bg-yellow-500"
+                            : "bg-green-500"
+                      }`}
+                      style={{ width: `${completionPercentage}%` }}
+                    ></div>
+                  </div>
                 </div>
               </div>
               <input
@@ -808,17 +841,18 @@ function ProfilePage() {
                     <span className="text-sm font-medium text-gray-700">Profile Completion</span>
                     <span className="text-sm font-semibold text-purple-700">{completionPercentage}%</span>
                   </div>
-                  <Progress
-                    value={completionPercentage}
-                    className="h-2 bg-gray-100"
-                    indicatorClassName={`${
-                      completionPercentage < 30
-                        ? "bg-red-500"
-                        : completionPercentage < 70
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
-                    }`}
-                  />
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${
+                        completionPercentage < 30
+                          ? "bg-red-500"
+                          : completionPercentage < 70
+                            ? "bg-yellow-500"
+                            : "bg-green-500"
+                      }`}
+                      style={{ width: `${completionPercentage}%` }}
+                    ></div>
+                  </div>
                   <p className="text-xs text-gray-500 mt-1">
                     {completionPercentage < 30
                       ? "Just getting started! Complete more sections to improve your profile."
@@ -1581,7 +1615,7 @@ function ProfilePage() {
                 {state.currentItem ? "Edit Work Experience" : "Add Work Experience"}
               </DialogTitle>
               <DialogDescription className="text-purple-100 opacity-90">
-                Fill in the details of your work experience to showcase your professional background.
+                Fill in the details of your work experience to showcase your professional background.d.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleExperienceSubmit} className="p-6">
@@ -1601,7 +1635,7 @@ function ProfilePage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="jobTitle" className="text-gray-700">
-                      jobTitle
+                      Job Title
                     </Label>
                     <Input
                       id="jobTitle"
@@ -1629,9 +1663,34 @@ function ProfilePage() {
                       Currently Working
                     </Label>
                     <div className="flex items-center space-x-2 h-10 pt-2">
-                      <Switch id="current" name="current" defaultChecked={state.currentItem?.endDate ? false : true} />
-                      <Label htmlFor="current" className="text-gray-600">
-                        {state.currentItem?.endDate ? "No" : "Yes"}
+                      <Switch
+                        id="current"
+                        name="current"
+                        defaultChecked={!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31"}
+                        className="data-[state=checked]:bg-green-500"
+                        onChange={(e) => {
+                          // Toggle the visibility of the endDate field
+                          const endDateField = document.getElementById("endDate")
+                          const endDateLabel = document.querySelector('label[for="endDate"]')
+                          if (endDateField && endDateLabel) {
+                            if (e.target.checked) {
+                              endDateField.disabled = true
+                              endDateField.value = ""
+                              endDateLabel.parentElement.classList.add("opacity-50")
+                            } else {
+                              endDateField.disabled = false
+                              endDateLabel.parentElement.classList.remove("opacity-50")
+                            }
+                          }
+                        }}
+                      />
+                      <Label htmlFor="current" className="text-gray-600 flex items-center">
+                        <span>Yes</span>
+                        {(!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31") && (
+                          <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
+                            Current
+                          </span>
+                        )}
                       </Label>
                     </div>
                   </div>
@@ -1663,11 +1722,12 @@ function ProfilePage() {
                       name="endDate"
                       type="date"
                       defaultValue={
-                        state.currentItem?.endDate
+                        state.currentItem?.endDate && state.currentItem?.endDate !== "2099-12-31"
                           ? new Date(state.currentItem.endDate).toISOString().split("T")[0]
                           : ""
                       }
                       className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      disabled={!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31"}
                     />
                   </div>
                 </div>
@@ -1766,29 +1826,57 @@ function ProfilePage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="current" className="text-gray-700">
+                    <Label htmlFor="currentEducation" className="text-gray-700">
                       Currently Studying
                     </Label>
                     <div className="flex items-center space-x-2 h-10 pt-2">
-                      <Switch id="current" name="current" defaultChecked={state.currentItem?.endDate ? false : true} />
-                      <Label htmlFor="current" className="text-gray-600">
-                        {state.currentItem?.endDate ? "No" : "Yes"}
+                      <Switch
+                        id="currentEducation"
+                        name="current"
+                        defaultChecked={!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31"}
+                        className="data-[state=checked]:bg-green-500"
+                        onChange={(e) => {
+                          // Toggle the visibility of the endDate field
+                          const endDateField = document.getElementById("educationEndDate")
+                          const endDateLabel = document.querySelector('label[for="educationEndDate"]')
+                          if (endDateField && endDateLabel) {
+                            if (e.target.checked) {
+                              endDateField.disabled = true
+                              endDateField.value = ""
+                              endDateLabel.parentElement.classList.add("opacity-50")
+                            } else {
+                              endDateField.disabled = false
+                              endDateLabel.parentElement.classList.remove("opacity-50")
+                            }
+                          }
+                        }}
+                      />
+                      <Label htmlFor="currentEducation" className="text-gray-600 flex items-center">
+                        <span>Yes</span>
+                        {(!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31") && (
+                          <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
+                            Current
+                          </span>
+                        )}
                       </Label>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="endDate" className="text-gray-700">
+                  <Label htmlFor="educationEndDate" className="text-gray-700">
                     End Date
                   </Label>
                   <Input
-                    id="endDate"
+                    id="educationEndDate"
                     name="endDate"
                     type="date"
                     defaultValue={
-                      state.currentItem?.endDate ? new Date(state.currentItem.endDate).toISOString().split("T")[0] : ""
+                      state.currentItem?.endDate && state.currentItem?.endDate !== "2099-12-31"
+                        ? new Date(state.currentItem.endDate).toISOString().split("T")[0]
+                        : ""
                     }
                     className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    disabled={!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31"}
                   />
                 </div>
                 <div className="space-y-2">
@@ -1954,12 +2042,29 @@ function ProfilePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="proficiency" className="text-gray-700">
+                  <Label htmlFor="level" className="text-gray-700">
                     Proficiency Level
+                  </Label>
+                  <Select name="level" defaultValue={state.currentItem?.level || "Intermediate"}>
+                    <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                      <SelectValue placeholder="Select proficiency level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Native">Native</SelectItem>
+                      <SelectItem value="Fluent">Fluent</SelectItem>
+                      <SelectItem value="Advanced">Advanced</SelectItem>
+                      <SelectItem value="Intermediate">Intermediate</SelectItem>
+                      <SelectItem value="Basic">Basic</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="proficiency" className="text-gray-700">
+                    Display Proficiency As
                   </Label>
                   <Select name="proficiency" defaultValue={state.currentItem?.proficiency || "Intermediate"}>
                     <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
-                      <SelectValue placeholder="Select proficiency level" />
+                      <SelectValue placeholder="Select display proficiency" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Native">Native</SelectItem>
@@ -2032,4 +2137,3 @@ function ProfilePage() {
 }
 
 export default ProfilePage
-

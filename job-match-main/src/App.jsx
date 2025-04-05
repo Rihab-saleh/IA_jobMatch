@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from "./contexts/auth-context";
 import Home from "./pages/home";
 import Login from "./pages/login";
 import Register from "./pages/register";
+import ForgotPassword from './pages/forgot-password';
+import ResetPassword from './pages/reset-password';
 import Jobs from "./pages/jobs";
 import JobDetails from "./pages/job-details-view";
 import Dashboard from "./pages/dashboard";
@@ -53,6 +55,8 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/jobs" element={<Jobs />} />
                 <Route path="/jobs/:id" element={<JobDetails />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password/:token" element={<ResetPassword />} />
 
                 {/* Authenticated Routes */}
                 <Route
