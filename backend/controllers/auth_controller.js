@@ -56,7 +56,29 @@ const login = async (req, res) => {
 
     res.status(500).json({ error: "An error occurred during login" })
   }
-}
 
-module.exports = { signup, login }
+}
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    await authService.forgotPassword(email);
+    res.json({ message: "Reset email sent" });
+  } catch (err) {
+    const status = err.message.includes("not found") ? 404 : 500;
+    res.status(status).json({ error: err.message });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    await authService.resetPassword(token, newPassword);
+    res.json({ message: "Password reset successful" });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+module.exports = { signup, login ,forgotPassword,
+  resetPassword}
 

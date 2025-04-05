@@ -199,11 +199,6 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-/**
- * Admin middleware
- * Verifies user has admin role
- * Must be used after authMiddleware
- */
 const adminMiddleware = (req, res, next) => {
   console.log("Admin Middleware: Checking user role");
   if (!req.user) {

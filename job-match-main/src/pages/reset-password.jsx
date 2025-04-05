@@ -1,259 +1,118 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Button, 
-  TextField, 
-  Container, 
-  Box, 
-  Alert, 
-  CircularProgress,
-  Typography,
-  InputAdornment,
-  IconButton
-} from '@mui/material';
-import { 
-  LockReset as LockResetIcon,
-  Visibility as VisibilityIcon,
-  VisibilityOff as VisibilityOffIcon
-} from '@mui/icons-material';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Box, Button, TextField, Typography, Container, Alert } from '@mui/material';
 
-export default function ResetPassword() {
-  const { token = '', userId = '' } = useParams();
+const API_URL = 'http://localhost:5000/api/auth';
+
+const ResetPassword = () => {
+  // Use useParams to get the token from the URL path
+  const { token: tokenFromPath } = useParams();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [tokenVerifying, setTokenVerifying] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [validToken, setValidToken] = useState(null);
-  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Verify token on mount
-  const verifyToken = useCallback(async () => {
-    // Return early if token or userId are missing
-    if (!token || !userId) {
-      setValidToken(false);
-      setError('Missing token or user information');
-      setTokenVerifying(false);
-      return;
-    }
-
-    try {
-      setTokenVerifying(true);
-      const response = await fetch(`/api/auth/verify-token/${encodeURIComponent(userId)}/${encodeURIComponent(token)}`);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Invalid token');
-      }
-      
-      setValidToken(true);
-    } catch (err) {
-      setValidToken(false);
-      setError(err.message || 'Link is invalid or expired');
-    } finally {
-      setTokenVerifying(false);
-    }
-  }, [token, userId]);
-
   useEffect(() => {
-    verifyToken();
-  }, [verifyToken]);
-
-  const validatePassword = (pass) => {
-    if (pass.length < 8) {
-      return "Password must be at least 8 characters";
-    }
+    console.log('Token from path:', tokenFromPath);
     
-    // Check for at least one uppercase letter
-    if (!/[A-Z]/.test(pass)) {
-      return "Password must contain at least one uppercase letter";
+    if (!tokenFromPath) {
+      setError('Invalid reset token');
     }
-    
-    // Check for at least one number
-    if (!/\d/.test(pass)) {
-      return "Password must contain at least one number";
-    }
-    
-    return "";
-  };
+  }, [tokenFromPath]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-
-    // Validate passwords match
+    
     if (password !== confirmPassword) {
-      return setError("Passwords don't match");
+      setError('Passwords do not match');
+      return;
     }
 
-    // Validate password strength
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-      return setError(passwordError);
-    }
+    setIsLoading(true);
+    setError('');
+    setSuccess(false);
 
     try {
-      setLoading(true);
-      const response = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId, 
-          token, 
-          newPassword: password 
-        })
+      await axios.post(`${API_URL}/reset-password`, { 
+        token: tokenFromPath, 
+        newPassword: password 
       });
-
-      const data = await response.json().catch(() => ({}));
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Password reset failed');
-      }
-
       setSuccess(true);
-      // Clear form fields for security
-      setPassword('');
-      setConfirmPassword('');
-      setTimeout(() => navigate('/login'), 3000);
+      setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      setError(err.message || 'An unexpected error occurred');
+      setError(err.response?.data?.error || 'Failed to reset password. The link may have expired.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleTogglePasswordVisibility = () => {
-    setShowPassword((prev) => !prev);
-  };
-
-  if (tokenVerifying) {
-    return (
-      <Container maxWidth="sm" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', mt: 10 }}>
-        <CircularProgress />
-        <Typography variant="body2" sx={{ mt: 2 }}>
-          Verifying your reset link...
-        </Typography>
-      </Container>
-    );
-  }
-
-  if (!validToken) {
-    return (
-      <Container maxWidth="sm" sx={{ mt: 8 }}>
-        <Box sx={{ textAlign: 'center', mb: 3 }}>
-          <LockResetIcon color="error" sx={{ fontSize: 60, mb: 2 }} />
-          <Typography variant="h5" component="h1" gutterBottom>
-            Invalid Reset Link
-          </Typography>
-        </Box>
-        
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error || 'This password reset link is invalid or has expired'}
-        </Alert>
-        
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <Button 
-            variant="contained" 
-            onClick={() => navigate('/forgot-password')}
-          >
-            Get New Reset Link
-          </Button>
-        </Box>
-      </Container>
-    );
-  }
-
   return (
-    <Container maxWidth="xs">
-      <Box sx={{ 
-        mt: 8, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center' 
-      }}>
-        <LockResetIcon color="primary" sx={{ fontSize: 60, mb: 2 }} />
-        <Typography component="h1" variant="h5" gutterBottom>
+    <Container maxWidth="sm">
+      <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Typography component="h1" variant="h5">
           Reset Your Password
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
-          Please create a strong password that you don't use elsewhere
-        </Typography>
-
-        {success ? (
-          <Alert severity="success" sx={{ width: '100%', mt: 3 }}>
-            Password reset successfully! Redirecting to login page...
+        
+        {success && (
+          <Alert severity="success" sx={{ width: '100%', mt: 2 }}>
+            Password reset successfully! Redirecting to login...
           </Alert>
-        ) : (
-          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%', mt: 1 }}>
-            {error && (
-              <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
-                {error}
-              </Alert>
-            )}
+        )}
+        
+        {error && (
+          <Alert severity="error" sx={{ width: '100%', mt: 2 }}>
+            {error}
+          </Alert>
+        )}
 
+        {tokenFromPath ? (
+          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3, width: '100%' }}>
             <TextField
-              label="New Password"
-              type={showPassword ? "text" : "password"}
-              fullWidth
               margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="New Password"
+              type="password"
+              id="password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={handleTogglePasswordVisibility}
-                      edge="end"
-                    >
-                      {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-              helperText="Must be at least 8 characters with uppercase and numbers"
             />
-
+            
             <TextField
-              label="Confirm Password"
-              type={showPassword ? "text" : "password"}
-              fullWidth
               margin="normal"
+              required
+              fullWidth
+              name="confirmPassword"
+              label="Confirm New Password"
+              type="password"
+              id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              error={confirmPassword !== '' && password !== confirmPassword}
-              helperText={
-                confirmPassword !== '' && password !== confirmPassword ? 
-                "Passwords don't match" : " "
-              }
             />
-
+            
             <Button
               type="submit"
               fullWidth
               variant="contained"
-              disabled={loading || !password || !confirmPassword}
               sx={{ mt: 3, mb: 2 }}
+              disabled={isLoading}
             >
-              {loading ? <CircularProgress size={24} /> : 'Reset Password'}
+              {isLoading ? 'Resetting...' : 'Reset Password'}
             </Button>
-            
-            <Box sx={{ mt: 2, textAlign: 'center' }}>
-              <Button
-                variant="text"
-                size="small"
-                onClick={() => navigate('/login')}
-              >
-                Back to Login
-              </Button>
-            </Box>
           </Box>
+        ) : (
+          <Alert severity="warning" sx={{ width: '100%', mt: 2 }}>
+            No reset token found. Please check your reset link.
+          </Alert>
         )}
       </Box>
     </Container>
   );
-}
+};
+
+export default ResetPassword;

@@ -56,6 +56,8 @@ function App() {
                 <Route path="/jobs" element={<Jobs />} />
                 <Route path="/jobs/:id" element={<JobDetails />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
+                
+                {/* Changed from path="/reset-password/:token" to path="/reset-password" */}
                 <Route path="/reset-password/:token" element={<ResetPassword />} />
 
                 {/* Authenticated Routes */}
