@@ -42,7 +42,6 @@ function ProfilePage() {
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
 
-  // Add languages to the state initialization
   const [state, setState] = useState({
     loading: true,
     saving: false,
@@ -51,6 +50,15 @@ function ProfilePage() {
     editingSkill: null,
     skillLevel: "Intermediate",
     profileData: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      location: "",
+      jobTitle: "",
+      bio: "",
+    },
+    savedProfileData: {
       firstName: "",
       lastName: "",
       email: "",
@@ -74,7 +82,6 @@ function ProfilePage() {
   const [completionPercentage, setCompletionPercentage] = useState(0)
   const [activeTab, setActiveTab] = useState("personal")
 
-  // Update the calculateProfileCompletion function to include languages
   const calculateProfileCompletion = () => {
     let total = 0
     let maxTotal = 0
@@ -82,13 +89,13 @@ function ProfilePage() {
     // Personal Info (25%)
     maxTotal += 25
     let personalInfoScore = 0
-    if (state.profileData.firstName) personalInfoScore += 4
-    if (state.profileData.lastName) personalInfoScore += 4
-    if (state.profileData.email) personalInfoScore += 4
-    if (state.profileData.phone) personalInfoScore += 3
-    if (state.profileData.location) personalInfoScore += 3
-    if (state.profileData.jobTitle) personalInfoScore += 3
-    if (state.profileData.bio) personalInfoScore += 3
+    if (state.savedProfileData.firstName) personalInfoScore += 4
+    if (state.savedProfileData.lastName) personalInfoScore += 4
+    if (state.savedProfileData.email) personalInfoScore += 4
+    if (state.savedProfileData.phone) personalInfoScore += 3
+    if (state.savedProfileData.location) personalInfoScore += 3
+    if (state.savedProfileData.jobTitle) personalInfoScore += 3
+    if (state.savedProfileData.bio) personalInfoScore += 3
     if (state.profilePicture) personalInfoScore += 1
     total += personalInfoScore
 
@@ -116,16 +123,14 @@ function ProfilePage() {
     maxTotal += 10
     if (state.languages.length > 0) total += 10
 
-    console.log("Profile completion calculation:", { total, maxTotal })
     return Math.min(Math.round((total / maxTotal) * 100), 100)
   }
 
   useEffect(() => {
     const percentage = calculateProfileCompletion()
-    console.log("Calculated completion percentage:", percentage)
     setCompletionPercentage(percentage)
   }, [
-    state.profileData,
+    state.savedProfileData,
     state.profilePicture,
     state.skills,
     state.experiences,
@@ -144,7 +149,6 @@ function ProfilePage() {
     }
   }, [user, authLoading])
 
-  // Update the loadProfileData function to load languages
   const loadProfileData = async () => {
     try {
       if (!user || !user._id) {
@@ -168,6 +172,15 @@ function ProfilePage() {
       setState((prev) => ({
         ...prev,
         profileData: {
+          firstName: profile.user.person.firstName || "",
+          lastName: profile.user.person.lastName || "",
+          email: profile.user.person.email || "",
+          phone: profile.user.person.phoneNumber || "",
+          location: profile.profile.location || "",
+          jobTitle: profile.profile.jobTitle || "",
+          bio: profile.profile.bio || "",
+        },
+        savedProfileData: {
           firstName: profile.user.person.firstName || "",
           lastName: profile.user.person.lastName || "",
           email: profile.user.person.email || "",
@@ -360,6 +373,14 @@ function ProfilePage() {
         ...state.profileData,
         phoneNumber: state.profileData.phone,
       })
+      
+      // Update savedProfileData with the current profileData
+      setState((prev) => ({
+        ...prev,
+        savedProfileData: { ...prev.profileData },
+        saving: false,
+      }))
+      
       toast.success("Profile updated successfully")
     } catch (error) {
       if (error.message === "Unauthorized") {
@@ -390,7 +411,6 @@ function ProfilePage() {
     }))
   }
 
-  // Update the handleExperienceSubmit function to ensure endDate is always a valid date
   const handleExperienceSubmit = async (e) => {
     e.preventDefault()
     if (!user || !user._id) {
@@ -400,8 +420,6 @@ function ProfilePage() {
 
     const formData = new FormData(e.target)
     const isCurrent = formData.get("current") === "on"
-
-    // Use a far future date for current positions
     const farFutureDate = "2099-12-31"
 
     const data = {
@@ -409,7 +427,6 @@ function ProfilePage() {
       jobTitle: formData.get("jobTitle"),
       location: formData.get("location"),
       startDate: formData.get("startDate"),
-      // Always provide a date for endDate, use far future date for current positions
       endDate: isCurrent ? farFutureDate : formData.get("endDate") || farFutureDate,
       description: formData.get("description"),
       current: isCurrent,
@@ -440,7 +457,6 @@ function ProfilePage() {
     }
   }
 
-  // Update the handleEducationSubmit function to ensure endDate is always a valid date
   const handleEducationSubmit = async (e) => {
     e.preventDefault()
     if (!user || !user._id) {
@@ -450,11 +466,7 @@ function ProfilePage() {
 
     const formData = new FormData(e.target)
     const isCurrent = formData.get("current") === "on"
-
-    // Use a far future date for current education
     const farFutureDate = "2099-12-31"
-
-    // Check if a formation with the same school and degree already exists
     const schoolName = formData.get("institution")
     const degreeName = formData.get("degree")
 
@@ -475,7 +487,6 @@ function ProfilePage() {
       degree: formData.get("degree"),
       fieldOfStudy: formData.get("fieldOfStudy"),
       startDate: formData.get("startDate"),
-      // Always provide a date for endDate, use far future date for current education
       endDate: isCurrent ? farFutureDate : formData.get("endDate") || farFutureDate,
       description: formData.get("description"),
       current: isCurrent,
@@ -550,7 +561,6 @@ function ProfilePage() {
     }
   }
 
-  // FIX: Modified to ensure level is always provided
   const handleLanguageSubmit = async (e) => {
     e.preventDefault()
     if (!user || !user._id) {
@@ -561,8 +571,7 @@ function ProfilePage() {
     const formData = new FormData(e.target)
     const data = {
       name: formData.get("languageName"),
-      // FIX: Ensure level is always provided
-      level: formData.get("level") || "Intermediate", // This fixes the "level is required" error
+      level: formData.get("level") || "Intermediate",
       proficiency: formData.get("proficiency"),
     }
 
@@ -591,7 +600,6 @@ function ProfilePage() {
     }
   }
 
-  // Update the deleteItem function to handle languages
   const deleteItem = async (type, id) => {
     if (!user || !user._id) {
       toast.error("You must be logged in to perform this action")
@@ -645,13 +653,9 @@ function ProfilePage() {
     }
   }
 
-  // Update the formatDate function to handle the far future date
   const formatDate = (dateString) => {
     if (!dateString) return "Present"
-
-    // Check if it's our far future date (2099-12-31)
     if (dateString.includes("2099")) return "Present"
-
     const date = new Date(dateString)
     return date.toLocaleDateString("en-US", { year: "numeric", month: "short" })
   }
@@ -719,7 +723,7 @@ function ProfilePage() {
           Complete your profile to enhance your professional presence and opportunities
         </p>
 
-        {/* Mobile Profile Summary - Only visible on small screens */}
+        {/* Mobile Profile Summary */}
         <div className="md:hidden mb-6">
           <Card className="border-0 shadow-md overflow-hidden">
             <div className="h-16 bg-gradient-to-r from-purple-600 to-indigo-600"></div>
@@ -746,9 +750,9 @@ function ProfilePage() {
               </div>
               <div>
                 <h2 className="font-bold text-gray-900">
-                  {state.profileData.firstName || "Your"} {state.profileData.lastName || "Name"}
+                  {state.savedProfileData.firstName || "Your"} {state.savedProfileData.lastName || "Name"}
                 </h2>
-                {state.profileData.jobTitle && <p className="text-gray-600 text-sm">{state.profileData.jobTitle}</p>}
+                {state.savedProfileData.jobTitle && <p className="text-gray-600 text-sm">{state.savedProfileData.jobTitle}</p>}
                 <div className="flex items-center mt-1">
                   <span className="text-xs font-medium text-gray-700 mr-2">Profile: {completionPercentage}%</span>
                   <div className="h-1.5 w-24 bg-gray-100 rounded-full overflow-hidden">
@@ -808,29 +812,29 @@ function ProfilePage() {
                     </button>
                   </div>
                   <h2 className="text-2xl font-bold text-center text-gray-900">
-                    {state.profileData.firstName || "Your"} {state.profileData.lastName || "Name"}
+                    {state.savedProfileData.firstName || "Your"} {state.savedProfileData.lastName || "Name"}
                   </h2>
-                  {state.profileData.jobTitle && (
-                    <p className="text-gray-600 text-center font-medium mt-1">{state.profileData.jobTitle}</p>
+                  {state.savedProfileData.jobTitle && (
+                    <p className="text-gray-600 text-center font-medium mt-1">{state.savedProfileData.jobTitle}</p>
                   )}
 
                   <div className="w-full mt-4 space-y-3">
-                    {state.profileData.location && (
+                    {state.savedProfileData.location && (
                       <div className="flex items-center text-gray-600">
                         <MapPin className="h-4 w-4 mr-2 text-gray-500" />
-                        <span>{state.profileData.location}</span>
+                        <span>{state.savedProfileData.location}</span>
                       </div>
                     )}
-                    {state.profileData.email && (
+                    {state.savedProfileData.email && (
                       <div className="flex items-center text-gray-600">
                         <Mail className="h-4 w-4 mr-2 text-gray-500" />
-                        <span className="truncate">{state.profileData.email}</span>
+                        <span className="truncate">{state.savedProfileData.email}</span>
                       </div>
                     )}
-                    {state.profileData.phone && (
+                    {state.savedProfileData.phone && (
                       <div className="flex items-center text-gray-600">
                         <Phone className="h-4 w-4 mr-2 text-gray-500" />
-                        <span>{state.profileData.phone}</span>
+                        <span>{state.savedProfileData.phone}</span>
                       </div>
                     )}
                   </div>
@@ -865,7 +869,7 @@ function ProfilePage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700">Personal Info</span>
-                    {Object.values(state.profileData).some((val) => val) ? (
+                    {Object.values(state.savedProfileData).some((val) => val) ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
                       <XCircle className="h-4 w-4 text-red-500" />
@@ -965,7 +969,7 @@ function ProfilePage() {
                 </TabsTrigger>
               </TabsList>
 
-              {/* Mobile Save Button - Only visible on small screens */}
+              {/* Mobile Save Button */}
               <div className="md:hidden mb-4 flex justify-end">
                 <Button
                   onClick={saveProfile}
@@ -1615,7 +1619,7 @@ function ProfilePage() {
                 {state.currentItem ? "Edit Work Experience" : "Add Work Experience"}
               </DialogTitle>
               <DialogDescription className="text-purple-100 opacity-90">
-                Fill in the details of your work experience to showcase your professional background.d.
+                Fill in the details of your work experience to showcase your professional background.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleExperienceSubmit} className="p-6">
@@ -1669,7 +1673,6 @@ function ProfilePage() {
                         defaultChecked={!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31"}
                         className="data-[state=checked]:bg-green-500"
                         onChange={(e) => {
-                          // Toggle the visibility of the endDate field
                           const endDateField = document.getElementById("endDate")
                           const endDateLabel = document.querySelector('label[for="endDate"]')
                           if (endDateField && endDateLabel) {
@@ -1836,7 +1839,6 @@ function ProfilePage() {
                         defaultChecked={!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31"}
                         className="data-[state=checked]:bg-green-500"
                         onChange={(e) => {
-                          // Toggle the visibility of the endDate field
                           const endDateField = document.getElementById("educationEndDate")
                           const endDateLabel = document.querySelector('label[for="educationEndDate"]')
                           if (endDateField && endDateLabel) {

@@ -16,6 +16,7 @@ export default function Login() {
   const searchParams = new URLSearchParams(location.search)
   const registrationSuccess = searchParams.get("registered") === "true"
   const emailFromRegistration = searchParams.get("email") || ""
+  const from = location.state?.from || "/dashboard"
 
   const [formData, setFormData] = useState({
     email: emailFromRegistration,
@@ -42,7 +43,7 @@ export default function Login() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }))
@@ -73,7 +74,12 @@ export default function Login() {
     try {
       const result = await login(formData.email, formData.password)
       if (result?.success) {
-        navigate(result.role === "admin" ? "/admin" : "/dashboard")
+        // Set flag that user just logged in - this helps with profile page loading
+        localStorage.setItem("justLoggedIn", "true")
+
+        // Navigate to appropriate page based on role or the 'from' location
+        const redirectTo = result.role === "admin" ? "/admin" : from
+        navigate(redirectTo)
       } else {
         setError(result?.error || "Identifiants incorrects")
       }
@@ -90,7 +96,7 @@ export default function Login() {
         <div className="flex flex-col md:flex-row items-center gap-8">
           <div className="w-full md:max-w-md">
             <h1 className="text-3xl font-bold mb-2">Connexion</h1>
-            
+
             {showSuccessMessage && (
               <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-md flex items-center">
                 <CheckCircle className="h-5 w-5 mr-2" />
@@ -154,9 +160,7 @@ export default function Login() {
                   <Checkbox
                     name="rememberMe"
                     checked={formData.rememberMe}
-                    onCheckedChange={(checked) => 
-                      setFormData(prev => ({ ...prev, rememberMe: checked }))
-                    }
+                    onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, rememberMe: checked }))}
                   />
                   <span>Se souvenir de moi</span>
                 </label>
@@ -185,14 +189,11 @@ export default function Login() {
           </div>
 
           <div className="hidden md:block w-full max-w-md">
-            <img
-              src="/login-illustration.svg"
-              alt="Illustration connexion"
-              className="mx-auto"
-            />
+            <img src="/login-illustration.svg" alt="Illustration connexion" className="mx-auto" />
           </div>
         </div>
       </div>
     </div>
   )
 }
+
