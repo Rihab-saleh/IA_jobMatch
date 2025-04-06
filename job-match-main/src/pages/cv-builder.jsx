@@ -5,25 +5,7 @@ import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Textarea } from "../components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
-import {
-  PlusCircle,
-  Download,
-  FileText,
-  Edit,
-  Trash2,
-  Upload,
-  Sparkles,
-  Loader2,
-  Save,
-  Calendar,
-  MapPin,
-  Briefcase,
-  GraduationCap,
-  X,
-  Link,
-  Globe,
-  Award,
-} from "lucide-react"
+import { PlusCircle, Download, FileText, Edit, Trash2, Upload, Sparkles, Loader2, Save, CalendarIcon, MapPin, Briefcase, GraduationCap, X, Link, Globe, Award } from 'lucide-react'
 import { userService } from "../services/user-service"
 import { useAuth } from "../contexts/auth-context"
 import { useNavigate } from "react-router-dom"
@@ -39,10 +21,11 @@ import {
 import { Label } from "../components/ui/label"
 import { Switch } from "../components/ui/switch"
 import ResumeTemplate from "./resume-template"
-import { formatDate, formatDateForAPI } from "../lib/date-utils"
-import html2pdf from "html2pdf.js"
-import { Badge } from "../components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
+import html2pdf from "html2pdf.js"
+import { format } from "date-fns"
+import { Calendar } from "../components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover"
 
 export default function CVBuilderPage() {
   const { user, loading: authLoading } = useAuth()
@@ -74,8 +57,42 @@ export default function CVBuilderPage() {
   const [education, setEducation] = useState([])
   const [skills, setSkills] = useState([])
   const [languages, setLanguages] = useState([])
-  const [training, setTraining] = useState([])
   const [certifications, setCertifications] = useState([])
+
+  // Format date for display (MM/YYYY or "Present")
+  const formatDate = (dateString) => {
+    if (!dateString || dateString === "2099-12-31") return "Present"
+
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return dateString
+
+      const day = date.getDate()
+      const month = date.getMonth() + 1
+      const year = date.getFullYear()
+      return `${day.toString().padStart(2, "0")}/${month.toString().padStart(2, "0")}/${year}`
+    } catch {
+      return dateString
+    }
+  }
+
+  // Format date for API (YYYY-MM-DD)
+  const formatDateForAPI = (dateString) => {
+    if (!dateString || dateString === "Present") return "2099-12-31"
+
+    // If already in YYYY-MM-DD format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString
+    }
+
+    // Handle MM/YYYY format
+    if (/^\d{2}\/\d{4}$/.test(dateString)) {
+      const [month, year] = dateString.split("/")
+      return `${year}-${month}-01` // Using first day of month
+    }
+
+    return dateString
+  }
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -124,56 +141,58 @@ export default function CVBuilderPage() {
           setWorkExperience(
             Array.isArray(experiences)
               ? experiences.map((exp) => ({
-                id: exp._id,
-                title: exp.title || "",
-                company: exp.company || "",
-                location: exp.location || "",
-                startDate: formatDate(exp.startDate),
-                endDate: exp.endDate ? formatDate(exp.endDate) : "Present",
-                description: exp.description || "",
-                skills: exp.skills || [],
-              }))
-              : []
+                  id: exp._id,
+                  title: exp.jobTitle || "",
+                  company: exp.company || "",
+                  location: exp.location || "",
+                  startDate: exp.startDate || "",
+                  endDate: exp.current ? "Present" : exp.endDate || "",
+                  description: exp.description || "",
+                  skills: exp.skills || [],
+                  current: exp.current || false,
+                }))
+              : [],
           )
 
           // Set education
           setEducation(
             Array.isArray(formations)
               ? formations.map((edu) => ({
-                id: edu._id,
-                degree: edu.degree || "",
-                school: edu.school || "",
-                location: edu.location || "",
-                startDate: formatDate(edu.startDate),
-                endDate: edu.endDate ? formatDate(edu.endDate) : "Present",
-                description: edu.description || "",
-                fieldOfStudy: edu.fieldOfStudy || "",
-              }))
-              : []
+                  id: edu._id,
+                  degree: edu.degree || "",
+                  school: edu.school || "",
+                  location: edu.location || "",
+                  startDate: edu.startDate || "",
+                  endDate: edu.current ? "Present" : edu.endDate || "",
+                  description: edu.description || "",
+                  fieldOfStudy: edu.fieldOfStudy || "",
+                  current: edu.current || false,
+                }))
+              : [],
           )
 
           // Set languages
           setLanguages(
             Array.isArray(languages)
               ? languages.map((lang) => ({
-                id: lang._id,
-                name: lang.name || "",
-                level: lang.proficiency || "Intermediate",
-              }))
-              : []
+                  id: lang._id,
+                  name: lang.name || "",
+                  level: lang.proficiency || "Intermediate",
+                }))
+              : [],
           )
 
           // Set certifications
           setCertifications(
             Array.isArray(certifications)
               ? certifications.map((cert) => ({
-                id: cert._id,
-                name: cert.name || "",
-                issuer: cert.issuer || "",
-                issueDate: formatDate(cert.issueDate),
-                expirationDate: cert.expirationDate ? formatDate(cert.expirationDate) : "No Expiration",
-              }))
-              : []
+                  id: cert._id,
+                  name: cert.name || "",
+                  issuer: cert.issuer || "",
+                  issueDate: cert.issueDate || "",
+                  expirationDate: cert.expirationDate ? cert.expirationDate : "No Expiration",
+                }))
+              : [],
           )
 
           setLoading(false)
@@ -290,7 +309,7 @@ export default function CVBuilderPage() {
         level: skillLevel,
       })
 
-      setSkills(skills.map(s => s._id === skill._id ? { ...s, name: newSkill.trim(), level: skillLevel } : s))
+      setSkills(skills.map((s) => (s._id === skill._id ? { ...s, name: newSkill.trim(), level: skillLevel } : s)))
       setNewSkill("")
       setSkillLevel("Intermediate")
       setActiveDialog(null)
@@ -335,16 +354,17 @@ export default function CVBuilderPage() {
 
       if (operation === "add") {
         const apiData = {
-          title: data.title,
+          jobTitle: data.title,
           company: data.company,
           location: data.location,
           startDate: formatDateForAPI(data.startDate),
-          endDate: data.current ? null : formatDateForAPI(data.endDate),
+          endDate: data.current ? "2099-12-31" : formatDateForAPI(data.endDate),
           description: data.description,
           skills: data.skills
             .split(",")
             .map((s) => s.trim())
             .filter((s) => s),
+          current: data.current,
         }
 
         const response = await userService.addExperience(user._id, apiData)
@@ -353,13 +373,14 @@ export default function CVBuilderPage() {
           ...workExperience,
           {
             id: response._id,
-            title: response.title,
+            title: response.jobTitle,
             company: response.company,
             location: response.location,
-            startDate: formatDate(response.startDate),
-            endDate: response.endDate ? formatDate(response.endDate) : "Present",
+            startDate: response.startDate,
+            endDate: response.current ? "Present" : response.endDate,
             description: response.description,
             skills: response.skills || [],
+            current: response.current,
           },
         ])
 
@@ -368,16 +389,17 @@ export default function CVBuilderPage() {
 
       if (operation === "update" && currentItem) {
         const apiData = {
-          title: data.title,
+          jobTitle: data.title,
           company: data.company,
           location: data.location,
           startDate: formatDateForAPI(data.startDate),
-          endDate: data.current ? null : formatDateForAPI(data.endDate),
+          endDate: data.current ? "2099-12-31" : formatDateForAPI(data.endDate),
           description: data.description,
           skills: data.skills
             .split(",")
             .map((s) => s.trim())
             .filter((s) => s),
+          current: data.current,
         }
 
         await userService.updateExperience(user._id, currentItem.id, apiData)
@@ -386,15 +408,16 @@ export default function CVBuilderPage() {
           workExperience.map((exp) =>
             exp.id === currentItem.id
               ? {
-                ...exp,
-                title: data.title,
-                company: data.company,
-                location: data.location,
-                startDate: data.startDate,
-                endDate: data.current ? "Present" : data.endDate,
-                description: data.description,
-                skills: apiData.skills,
-              }
+                  ...exp,
+                  title: data.title,
+                  company: data.company,
+                  location: data.location,
+                  startDate: data.startDate,
+                  endDate: data.current ? "Present" : data.endDate,
+                  description: data.description,
+                  skills: apiData.skills,
+                  current: data.current,
+                }
               : exp,
           ),
         )
@@ -432,9 +455,10 @@ export default function CVBuilderPage() {
           school: data.school,
           location: data.location,
           startDate: formatDateForAPI(data.startDate),
-          endDate: data.current ? null : formatDateForAPI(data.endDate),
+          endDate: data.current ? "2099-12-31" : formatDateForAPI(data.endDate),
           description: data.description,
           fieldOfStudy: data.fieldOfStudy,
+          current: data.current,
         }
 
         const response = await userService.addFormation(user._id, apiData)
@@ -446,10 +470,11 @@ export default function CVBuilderPage() {
             degree: response.degree,
             school: response.school,
             location: response.location,
-            startDate: formatDate(response.startDate),
-            endDate: response.endDate ? formatDate(response.endDate) : "Present",
+            startDate: response.startDate,
+            endDate: response.current ? "Present" : response.endDate,
             description: response.description,
             fieldOfStudy: response.fieldOfStudy,
+            current: response.current,
           },
         ])
 
@@ -462,9 +487,10 @@ export default function CVBuilderPage() {
           school: data.school,
           location: data.location,
           startDate: formatDateForAPI(data.startDate),
-          endDate: data.current ? null : formatDateForAPI(data.endDate),
+          endDate: data.current ? "2099-12-31" : formatDateForAPI(data.endDate),
           description: data.description,
           fieldOfStudy: data.fieldOfStudy,
+          current: data.current,
         }
 
         await userService.updateFormation(user._id, currentItem.id, apiData)
@@ -473,15 +499,16 @@ export default function CVBuilderPage() {
           education.map((edu) =>
             edu.id === currentItem.id
               ? {
-                ...edu,
-                degree: data.degree,
-                school: data.school,
-                location: data.location,
-                startDate: data.startDate,
-                endDate: data.current ? "Present" : data.endDate,
-                description: data.description,
-                fieldOfStudy: data.fieldOfStudy,
-              }
+                  ...edu,
+                  degree: data.degree,
+                  school: data.school,
+                  location: data.location,
+                  startDate: data.startDate,
+                  endDate: data.current ? "Present" : data.endDate,
+                  description: data.description,
+                  fieldOfStudy: data.fieldOfStudy,
+                  current: data.current,
+                }
               : edu,
           ),
         )
@@ -545,10 +572,10 @@ export default function CVBuilderPage() {
           languages.map((lang) =>
             lang.id === currentItem.id
               ? {
-                ...lang,
-                name: data.name,
-                level: data.level,
-              }
+                  ...lang,
+                  name: data.name,
+                  level: data.level,
+                }
               : lang,
           ),
         )
@@ -596,8 +623,8 @@ export default function CVBuilderPage() {
             id: response._id,
             name: response.name,
             issuer: response.issuer,
-            issueDate: formatDate(response.issueDate),
-            expirationDate: response.expirationDate ? formatDate(response.expirationDate) : "No Expiration",
+            issueDate: response.issueDate,
+            expirationDate: response.expirationDate ? response.expirationDate : "No Expiration",
           },
         ])
 
@@ -618,12 +645,12 @@ export default function CVBuilderPage() {
           certifications.map((cert) =>
             cert.id === currentItem.id
               ? {
-                ...cert,
-                name: data.name,
-                issuer: data.issuer,
-                issueDate: data.issueDate,
-                expirationDate: data.expirationDate ? data.expirationDate : "No Expiration",
-              }
+                  ...cert,
+                  name: data.name,
+                  issuer: data.issuer,
+                  issueDate: data.issueDate,
+                  expirationDate: data.expirationDate ? data.expirationDate : "No Expiration",
+                }
               : cert,
           ),
         )
@@ -728,7 +755,11 @@ export default function CVBuilderPage() {
               <Button variant="outline" onClick={() => setPreviewMode(false)}>
                 Back to Editor
               </Button>
-              <Button className="bg-purple-700 hover:bg-purple-800 text-white" onClick={generatePDF} disabled={generatingPdf}>
+              <Button
+                className="bg-purple-700 hover:bg-purple-800 text-white"
+                onClick={generatePDF}
+                disabled={generatingPdf}
+              >
                 {generatingPdf ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -748,12 +779,24 @@ export default function CVBuilderPage() {
             <div ref={resumeRef}>
               <ResumeTemplate
                 personalInfo={personalInfo}
-                workExperience={workExperience}
-                education={education}
+                workExperience={workExperience.map((exp) => ({
+                  ...exp,
+                  startDate: formatDate(exp.startDate),
+                  endDate: formatDate(exp.endDate),
+                }))}
+                education={education.map((edu) => ({
+                  ...edu,
+                  startDate: formatDate(edu.startDate),
+                  endDate: formatDate(edu.endDate),
+                }))}
                 skills={skills}
                 languages={languages}
-                training={certifications}
-
+                certifications={certifications.map((cert) => ({
+                  ...cert,
+                  issueDate: formatDate(cert.issueDate),
+                  expirationDate:
+                    cert.expirationDate === "No Expiration" ? cert.expirationDate : formatDate(cert.expirationDate),
+                }))}
               />
             </div>
           </div>
@@ -775,7 +818,6 @@ export default function CVBuilderPage() {
             <TabsTrigger value="optimizer">AI Optimizer</TabsTrigger>
           </TabsList>
 
-          {/* CV Builder Tab */}
           <TabsContent value="builder" className="space-y-6">
             <div className="grid md:grid-cols-3 gap-6">
               <div className="md:col-span-2 space-y-6">
@@ -783,7 +825,11 @@ export default function CVBuilderPage() {
                 <div className="bg-white rounded-lg border p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold">Personal Information</h2>
-                    <Button className="bg-purple-700 hover:bg-purple-800 text-white" onClick={savePersonalInfo} disabled={saving}>
+                    <Button
+                      className="bg-purple-700 hover:bg-purple-800 text-white"
+                      onClick={savePersonalInfo}
+                      disabled={saving}
+                    >
                       {saving ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1022,8 +1068,8 @@ export default function CVBuilderPage() {
                           <div className="mb-4">
                             <label className="block text-xs text-gray-500">Duration</label>
                             <p className="text-gray-800 flex items-center">
-                              <Calendar className="h-3 w-3 mr-1 text-gray-400" />
-                              {experience.startDate} - {experience.endDate}
+                              <CalendarIcon className="h-3 w-3 mr-1 text-gray-400" />
+                              {formatDate(experience.startDate)} - {formatDate(experience.endDate)}
                             </p>
                           </div>
 
@@ -1172,8 +1218,8 @@ export default function CVBuilderPage() {
                           <div className="mb-4">
                             <label className="block text-xs text-gray-500">Duration</label>
                             <p className="text-gray-800 flex items-center">
-                              <Calendar className="h-3 w-3 mr-1 text-gray-400" />
-                              {edu.startDate} - {edu.endDate}
+                              <CalendarIcon className="h-3 w-3 mr-1 text-gray-400" />
+                              {formatDate(edu.startDate)} - {formatDate(edu.endDate)}
                             </p>
                           </div>
 
@@ -1305,15 +1351,17 @@ export default function CVBuilderPage() {
                             <div>
                               <label className="block text-xs text-gray-500">Issue Date</label>
                               <p className="text-gray-800 flex items-center">
-                                <Calendar className="h-3 w-3 mr-1 text-gray-400" />
-                                {cert.issueDate}
+                                <CalendarIcon className="h-3 w-3 mr-1 text-gray-400" />
+                                {formatDate(cert.issueDate)}
                               </p>
                             </div>
                             <div>
                               <label className="block text-xs text-gray-500">Expiration Date</label>
                               <p className="text-gray-800 flex items-center">
-                                <Calendar className="h-3 w-3 mr-1 text-gray-400" />
-                                {cert.expirationDate}
+                                <CalendarIcon className="h-3 w-3 mr-1 text-gray-400" />
+                                {cert.expirationDate === "No Expiration"
+                                  ? cert.expirationDate
+                                  : formatDate(cert.expirationDate)}
                               </p>
                             </div>
                           </div>
@@ -1327,10 +1375,7 @@ export default function CVBuilderPage() {
                 <div className="bg-white rounded-lg border p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold">Skills</h2>
-                    <Button
-                      className="bg-purple-700 hover:bg-purple-800 text-white"
-                      onClick={openSkillDialog}
-                    >
+                    <Button className="bg-purple-700 hover:bg-purple-800 text-white" onClick={openSkillDialog}>
                       <PlusCircle className="h-4 w-4 mr-2" />
                       Add Skill
                     </Button>
@@ -1375,10 +1420,7 @@ export default function CVBuilderPage() {
                           <Label htmlFor="skillLevel" className="text-sm font-medium text-gray-700">
                             Skill Level
                           </Label>
-                          <Select
-                            value={skillLevel}
-                            onValueChange={(value) => setSkillLevel(value)}
-                          >
+                          <Select value={skillLevel} onValueChange={(value) => setSkillLevel(value)}>
                             <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
                               <SelectValue placeholder="Select skill level" />
                             </SelectTrigger>
@@ -1395,10 +1437,10 @@ export default function CVBuilderPage() {
                         <Button
                           variant="outline"
                           onClick={() => {
-                            setActiveDialog(null);
-                            setCurrentItem(null);
-                            setNewSkill("");
-                            setSkillLevel("Intermediate");
+                            setActiveDialog(null)
+                            setCurrentItem(null)
+                            setNewSkill("")
+                            setSkillLevel("Intermediate")
                           }}
                           className="text-gray-700 hover:bg-gray-100"
                         >
@@ -1407,9 +1449,9 @@ export default function CVBuilderPage() {
                         <Button
                           onClick={() => {
                             if (currentItem) {
-                              handleUpdateSkill(currentItem);
+                              handleUpdateSkill(currentItem)
                             } else {
-                              handleAddSkill();
+                              handleAddSkill()
                             }
                           }}
                           disabled={!newSkill.trim() || saving}
@@ -1663,7 +1705,9 @@ export default function CVBuilderPage() {
                     <Button
                       variant={activeTemplate === "professional" ? "default" : "outline"}
                       size="sm"
-                      className={activeTemplate === "professional" ? "bg-purple-700 hover:bg-purple-800 text-white" : ""}
+                      className={
+                        activeTemplate === "professional" ? "bg-purple-700 hover:bg-purple-800 text-white" : ""
+                      }
                       onClick={() => setActiveTemplate("professional")}
                     >
                       {activeTemplate === "professional" ? "Selected" : "Select"}
@@ -1740,7 +1784,7 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
     endDate: experience?.endDate === "Present" ? "" : experience?.endDate || "",
     description: experience?.description || "",
     skills: experience?.skills?.join(", ") || "",
-    current: experience?.endDate === "Present",
+    current: experience?.current || false,
   })
 
   const handleChange = (e) => {
@@ -1809,30 +1853,94 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
             <Label htmlFor="startDate" className="text-sm font-medium text-gray-700">
               Start Date *
             </Label>
-            <Input
-              id="startDate"
-              name="startDate"
-              value={formData.startDate}
-              onChange={handleChange}
-              placeholder="January 2020"
-              className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-              required
-            />
+            <div className="relative">
+              <Input
+                id="startDate"
+                name="startDate"
+                value={formData.startDate}
+                onChange={handleChange}
+                placeholder="DD/MM/YYYY"
+                className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                required
+              />
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="icon" 
+                className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-gray-500"
+                onClick={() => {
+                  const datePicker = document.getElementById('startDatePicker');
+                  if (datePicker) {
+                    datePicker.showPicker();
+                  }
+                }}
+              >
+                <CalendarIcon className="h-4 w-4" />
+              </Button>
+              <input 
+                type="date" 
+                id="startDatePicker"
+                className="sr-only"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const date = new Date(e.target.value);
+                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                    setFormData(prev => ({
+                      ...prev,
+                      startDate: formattedDate
+                    }));
+                  }
+                }}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="endDate" className="text-sm font-medium text-gray-700">
               End Date
             </Label>
-            <Input
-              id="endDate"
-              name="endDate"
-              value={formData.endDate}
-              onChange={handleChange}
-              placeholder="December 2023"
-              disabled={formData.current}
-              className={`border-gray-300 focus:border-purple-500 focus:ring-purple-500 ${formData.current ? "bg-gray-100 text-gray-500" : ""}`}
-            />
+            <div className="relative">
+              <Input
+                id="endDate"
+                name="endDate"
+                value={formData.endDate}
+                onChange={handleChange}
+                placeholder="DD/MM/YYYY"
+                disabled={formData.current}
+                className={`border-gray-300 focus:border-purple-500 focus:ring-purple-500 ${formData.current ? "bg-gray-100 text-gray-500" : ""}`}
+              />
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="icon" 
+                className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-gray-500"
+                disabled={formData.current}
+                onClick={() => {
+                  const datePicker = document.getElementById('endDatePicker');
+                  if (datePicker) {
+                    datePicker.showPicker();
+                  }
+                }}
+              >
+                <CalendarIcon className="h-4 w-4" />
+              </Button>
+              <input 
+                type="date" 
+                id="endDatePicker"
+                className="sr-only"
+                disabled={formData.current}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const date = new Date(e.target.value);
+                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                    setFormData(prev => ({
+                      ...prev,
+                      endDate: formattedDate
+                    }));
+                  }
+                }}
+              />
+            </div>
           </div>
         </div>
 
@@ -1907,7 +2015,7 @@ function EducationForm({ education, onSubmit, onCancel, isSaving }) {
     startDate: education?.startDate || "",
     endDate: education?.endDate === "Present" ? "" : education?.endDate || "",
     description: education?.description || "",
-    current: education?.endDate === "Present",
+    current: education?.current || false,
   })
 
   const handleChange = (e) => {
@@ -1989,30 +2097,94 @@ function EducationForm({ education, onSubmit, onCancel, isSaving }) {
             <Label htmlFor="startDate" className="text-sm font-medium text-gray-700">
               Start Date *
             </Label>
-            <Input
-              id="startDate"
-              name="startDate"
-              value={formData.startDate}
-              onChange={handleChange}
-              placeholder="September 2016"
-              className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-              required
-            />
+            <div className="relative">
+              <Input
+                id="startDate"
+                name="startDate"
+                value={formData.startDate}
+                onChange={handleChange}
+                placeholder="DD/MM/YYYY"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                required
+              />
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="icon" 
+                className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-gray-500"
+                onClick={() => {
+                  const datePicker = document.getElementById('eduStartDatePicker');
+                  if (datePicker) {
+                    datePicker.showPicker();
+                  }
+                }}
+              >
+                <CalendarIcon className="h-4 w-4" />
+              </Button>
+              <input 
+                type="date" 
+                id="eduStartDatePicker"
+                className="sr-only"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const date = new Date(e.target.value);
+                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                    setFormData(prev => ({
+                      ...prev,
+                      startDate: formattedDate
+                    }));
+                  }
+                }}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="endDate" className="text-sm font-medium text-gray-700">
               End Date
             </Label>
-            <Input
-              id="endDate"
-              name="endDate"
-              value={formData.endDate}
-              onChange={handleChange}
-              placeholder="June 2020"
-              disabled={formData.current}
-              className={`border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${formData.current ? "bg-gray-100 text-gray-500" : ""}`}
-            />
+            <div className="relative">
+              <Input
+                id="endDate"
+                name="endDate"
+                value={formData.endDate}
+                onChange={handleChange}
+                placeholder="DD/MM/YYYY"
+                disabled={formData.current}
+                className={`border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${formData.current ? "bg-gray-100 text-gray-500" : ""}`}
+              />
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="icon" 
+                className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-gray-500"
+                disabled={formData.current}
+                onClick={() => {
+                  const datePicker = document.getElementById('eduEndDatePicker');
+                  if (datePicker) {
+                    datePicker.showPicker();
+                  }
+                }}
+              >
+                <CalendarIcon className="h-4 w-4" />
+              </Button>
+              <input 
+                type="date" 
+                id="eduEndDatePicker"
+                className="sr-only"
+                disabled={formData.current}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const date = new Date(e.target.value);
+                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                    setFormData(prev => ({
+                      ...prev,
+                      endDate: formattedDate
+                    }));
+                  }
+                }}
+              />
+            </div>
           </div>
         </div>
 
@@ -2121,29 +2293,91 @@ function CertificationForm({ certification, onSubmit, onCancel, isSaving }) {
             <Label htmlFor="issueDate" className="text-sm font-medium text-gray-700">
               Issue Date *
             </Label>
-            <Input
-              id="issueDate"
-              name="issueDate"
-              value={formData.issueDate}
-              onChange={handleChange}
-              placeholder="January 2020"
-              className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-              required
-            />
+            <div className="relative">
+              <Input
+                id="issueDate"
+                name="issueDate"
+                value={formData.issueDate}
+                onChange={handleChange}
+                placeholder="DD/MM/YYYY"
+                className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                required
+              />
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="icon" 
+                className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-gray-500"
+                onClick={() => {
+                  const datePicker = document.getElementById('issueDatePicker');
+                  if (datePicker) {
+                    datePicker.showPicker();
+                  }
+                }}
+              >
+                <CalendarIcon className="h-4 w-4" />
+              </Button>
+              <input 
+                type="date" 
+                id="issueDatePicker"
+                className="sr-only"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const date = new Date(e.target.value);
+                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                    setFormData(prev => ({
+                      ...prev,
+                      issueDate: formattedDate
+                    }));
+                  }
+                }}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="expirationDate" className="text-sm font-medium text-gray-700">
               Expiration Date
             </Label>
-            <Input
-              id="expirationDate"
-              name="expirationDate"
-              value={formData.expirationDate}
-              onChange={handleChange}
-              placeholder="December 2023"
-              className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-            />
+            <div className="relative">
+              <Input
+                id="expirationDate"
+                name="expirationDate"
+                value={formData.expirationDate}
+                onChange={handleChange}
+                placeholder="DD/MM/YYYY"
+                className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+              />
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="icon" 
+                className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-gray-500"
+                onClick={() => {
+                  const datePicker = document.getElementById('expirationDatePicker');
+                  if (datePicker) {
+                    datePicker.showPicker();
+                  }
+                }}
+              >
+                <CalendarIcon className="h-4 w-4" />
+              </Button>
+              <input 
+                type="date" 
+                id="expirationDatePicker"
+                className="sr-only"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const date = new Date(e.target.value);
+                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                    setFormData(prev => ({
+                      ...prev,
+                      expirationDate: formattedDate
+                    }));
+                  }
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -101,67 +101,108 @@ export default function AdminPage() {
   const debouncedJobsSearch = useDebounce(state.jobsSearchQuery, 500)
   const debouncedAdminsSearch = useDebounce(state.adminsSearchQuery, 500)
 
+  // Normalisation des données Adzuna
+  const normalizeAdzunaJob = (job) => ({
+    id: job.id,
+    title: job.title,
+    description: job.description,
+    company: job.company?.display_name || "Company not specified",
+    location: job.location?.display_name || "Location not specified",
+    created: job.created,
+    salary: job.salary_min || 0,
+    contractType: job.contract_type || job.contractType || "Full-time",
+    sourceUrl: job.redirect_url,
+    source: "Adzuna",
+    isExternal: true,
+  })
+
+  // Normalisation des données LinkedIn
+  const normalizeLinkedInJob = (job) => ({
+    id: job.sourceId || `linkedin-${Math.random().toString(36).substr(2, 9)}`,
+    title: job.title,
+    description: job.description,
+    company: job.company?.display_name || "Company not specified",
+    location: job.location?.display_name || "Location not specified",
+    created: job.created,
+    salary: job.salary || 0,
+    contractType: job.contractType || "Full-time",
+    sourceUrl: job.sourceUrl,
+    source: "LinkedIn",
+    isExternal: true,
+  })
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         if (state.activeTab === "jobs") {
           setState((prev) => ({ ...prev, loading: true, error: null }))
 
+          // Log the API calls for debugging
+          console.log("Fetching scraped jobs with params:", {
+            page: state.currentJobsPage,
+            limit: 10,
+            search: debouncedJobsSearch,
+          })
+
           const [scrapedResponse, externalResponse] = await Promise.all([
-            adminService.getAllScrapedJobs({
-              page: state.currentJobsPage,
-              limit: 10,
-              search: debouncedJobsSearch,
-            }),
-            adminService.getAllExternalJobs({
-              page: state.currentJobsPage,
-              limit: 10,
-              search: debouncedJobsSearch,
-            }),
+            adminService
+              .getAllScrapedJobs({
+                page: state.currentJobsPage,
+                limit: 10,
+                search: debouncedJobsSearch,
+              })
+              .catch((err) => {
+                console.error("Error fetching scraped jobs:", err)
+                return { data: { results: [] } }
+              }),
+            adminService
+              .getAllExternalJobs({
+                page: state.currentJobsPage,
+                limit: 10,
+                search: debouncedJobsSearch,
+              })
+              .catch((err) => {
+                console.error("Error fetching external jobs:", err)
+                return { data: { results: [] } }
+              }),
           ])
 
-          // Normalisation des données Adzuna
-          const normalizeAdzunaJob = (job) => ({
-            id: job.id,
-            title: job.title,
-            description: job.description,
-            company: job.company?.display_name || "Company not specified",
-            location: job.location?.display_name || "Location not specified",
-            created: job.created,
-            salary: job.salary_min || 0,
-            contractType: job.contract_type || "Full-time",
-            sourceUrl: job.redirect_url,
-            source: "Adzuna",
-            isExternal: true,
-          })
+          // Log the responses for debugging
+          console.log("Scraped jobs response:", scrapedResponse)
+          console.log("External jobs response:", externalResponse)
 
-          // Normalisation des données LinkedIn
-          const normalizeLinkedInJob = (job) => ({
-            id: job.sourceId || `linkedin-${Math.random().toString(36).substr(2, 9)}`,
-            title: job.title,
-            description: job.description,
-            company: job.company?.display_name || "Company not specified",
-            location: job.location?.display_name || "Location not specified",
-            created: job.created,
-            salary: job.salary || 0,
-            contractType: job.contractType || "Full-time",
-            sourceUrl: job.sourceUrl,
-            source: "LinkedIn",
-            isExternal: true,
-          })
+          // Fix: Adjust to match the actual API response structure
+          // The API returns the data directly, not nested under a 'data' property
+          const scrapedJobs =
+            scrapedResponse.results?.map(normalizeAdzunaJob) ||
+            scrapedResponse.data?.results?.map(normalizeAdzunaJob) ||
+            []
 
-          const scrapedJobs = scrapedResponse.data?.results?.map(normalizeAdzunaJob) || []
-          const externalJobs = externalResponse.data?.results?.map(normalizeLinkedInJob) || []
+          const externalJobs =
+            externalResponse.results?.map(normalizeLinkedInJob) ||
+            externalResponse.data?.results?.map(normalizeLinkedInJob) ||
+            []
 
           const combinedJobs = [...scrapedJobs, ...externalJobs]
+          console.log("Combined jobs:", combinedJobs)
+
+          // Fix: Get pagination info from the correct properties
+          const totalScrapedPages =
+            scrapedResponse.totalPages ||
+            scrapedResponse.data?.totalPages ||
+            Math.ceil((scrapedResponse.count || 0) / 10) ||
+            1
+
+          const totalExternalPages =
+            externalResponse.totalPages ||
+            externalResponse.data?.totalPages ||
+            Math.ceil((externalResponse.count || 0) / 10) ||
+            1
 
           setState((prev) => ({
             ...prev,
             jobs: combinedJobs,
-            totalJobsPages: Math.max(
-              scrapedResponse.data?.pagination?.pages || 1,
-              externalResponse.data?.totalPages || 1,
-            ),
+            totalJobsPages: Math.max(totalScrapedPages, totalExternalPages),
             loading: false,
           }))
         }
@@ -845,12 +886,7 @@ function DashboardSection({ title, children, searchValue, onSearch, pagination, 
         {onSearch && (
           <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input 
-              placeholder="Search..." 
-              className="pl-9 w-full" 
-              value={searchValue} 
-              onChange={onSearch} 
-            />
+            <Input placeholder="Search..." className="pl-9 w-full" value={searchValue} onChange={onSearch} />
           </div>
         )}
       </div>

@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import { userService } from "../services/user-service"
 import { useAuth } from "../contexts/auth-context"
+import { toast } from "sonner"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -47,13 +48,13 @@ export default function DashboardPage() {
       experiences: [],
       formations: [],
       certifications: [],
-      languages: [], // Added languages array
+      languages: [],
     },
   })
 
   const [completionPercentage, setCompletionPercentage] = useState(0)
 
-  // Updated to include languages in the calculation
+  // Calculate profile completion percentage
   const calculateProfileCompletion = (profileData) => {
     let total = 0
 
@@ -83,28 +84,26 @@ export default function DashboardPage() {
     // Certifications (10%)
     if (profileData.certifications && profileData.certifications.length > 0) total += 10
 
-    // Languages (10%) - Added languages to the calculation
+    // Languages (10%)
     if (profileData.languages && profileData.languages.length > 0) total += 10
 
     return Math.min(Math.round(total), 100)
   }
 
+  // Fetch user profile data and jobs
   useEffect(() => {
     const fetchData = async () => {
       try {
         if (!user?._id) return
 
-        // Added languages to the Promise.all array
+        // Fetch user profile data
         const [profile, skills, experiences, formations, certifications, languages, stats] = await Promise.all([
           userService.getUserProfile(user._id),
           userService.getUserSkills(user._id),
           userService.getExperiences(user._id),
           userService.getFormations(user._id),
           userService.getCertifications(user._id),
-          userService
-            .getLanguages(user._id)
-            .catch(() => []), // Added languages fetch
-          // Ajoutez ici un appel à votre service pour récupérer les statistiques si nécessaire
+          userService.getLanguages(user._id).catch(() => []),
           Promise.resolve({
             totalApplications: 0,
             interviews: 0,
@@ -118,21 +117,83 @@ export default function DashboardPage() {
           email: profile.user.person.email || "",
           phone: profile.user.person.phoneNumber || "",
           location: profile.profile.location || "",
-          position: profile.profile.position || "",
+          position: profile.profile.jobTitle || "",
           bio: profile.profile.bio || "",
           profilePicture: profile.user.person.profilePicture?.url || null,
           skills: skills || [],
           experiences: experiences || [],
           formations: formations || [],
           certifications: certifications || [],
-          languages: languages || [], // Added languages to profileData
+          languages: languages || [],
+        }
+
+        // Fetch saved jobs and recommended jobs
+        let savedJobs = []
+        let recommendedJobs = []
+
+        try {
+          // Get all saved jobs
+          savedJobs = await userService.getAllJobs()
+
+          // Get jobs from all available sources and combine them
+          const [skillJobs, scrapedJobs, searchJobs] = await Promise.all([
+            // Get jobs by skills if user has skills
+            skills && skills.length > 0
+              ? userService
+                  .searchJobsBySkills({
+                    skills: skills.map((skill) => skill.name),
+                    location: profileData.location || "",
+                  })
+                  .catch(() => [])
+              : Promise.resolve([]),
+
+            // Get scraped jobs
+            userService
+              .getScrapedJobs({
+                location: profileData.location || "",
+              })
+              .catch(() => []),
+
+            // Get jobs from general search
+            userService
+              .searchJobs({
+                query: profileData.position || "",
+                location: profileData.location || "",
+              })
+              .catch(() => []),
+          ])
+
+          // Combine all job sources, removing duplicates by job ID
+          const jobMap = new Map()
+
+          // Process jobs from all sources
+          ;[...skillJobs, ...scrapedJobs, ...searchJobs].forEach((job) => {
+            if (job && job.id && !jobMap.has(job.id)) {
+              jobMap.set(job.id, job)
+            }
+          })
+
+          // Convert map back to array
+          recommendedJobs = Array.from(jobMap.values())
+
+          // Mark jobs that are already saved
+          if (recommendedJobs.length > 0 && savedJobs.length > 0) {
+            const savedJobIds = savedJobs.map((job) => job.id)
+            recommendedJobs = recommendedJobs.map((job) => ({
+              ...job,
+              isSaved: savedJobIds.includes(job.id),
+            }))
+          }
+        } catch (error) {
+          console.error("Error fetching jobs:", error)
+          // Continue with empty arrays if job fetching fails
         }
 
         setState({
           loading: false,
-          savedJobs: [],
+          savedJobs: savedJobs || [],
           applications: [],
-          recommendedJobs: [],
+          recommendedJobs: recommendedJobs || [],
           stats,
           profileData,
         })
@@ -141,25 +202,48 @@ export default function DashboardPage() {
       } catch (error) {
         console.error("Error loading dashboard data:", error)
         setState((prev) => ({ ...prev, loading: false }))
+        toast.error("Failed to load dashboard data")
       }
     }
 
     fetchData()
   }, [user])
 
+  // Toggle job save status
   const toggleSaveJob = async (job) => {
     try {
       const updatedJob = { ...job, isSaved: !job.isSaved }
+
+      // Call API to save or unsave the job
       await userService.saveJob(updatedJob)
 
+      // Update state with the new saved status
       setState((prev) => ({
         ...prev,
         savedJobs: updatedJob.isSaved ? [...prev.savedJobs, updatedJob] : prev.savedJobs.filter((j) => j.id !== job.id),
         recommendedJobs: prev.recommendedJobs.map((j) => (j.id === job.id ? updatedJob : j)),
       }))
+
+      toast.success(updatedJob.isSaved ? "Job saved successfully" : "Job removed from saved list")
     } catch (error) {
       console.error("Error toggling job save:", error)
+      toast.error("Failed to update job save status")
     }
+  }
+
+  const searchJobsBySkills = async () => {
+    // Implement your searchJobsBySkills logic here
+    console.log("searchJobsBySkills function called")
+  }
+
+  const searchJobs = async () => {
+    // Implement your searchJobs logic here
+    console.log("searchJobs function called")
+  }
+
+  const getScrapedJobs = async () => {
+    // Implement your getScrapedJobs logic here
+    console.log("getScrapedJobs function called")
   }
 
   if (state.loading) {
@@ -383,7 +467,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Languages - Added new section */}
+              {/* Languages */}
               <div className="flex items-start gap-3">
                 <div
                   className={
@@ -489,13 +573,23 @@ export default function DashboardPage() {
           {/* Saved Jobs Tab */}
           <TabsContent value="saved">
             <Card className="border-0 shadow-md overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b">
-                <CardTitle>Saved Jobs</CardTitle>
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b flex justify-between items-center">
+                <div>
+                  <CardTitle>Saved Jobs</CardTitle>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {state.savedJobs.length} {state.savedJobs.length === 1 ? "job" : "jobs"} saved
+                  </p>
+                </div>
+                <Link to="/jobs">
+                  <Button variant="outline" size="sm">
+                    Browse More Jobs
+                  </Button>
+                </Link>
               </CardHeader>
               <CardContent className="pt-6">
                 {state.savedJobs.length > 0 ? (
                   <div className="space-y-6">
-                    {state.savedJobs.slice(0, 2).map((job, index) => (
+                    {state.savedJobs.map((job, index) => (
                       <div
                         key={index}
                         className="border rounded-lg p-4 relative hover:shadow-md transition-all duration-200 bg-white"
@@ -503,8 +597,9 @@ export default function DashboardPage() {
                         <button
                           className="absolute right-4 top-4 text-purple-700 hover:text-purple-900"
                           onClick={() => toggleSaveJob(job)}
+                          aria-label={job.isSaved ? "Unsave job" : "Save job"}
                         >
-                          <Bookmark className={`h-5 w-5 ${job.isSaved ? "fill-current" : ""}`} />
+                          <Bookmark className="h-5 w-5 fill-current" />
                         </button>
 
                         <div className="flex items-start gap-3 pr-8">
@@ -559,14 +654,11 @@ export default function DashboardPage() {
             <Card className="border-0 shadow-md overflow-hidden">
               <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b">
                 <CardTitle>Recommended Jobs</CardTitle>
-                <p className="text-sm text-gray-500 mt-2">
-                  Based on your skills: {state.profileData.skills.map((s) => s.name).join(", ")}
-                </p>
               </CardHeader>
               <CardContent className="pt-6">
                 {state.recommendedJobs.length > 0 ? (
                   <div className="space-y-6">
-                    {state.recommendedJobs.slice(0, 3).map((job, index) => (
+                    {state.recommendedJobs.map((job, index) => (
                       <div
                         key={index}
                         className="border rounded-lg p-4 relative hover:shadow-md transition-all duration-200 bg-white"
@@ -578,7 +670,11 @@ export default function DashboardPage() {
                               {job.matchPercentage || 85 + index * 5}% Match
                             </div>
                           )}
-                          <button className="text-gray-400 hover:text-purple-700" onClick={() => toggleSaveJob(job)}>
+                          <button
+                            className={`text-gray-400 hover:text-purple-700 ${job.isSaved ? "text-purple-700" : ""}`}
+                            onClick={() => toggleSaveJob(job)}
+                            aria-label={job.isSaved ? "Unsave job" : "Save job"}
+                          >
                             <Bookmark className={`h-5 w-5 ${job.isSaved ? "fill-current text-purple-700" : ""}`} />
                           </button>
                         </div>
@@ -620,7 +716,7 @@ export default function DashboardPage() {
                   <div className="text-center py-8 border border-dashed border-gray-300 rounded-lg bg-gray-50">
                     <AlertCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium mb-2">No recommended jobs yet</h3>
-                    <p className="text-gray-500 mb-4">Complete your profile to get personalized job recommendations</p>
+                    <p className="text-gray-500 mb-4">Complete your profile to see job recommendations</p>
                     <Link to="/profile">
                       <Button className="bg-purple-600 hover:bg-purple-700 text-white">Complete Profile</Button>
                     </Link>
