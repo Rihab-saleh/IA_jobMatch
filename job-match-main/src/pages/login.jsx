@@ -188,9 +188,7 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="hidden md:block w-full max-w-md">
-            <img src="/login-illustration.svg" alt="Illustration connexion" className="mx-auto" />
-          </div>
+          
         </div>
       </div>
     </div>

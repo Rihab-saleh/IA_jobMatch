@@ -1,14 +1,27 @@
-const ResumeTemplate = ({ personalInfo, workExperience, education, skills, languages , training  }) => {
+const ResumeTemplate = ({ 
+  personalInfo = {}, 
+  workExperience = [], 
+  education = [], 
+  skills = [], 
+  languages = [], 
+  certifications = [] 
+}) => {
+  console.log('Resume Template Props:', { 
+    personalInfo, 
+    workExperience, 
+    education, 
+    skills, 
+    languages, 
+    certifications 
+  });
 
-
-  console.log('Resume Template Props:', { personalInfo, workExperience, education, skills, languages, training });
-  // Define the color scheme based on the example
+  // Define the color scheme
   const colors = {
-    primary: "#003399", // Dark blue for headings
-    secondary: "#FF6600", // Orange for accents
-    text: "#333333", // Dark gray for main text
-    lightText: "#666666", // Light gray for secondary text
-    background: "#FFFFFF", // White background
+    primary: "#003399",
+    secondary: "#FF6600",
+    text: "#333333",
+    lightText: "#666666",
+    background: "#FFFFFF",
   };
 
   // Helper function to render language proficiency dots
@@ -16,13 +29,13 @@ const ResumeTemplate = ({ personalInfo, workExperience, education, skills, langu
     const maxDots = 5;
     let filledDots = 0;
 
-    switch (level.toLowerCase()) {
+    switch (level?.toLowerCase()) {
       case 'native': filledDots = 5; break;
       case 'proficient': filledDots = 4; break;
       case 'advanced': filledDots = 3; break;
       case 'intermediate': filledDots = 2; break;
       case 'beginner': filledDots = 1; break;
-      default: filledDots = 3; // Default to intermediate
+      default: filledDots = 3;
     }
 
     return (
@@ -116,7 +129,7 @@ const ResumeTemplate = ({ personalInfo, workExperience, education, skills, langu
       )}
 
       {/* Experience */}
-      {workExperience.length > 0 && (
+      {workExperience?.length > 0 && (
         <section style={{ marginBottom: '25px' }}>
           <h3 style={{
             fontSize: '16px',
@@ -179,7 +192,7 @@ const ResumeTemplate = ({ personalInfo, workExperience, education, skills, langu
       )}
 
       {/* Education */}
-      {education.length > 0 && (
+      {education?.length > 0 && (
         <section style={{ marginBottom: '25px' }}>
           <h3 style={{
             fontSize: '16px',
@@ -222,7 +235,7 @@ const ResumeTemplate = ({ personalInfo, workExperience, education, skills, langu
                   {edu.degree}
                 </div>
                 <div style={{ fontSize: '15px', fontWeight: 'bold', color: colors.secondary, marginBottom: '8px' }}>
-                  {edu.institution}
+                  {edu.school} {/* Changed from institution to school */}
                 </div>
 
                 {edu.description && (
@@ -234,8 +247,8 @@ const ResumeTemplate = ({ personalInfo, workExperience, education, skills, langu
         </section>
       )}
 
-      {/* Training / Courses */}
-      {training.length > 0 && (
+      {/* Certifications */}
+      {certifications?.length > 0 && (
         <section style={{ marginBottom: '25px' }}>
           <h3 style={{
             fontSize: '16px',
@@ -244,84 +257,85 @@ const ResumeTemplate = ({ personalInfo, workExperience, education, skills, langu
             color: colors.primary,
             marginBottom: '15px',
           }}>
-            Training / Courses
+            Certifications
           </h3>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-            {training.map((course, index) => (
+            {certifications.map((cert, index) => (
               <div key={index} style={{ marginBottom: '10px', width: 'calc(50% - 10px)' }}>
-                <div style={{ fontSize: '15px', fontWeight: 'bold', color: colors.primary }}>{course.name}</div>
-                <div style={{ fontSize: '14px', color: colors.secondary }}>{course.institution}</div>
+                <div style={{ fontSize: '15px', fontWeight: 'bold', color: colors.primary }}>
+                  {cert.name}
+                </div>
+                <div style={{ fontSize: '14px', color: colors.secondary }}>
+                  {cert.issuer} • {cert.issueDate} 
+                  {cert.expirationDate !== "No Expiration" && ` - ${cert.expirationDate}`}
+                </div>
               </div>
             ))}
           </div>
         </section>
       )}
 
-{/* Skills */}
-{skills.length > 0 && (
-  <section style={{ marginBottom: '25px' }}>
-    <h3 style={{
-      fontSize: '16px',
-      fontWeight: 'bold',
-      textTransform: 'uppercase',
-      color: colors.primary,
-      marginBottom: '15px',
-    }}>
-      Skills
-    </h3>
+      {/* Skills */}
+      {skills?.length > 0 && (
+        <section style={{ marginBottom: '25px' }}>
+          <h3 style={{
+            fontSize: '16px',
+            fontWeight: 'bold',
+            textTransform: 'uppercase',
+            color: colors.primary,
+            marginBottom: '15px',
+          }}>
+            Skills
+          </h3>
 
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-      {skills.map((skill, index) => (
-        <div key={skill._id || index} style={{
-          padding: '5px 10px',
-          backgroundColor: '#f0f0f0',
-          borderRadius: '4px',
-          fontSize: '14px',
-          color: colors.text,
-        }}>
-          {skill.name}
-        </div>
-      ))}
-    </div>
-  </section>
-)}
-
-{/* Languages */}
-{languages.length > 0 && (
-  <section style={{ marginBottom: '25px' }}>
-    <h3 style={{ 
-      fontSize: '16px', 
-      fontWeight: 'bold', 
-      textTransform: 'uppercase', 
-      color: colors.primary,
-      marginBottom: '15px',
-    }}>
-      Languages
-    </h3>
-
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px' }}>
-      {languages.map((lang, index) => {
-        // Validate that the object has the required properties
-        if (!lang || !lang.name || !lang.level) {
-          console.warn(`Invalid language object at index ${index}:`, lang);
-          return null; // Skip invalid objects
-        }
-
-        return (
-          <div key={lang.id || index} style={{ marginBottom: '10px', minWidth: '120px' }}>
-            <div style={{ fontSize: '14px', marginBottom: '5px' }}>{lang.name}</div>
-            <div style={{ fontSize: '14px', color: colors.lightText, marginBottom: '5px' }}>{lang.level}</div>
-            {renderProficiencyDots(lang.level)}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {skills.map((skill, index) => (
+              <div key={skill._id || index} style={{
+                padding: '5px 10px',
+                backgroundColor: '#f0f0f0',
+                borderRadius: '4px',
+                fontSize: '14px',
+                color: colors.text,
+              }}>
+                {skill.name}
+              </div>
+            ))}
           </div>
-        );
-      })}
-    </div>
-  </section>
-)}
+        </section>
+      )}
 
+      {/* Languages */}
+      {languages?.length > 0 && (
+        <section style={{ marginBottom: '25px' }}>
+          <h3 style={{ 
+            fontSize: '16px', 
+            fontWeight: 'bold', 
+            textTransform: 'uppercase', 
+            color: colors.primary,
+            marginBottom: '15px',
+          }}>
+            Languages
+          </h3>
 
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px' }}>
+            {languages.map((lang, index) => {
+              if (!lang || !lang.name || !lang.level) {
+                console.warn(`Invalid language object at index ${index}:`, lang);
+                return null;
+              }
 
+              return (
+                <div key={lang.id || index} style={{ marginBottom: '10px', minWidth: '120px' }}>
+                  <div style={{ fontSize: '14px', marginBottom: '5px' }}>{lang.name}</div>
+                  <div style={{ fontSize: '14px', color: colors.lightText, marginBottom: '5px' }}>{lang.level}</div>
+                  {renderProficiencyDots(lang.level)}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 };

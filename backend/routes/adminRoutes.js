@@ -16,6 +16,7 @@ router.get("/check", authMiddleware, adminMiddleware, (req, res) => {
   })
 })
 
+
 router.get("/account-requests", authMiddleware, adminMiddleware, adminController.getAccountStatusRequests)
 router.get("/account-requests/:userId", authMiddleware, adminMiddleware, adminController.getUserAccountStatusRequests)
 router.delete("/user/delete/:userId", authMiddleware, adminMiddleware, adminController.deleteUser)

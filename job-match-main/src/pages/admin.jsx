@@ -60,11 +60,139 @@ function useDebounce(value, delay) {
   return debouncedValue
 }
 
+function JobsTable({ jobs, onDelete }) {
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filteredJobs, setFilteredJobs] = useState(jobs)
+
+  useEffect(() => {
+    setFilteredJobs(jobs)
+  }, [jobs])
+
+  const handleSearch = (e) => {
+    const term = e.target.value.toLowerCase()
+    setSearchTerm(term)
+    
+    if (term === "") {
+      setFilteredJobs(jobs)
+    } else {
+      const filtered = jobs.filter(job => 
+        job.title.toLowerCase().includes(term) ||
+        job.company.toLowerCase().includes(term) ||
+        job.location.toLowerCase().includes(term) ||
+        (job.description && job.description.toLowerCase().includes(term)) ||
+        job.source.toLowerCase().includes(term)
+      )
+      setFilteredJobs(filtered);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="relative w-full md:w-64">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Input
+          placeholder="Search jobs..."
+          className="pl-9 w-full"
+          value={searchTerm}
+          onChange={handleSearch}
+        />
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salary</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Posted</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredJobs.length > 0 ? (
+              filteredJobs.map((job) => (
+                <tr key={job.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="text-sm font-medium text-gray-900">{job.title}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{job.company}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{job.location}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {job.salary
+                        ? new Intl.NumberFormat("en-US", {
+                            style: "currency",
+                            currency: "USD",
+                          }).format(job.salary)
+                        : "Not specified"}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {job.created ? new Date(job.created).toLocaleDateString() : "Unknown"}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        job.source === "Adzuna" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {job.source}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onDelete(job.id)}
+                            className="text-red-600 hover:text-red-900 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Delete job</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                  {searchTerm ? "No jobs match your search" : "No jobs found"}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminPage() {
   const [state, setState] = useState({
     jobs: [],
     users: [],
     admins: [],
+    totalJobs: 0, 
+    totalUsers: 0, 
+    totalAdmins: 0,
     apiIntegrations: [
       { id: 1, name: "Adzuna API", status: "Connected", lastSync: "2 hours ago" },
       { id: 2, name: "LinkedIn Jobs API", status: "Connected", lastSync: "Just now" },
@@ -98,7 +226,6 @@ export default function AdminPage() {
   })
 
   const debouncedUsersSearch = useDebounce(state.usersSearchQuery, 500)
-  const debouncedJobsSearch = useDebounce(state.jobsSearchQuery, 500)
   const debouncedAdminsSearch = useDebounce(state.adminsSearchQuery, 500)
 
   // Normalisation des données Adzuna
@@ -137,19 +264,11 @@ export default function AdminPage() {
         if (state.activeTab === "jobs") {
           setState((prev) => ({ ...prev, loading: true, error: null }))
 
-          // Log the API calls for debugging
-          console.log("Fetching scraped jobs with params:", {
-            page: state.currentJobsPage,
-            limit: 10,
-            search: debouncedJobsSearch,
-          })
-
           const [scrapedResponse, externalResponse] = await Promise.all([
             adminService
               .getAllScrapedJobs({
                 page: state.currentJobsPage,
                 limit: 10,
-                search: debouncedJobsSearch,
               })
               .catch((err) => {
                 console.error("Error fetching scraped jobs:", err)
@@ -159,7 +278,6 @@ export default function AdminPage() {
               .getAllExternalJobs({
                 page: state.currentJobsPage,
                 limit: 10,
-                search: debouncedJobsSearch,
               })
               .catch((err) => {
                 console.error("Error fetching external jobs:", err)
@@ -167,12 +285,6 @@ export default function AdminPage() {
               }),
           ])
 
-          // Log the responses for debugging
-          console.log("Scraped jobs response:", scrapedResponse)
-          console.log("External jobs response:", externalResponse)
-
-          // Fix: Adjust to match the actual API response structure
-          // The API returns the data directly, not nested under a 'data' property
           const scrapedJobs =
             scrapedResponse.results?.map(normalizeAdzunaJob) ||
             scrapedResponse.data?.results?.map(normalizeAdzunaJob) ||
@@ -184,9 +296,7 @@ export default function AdminPage() {
             []
 
           const combinedJobs = [...scrapedJobs, ...externalJobs]
-          console.log("Combined jobs:", combinedJobs)
 
-          // Fix: Get pagination info from the correct properties
           const totalScrapedPages =
             scrapedResponse.totalPages ||
             scrapedResponse.data?.totalPages ||
@@ -199,12 +309,13 @@ export default function AdminPage() {
             Math.ceil((externalResponse.count || 0) / 10) ||
             1
 
-          setState((prev) => ({
-            ...prev,
-            jobs: combinedJobs,
-            totalJobsPages: Math.max(totalScrapedPages, totalExternalPages),
-            loading: false,
-          }))
+            setState((prev) => ({
+              ...prev,
+              jobs: combinedJobs,
+              totalJobs: (scrapedResponse.count || 0) + (externalResponse.count || 0), // Ajoutez cette ligne
+              totalJobsPages: Math.max(totalScrapedPages, totalExternalPages),
+              loading: false,
+            }))
         }
 
         if (state.activeTab === "users") {
@@ -222,6 +333,7 @@ export default function AdminPage() {
           setState((prev) => ({
             ...prev,
             users: usersResponse.data.users || [],
+            totalUsers: usersResponse.data.pagination?.total || usersResponse.data.users?.length || 0, // Ajoutez cette ligne
             totalUsersPages: usersResponse.data.pagination?.pages || 1,
             loading: false,
           }))
@@ -231,17 +343,31 @@ export default function AdminPage() {
           setState((prev) => ({ ...prev, loading: true, error: null }))
 
           try {
-            const adminsResponse = await adminService.getAllAdmins()
-            console.log("Admins API response:", adminsResponse) // Debug log
+            console.log("Fetching admins with search query:", debouncedAdminsSearch)
+            const adminsResponse = await adminService.getAllAdmins({
+              page: state.currentAdminsPage,
+              limit: 10,
+              search: debouncedAdminsSearch,
+            })
+            console.log("Admins API response:", adminsResponse)
 
-            // Extract admins directly from the response
-            // The backend returns { admins: [...], pagination: {...} }
-            const adminsList = adminsResponse.admins || []
+            if (!adminsResponse || !adminsResponse.admins) {
+              console.error("Unexpected admins response format:", adminsResponse)
+              setState((prev) => ({
+                ...prev,
+                admins: [],
+                totalAdminsPages: 1,
+                loading: false,
+                error: "Invalid response format from server",
+              }))
+              return
+            }
 
             setState((prev) => ({
               ...prev,
-              admins: adminsList,
-              totalAdminsPages: Math.ceil(adminsList.length / 10) || 1,
+              admins: adminsResponse.admins,
+              totalAdmins: adminsResponse.pagination?.total || adminsResponse.admins?.length || 0, // Ajoutez cette ligne
+              totalAdminsPages: adminsResponse.pagination?.pages || 1,
               loading: false,
             }))
           } catch (err) {
@@ -253,7 +379,6 @@ export default function AdminPage() {
             }))
           }
         }
-
         if (state.activeTab === "api" || state.activeTab === "ia") {
           setState((prev) => ({ ...prev, loading: false }))
         }
@@ -274,7 +399,6 @@ export default function AdminPage() {
     state.currentJobsPage,
     state.currentAdminsPage,
     debouncedUsersSearch,
-    debouncedJobsSearch,
     debouncedAdminsSearch,
   ])
 
@@ -295,7 +419,6 @@ export default function AdminPage() {
   const handleUserAction = async (action, userId) => {
     try {
       if (action === "delete") {
-        // Find the user to delete for the confirmation dialog
         const userToDelete = state.users.find((user) => user._id === userId)
         setState((prev) => ({
           ...prev,
@@ -380,7 +503,7 @@ export default function AdminPage() {
         firstName: admin.firstName || "",
         lastName: admin.lastName || "",
         email: admin.email || "",
-        password: "", // Don't populate password for security
+        password: "",
         age: admin.age || "",
         role: admin.role || "admin",
       },
@@ -428,7 +551,6 @@ export default function AdminPage() {
         }))
       } else {
         const { _id, ...updateData } = state.adminFormData
-        // Only include password if it was changed
         if (!updateData.password) {
           delete updateData.password
         }
@@ -445,17 +567,11 @@ export default function AdminPage() {
   }
 
   // Search Functions
-  const handleJobsSearch = (e) => {
-    setState((prev) => ({
-      ...prev,
-      jobsSearchQuery: e.target.value,
-    }))
-  }
-
   const handleUsersSearch = (e) => {
     setState((prev) => ({
       ...prev,
       usersSearchQuery: e.target.value,
+      currentUsersPage: 1,
     }))
   }
 
@@ -463,30 +579,23 @@ export default function AdminPage() {
     setState((prev) => ({
       ...prev,
       adminsSearchQuery: e.target.value,
-    }))
-  }
-
-  const handleJobsSearchSubmit = (e) => {
-    e.preventDefault()
-    setState((prev) => ({
-      ...prev,
-      currentJobsPage: 1, // Reset to page 1 when submitting search
+      currentAdminsPage: 1,
     }))
   }
 
   const handleUsersSearchSubmit = (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
     setState((prev) => ({
       ...prev,
-      currentUsersPage: 1, // Reset to page 1 when submitting search
+      currentUsersPage: 1,
     }))
   }
 
   const handleAdminsSearchSubmit = (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
     setState((prev) => ({
       ...prev,
-      currentAdminsPage: 1, // Reset to page 1 when submitting search
+      currentAdminsPage: 1,
     }))
   }
 
@@ -553,9 +662,6 @@ export default function AdminPage() {
           <TabsContent value="jobs">
             <DashboardSection
               title="Job Management"
-              searchValue={state.jobsSearchQuery}
-              onSearch={handleJobsSearch}
-              onSearchSubmit={handleJobsSearchSubmit}
               pagination={{
                 current: state.currentJobsPage,
                 total: state.totalJobsPages,
@@ -582,7 +688,6 @@ export default function AdminPage() {
               title="User Management"
               searchValue={state.usersSearchQuery}
               onSearch={handleUsersSearch}
-              onSearchSubmit={handleUsersSearchSubmit}
               pagination={{
                 current: state.currentUsersPage,
                 total: state.totalUsersPages,
@@ -613,7 +718,6 @@ export default function AdminPage() {
               }
               searchValue={state.adminsSearchQuery}
               onSearch={handleAdminsSearch}
-              onSearchSubmit={handleAdminsSearchSubmit}
               pagination={{
                 current: state.currentAdminsPage,
                 total: state.totalAdminsPages,
@@ -886,7 +990,17 @@ function DashboardSection({ title, children, searchValue, onSearch, pagination, 
         {onSearch && (
           <div className="relative w-full md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input placeholder="Search..." className="pl-9 w-full" value={searchValue} onChange={onSearch} />
+            <Input
+              placeholder="Search..."
+              className="pl-9 w-full"
+              value={searchValue}
+              onChange={onSearch}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                }
+              }}
+            />
           </div>
         )}
       </div>
@@ -915,93 +1029,6 @@ function DashboardSection({ title, children, searchValue, onSearch, pagination, 
           </div>
         </div>
       )}
-    </div>
-  )
-}
-function JobsTable({ jobs, onDelete }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salary</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Posted</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {jobs.length > 0 ? (
-            jobs.map((job) => (
-              <tr key={job.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="text-sm font-medium text-gray-900">{job.title}</div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{job.company}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{job.location}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {job.salary
-                      ? new Intl.NumberFormat("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                        }).format(job.salary)
-                      : "Not specified"}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {job.created ? new Date(job.created).toLocaleDateString() : "Unknown"}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      job.source === "Adzuna" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
-                    }`}
-                  >
-                    {job.source}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onDelete(job.id)}
-                          className="text-red-600 hover:text-red-900 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Delete job</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                No jobs found
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
     </div>
   )
 }
@@ -1114,7 +1141,6 @@ function AdminsTable({ admins, onEdit, onDelete }) {
         <tbody className="bg-white divide-y divide-gray-200">
           {admins && admins.length > 0 ? (
             admins.map((admin) => {
-              // Skip rendering if admin is undefined
               if (!admin) return null
 
               return (
@@ -1239,4 +1265,3 @@ function AIConfigForm({ config, onChange, onSubmit }) {
     </form>
   )
 }
-
