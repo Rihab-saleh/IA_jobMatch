@@ -14,6 +14,7 @@ async function testEmail() {
       console.error('❌ Email configuration is invalid');
     }
 
+
     console.log('Sending test email...');
     const result = await sendNotificationEmail(
       'rihebbensaleh@gmail.com',
