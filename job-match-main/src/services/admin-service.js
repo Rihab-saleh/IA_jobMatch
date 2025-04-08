@@ -1,73 +1,80 @@
-// src/services/admin-service.js
-import { api } from "./api";
+import { api } from "./api"
 
 export const adminService = {
   // Authentification
   checkAdminAuth() {
-    return api.get("/admin/check");
+    return api.get("/admin/check")
   },
 
   // Gestion utilisateurs
   getAccountStatusRequests() {
-    return api.get("/admin/account-requests");
+    return api.get("/admin/account-requests")
   },
 
   getUserAccountStatusRequests(userId) {
-    return api.get(`/admin/account-requests/${userId}`);
+    return api.get(`/admin/account-requests/${userId}`)
   },
 
   deleteUser(userId) {
-    return api.delete(`/admin/user/delete/${userId}`);
+    return api.delete(`/admin/user/delete/${userId}`)
   },
 
   toggleUserStatus(userId) {
-    return api.put(`/admin/user/toggleStatus/${userId}`);
+    return api.put(`/admin/user/toggleStatus/${userId}`)
   },
 
   getAllUsers({ page = 1, limit = 10, search = "" } = {}) {
-    return api.get("/admin/users", { 
-      params: { page, limit, search }
-    });
+    const encodedSearch = encodeURIComponent(search)
+    return api.get("/admin/users", {
+      params: { page, limit, search: encodedSearch },
+    })
   },
 
   // Gestion administrateurs
   createAdmin(adminData) {
-    return api.post("/admin", adminData);
+    return api.post("/admin", adminData)
   },
 
-  getAllAdmins(page = 1, limit = 10, search = "") {
-    return api.get("/admin", { 
-      params: { page, limit, search }
-    });
+  getAllAdmins(params = {}) {
+    const { page = 1, limit = 10, search = "" } = params
+    const encodedSearch = encodeURIComponent(search)
+    console.log("Calling getAllAdmins with params:", { page, limit, search: encodedSearch })
+    return api.get("/admin", {
+      params: { page, limit, search: encodedSearch },
+    })
   },
 
-  getAdminById(adminId) {
-    return api.get(`/admin/${adminId}`);
+  getAdminById(id) {
+    return api.get(`/admin/${id}`)
   },
 
   updateAdmin(adminId, adminData) {
-    return api.put(`/admin/${adminId}`, adminData);
+    return api.put(`/admin/${adminId}`, adminData)
   },
 
   deleteAdmin(adminId) {
-    return api.delete(`/admin/${adminId}`);
+    return api.delete(`/admin/${adminId}`)
   },
 
   // Configuration IA
   configureAI(configData) {
-    return api.post("/admin/ai/configure", configData);
+    return api.post("/admin/ai/configure", configData)
   },
 
-  // Gestion des jobs
-  getAllJobs() {
-    return api.get('/jobs'); 
-  },
-  getAllScrapedJobs(params) {
-    return api.get("/jobs/scraped/all", { params })
+  getAllScrapedJobs(params = {}) {
+    const { page = 1, limit = 10, search = "" } = params
+    const encodedSearch = encodeURIComponent(search)
+    return api.get("/jobs/scraped/all", {
+      params: { page, limit, search: encodedSearch },
+    })
   },
 
-  getAllExternalJobs(params) {
-    return api.get("/jobs/external/all", { params })
+  getAllExternalJobs(params = {}) {
+    const { page = 1, limit = 10, search = "" } = params
+    const encodedSearch = encodeURIComponent(search)
+    return api.get("/jobs/external/all", {
+      params: { page, limit, search: encodedSearch },
+    })
   },
-  
-};
+}
+

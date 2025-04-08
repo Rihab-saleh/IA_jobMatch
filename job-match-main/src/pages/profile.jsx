@@ -42,6 +42,9 @@ function ProfilePage() {
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
 
+  // Ajout de la constante pour l'URL de base de l'API
+  const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000"
+
   const [state, setState] = useState({
     loading: true,
     saving: false,
@@ -81,6 +84,16 @@ function ProfilePage() {
 
   const [completionPercentage, setCompletionPercentage] = useState(0)
   const [activeTab, setActiveTab] = useState("personal")
+  const validatePhoneNumber = (phoneNumber) => {
+    // Skip validation if empty
+    if (!phoneNumber) return true
+
+    // Remove any non-digit characters (spaces, dashes, parentheses, etc.)
+    const digitsOnly = phoneNumber.replace(/\D/g, "")
+
+    // Check if the phone number has at least 8 digits
+    return /^[0-9]{8,}$/.test(digitsOnly)
+  }
 
   const calculateProfileCompletion = () => {
     let total = 0
@@ -175,7 +188,7 @@ function ProfilePage() {
           firstName: profile.user.person.firstName || "",
           lastName: profile.user.person.lastName || "",
           email: profile.user.person.email || "",
-          phone: profile.user.person.phoneNumber || "",
+          phone: profile.user.person.phoneNumber || "", // Ensure this is correctly mapped
           location: profile.profile.location || "",
           jobTitle: profile.profile.jobTitle || "",
           bio: profile.profile.bio || "",
@@ -184,7 +197,7 @@ function ProfilePage() {
           firstName: profile.user.person.firstName || "",
           lastName: profile.user.person.lastName || "",
           email: profile.user.person.email || "",
-          phone: profile.user.person.phoneNumber || "",
+          phone: profile.user.person.phoneNumber || "", // Ensure this is correctly mapped
           location: profile.profile.location || "",
           jobTitle: profile.profile.jobTitle || "",
           bio: profile.profile.bio || "",
@@ -345,6 +358,11 @@ function ProfilePage() {
       reader.readAsDataURL(file)
 
       const response = await userService.uploadProfilePicture(user._id, file)
+
+      // Ajout des logs de débogage
+      console.log("URL de l'image de profil:", response.profilePicture?.url)
+      console.log("URL complète:", `${apiBaseUrl}${response.profilePicture?.url}`)
+
       setState((prev) => ({
         ...prev,
         profilePicture: response.profilePicture?.url || null,
@@ -367,20 +385,41 @@ function ProfilePage() {
       return
     }
 
+    // Validate phone number before saving
+    if (state.profileData.phone && !validatePhoneNumber(state.profileData.phone)) {
+      toast.error("Phone number must be between 10-15 digits. Please include country code if needed.")
+      return
+    }
+
     setState((prev) => ({ ...prev, saving: true }))
     try {
+      // Format phone number to remove any non-digit characters
+      const formattedPhone = state.profileData.phone ? state.profileData.phone.replace(/\D/g, "") : ""
+
       await userService.updateUserProfile(user._id, {
         ...state.profileData,
-        phoneNumber: state.profileData.phone,
+        phoneNumber: formattedPhone,
       })
-      
+
+      // Update phone number separately using the dedicated endpoint
+      if (formattedPhone !== state.savedProfileData.phone) {
+        await userService.updatePhoneNumber(user._id, { phoneNumber: formattedPhone })
+      }
+
       // Update savedProfileData with the current profileData
       setState((prev) => ({
         ...prev,
-        savedProfileData: { ...prev.profileData },
+        savedProfileData: {
+          ...prev.profileData,
+          phone: formattedPhone,
+        },
+        profileData: {
+          ...prev.profileData,
+          phone: formattedPhone,
+        },
         saving: false,
       }))
-      
+
       toast.success("Profile updated successfully")
     } catch (error) {
       if (error.message === "Unauthorized") {
@@ -420,14 +459,36 @@ function ProfilePage() {
 
     const formData = new FormData(e.target)
     const isCurrent = formData.get("current") === "on"
-    const farFutureDate = "2099-12-31"
+    const startDate = formData.get("startDate")
+    const endDate = formData.get("endDate")
+
+    // Date validation
+    const today = new Date().toISOString().split("T")[0]
+
+    // Check if start date is in the future
+    if (startDate > today) {
+      toast.error("Start date cannot be in the future")
+      return
+    }
+
+    // Check if end date is before start date
+    if (!isCurrent && endDate && endDate < startDate) {
+      toast.error("End date cannot be before start date")
+      return
+    }
+
+    // Check if end date is in the future
+    if (!isCurrent && endDate && endDate > today) {
+      toast.error("End date cannot be in the future")
+      return
+    }
 
     const data = {
       company: formData.get("company"),
       jobTitle: formData.get("jobTitle"),
       location: formData.get("location"),
-      startDate: formData.get("startDate"),
-      endDate: isCurrent ? farFutureDate : formData.get("endDate") || farFutureDate,
+      startDate: startDate,
+      endDate: isCurrent ? null : endDate || null, // Use null for current positions instead of 2099-12-31
       description: formData.get("description"),
       current: isCurrent,
     }
@@ -466,9 +527,31 @@ function ProfilePage() {
 
     const formData = new FormData(e.target)
     const isCurrent = formData.get("current") === "on"
-    const farFutureDate = "2099-12-31"
+    const startDate = formData.get("startDate")
+    const endDate = formData.get("endDate")
     const schoolName = formData.get("institution")
     const degreeName = formData.get("degree")
+
+    // Date validation
+    const today = new Date().toISOString().split("T")[0]
+
+    // Check if start date is in the future
+    if (startDate > today) {
+      toast.error("Start date cannot be in the future")
+      return
+    }
+
+    // Check if end date is before start date
+    if (!isCurrent && endDate && endDate < startDate) {
+      toast.error("End date cannot be before start date")
+      return
+    }
+
+    // Check if end date is in the future
+    if (!isCurrent && endDate && endDate > today) {
+      toast.error("End date cannot be in the future")
+      return
+    }
 
     if (!state.currentItem) {
       const existingFormation = state.formations.find(
@@ -483,11 +566,11 @@ function ProfilePage() {
     }
 
     const data = {
-      school: formData.get("institution"),
-      degree: formData.get("degree"),
+      school: schoolName,
+      degree: degreeName,
       fieldOfStudy: formData.get("fieldOfStudy"),
-      startDate: formData.get("startDate"),
-      endDate: isCurrent ? farFutureDate : formData.get("endDate") || farFutureDate,
+      startDate: startDate,
+      endDate: isCurrent ? null : endDate || null, // Use null for current education instead of 2099-12-31
       description: formData.get("description"),
       current: isCurrent,
     }
@@ -655,7 +738,7 @@ function ProfilePage() {
 
   const formatDate = (dateString) => {
     if (!dateString) return "Present"
-    if (dateString.includes("2099")) return "Present"
+    // Remove the check for 2099 and rely on the "current" flag instead
     const date = new Date(dateString)
     return date.toLocaleDateString("en-US", { year: "numeric", month: "short" })
   }
@@ -704,8 +787,6 @@ function ProfilePage() {
     return (
       <div className="container mx-auto px-4 py-8 flex flex-col items-center justify-center min-h-[60vh]">
         <div className="text-center max-w-md">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Loading Error</h2>
-          <p className="text-gray-600 mb-6">{state.error}</p>
           <Button onClick={() => window.location.reload()} className="bg-purple-700 hover:bg-purple-800">
             <RefreshCw className="mr-2 h-4 w-4" />
             Try Again
@@ -731,7 +812,7 @@ function ProfilePage() {
               <div className="relative">
                 {state.profilePicture ? (
                   <img
-                    src={state.profilePicture || "/placeholder.svg"}
+                    src={`${apiBaseUrl}${state.profilePicture}`}
                     alt="Profile"
                     className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
                   />
@@ -752,7 +833,9 @@ function ProfilePage() {
                 <h2 className="font-bold text-gray-900">
                   {state.savedProfileData.firstName || "Your"} {state.savedProfileData.lastName || "Name"}
                 </h2>
-                {state.savedProfileData.jobTitle && <p className="text-gray-600 text-sm">{state.savedProfileData.jobTitle}</p>}
+                {state.savedProfileData.jobTitle && (
+                  <p className="text-gray-600 text-sm">{state.savedProfileData.jobTitle}</p>
+                )}
                 <div className="flex items-center mt-1">
                   <span className="text-xs font-medium text-gray-700 mr-2">Profile: {completionPercentage}%</span>
                   <div className="h-1.5 w-24 bg-gray-100 rounded-full overflow-hidden">
@@ -790,7 +873,7 @@ function ProfilePage() {
                   <div className="relative mb-4">
                     {state.profilePicture ? (
                       <img
-                        src={state.profilePicture || "/placeholder.svg"}
+                        src={`${apiBaseUrl}${state.profilePicture}`}
                         alt="Profile"
                         className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md"
                       />
@@ -1670,26 +1753,36 @@ function ProfilePage() {
                       <Switch
                         id="current"
                         name="current"
-                        defaultChecked={!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31"}
+                        defaultChecked={!state.currentItem?.endDate || state.currentItem?.endDate === null}
                         className="data-[state=checked]:bg-green-500"
                         onChange={(e) => {
                           const endDateField = document.getElementById("endDate")
                           const endDateLabel = document.querySelector('label[for="endDate"]')
+                          const currentLabel = document.querySelector('label[for="current"]')
+
                           if (endDateField && endDateLabel) {
                             if (e.target.checked) {
                               endDateField.disabled = true
                               endDateField.value = ""
                               endDateLabel.parentElement.classList.add("opacity-50")
+                              if (currentLabel) {
+                                currentLabel.innerHTML =
+                                  'Yes <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">Current</span>'
+                              }
                             } else {
                               endDateField.disabled = false
+                              endDateField.value = new Date().toISOString().split("T")[0] // Set to today's date
                               endDateLabel.parentElement.classList.remove("opacity-50")
+                              if (currentLabel) {
+                                currentLabel.textContent = "No"
+                              }
                             }
                           }
                         }}
                       />
                       <Label htmlFor="current" className="text-gray-600 flex items-center">
-                        <span>Yes</span>
-                        {(!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31") && (
+                        {!state.currentItem?.endDate || state.currentItem?.endDate === null ? "Yes" : "No"}
+                        {(!state.currentItem?.endDate || state.currentItem?.endDate === null) && (
                           <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
                             Current
                           </span>
@@ -1725,12 +1818,12 @@ function ProfilePage() {
                       name="endDate"
                       type="date"
                       defaultValue={
-                        state.currentItem?.endDate && state.currentItem?.endDate !== "2099-12-31"
+                        state.currentItem?.endDate && state.currentItem?.endDate !== null
                           ? new Date(state.currentItem.endDate).toISOString().split("T")[0]
                           : ""
                       }
                       className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                      disabled={!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31"}
+                      disabled={!state.currentItem?.endDate || state.currentItem?.endDate === null}
                     />
                   </div>
                 </div>
@@ -1836,26 +1929,36 @@ function ProfilePage() {
                       <Switch
                         id="currentEducation"
                         name="current"
-                        defaultChecked={!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31"}
+                        defaultChecked={!state.currentItem?.endDate || state.currentItem?.endDate === null}
                         className="data-[state=checked]:bg-green-500"
                         onChange={(e) => {
                           const endDateField = document.getElementById("educationEndDate")
                           const endDateLabel = document.querySelector('label[for="educationEndDate"]')
+                          const currentLabel = document.querySelector('label[for="currentEducation"]')
+
                           if (endDateField && endDateLabel) {
                             if (e.target.checked) {
                               endDateField.disabled = true
                               endDateField.value = ""
                               endDateLabel.parentElement.classList.add("opacity-50")
+                              if (currentLabel) {
+                                currentLabel.innerHTML =
+                                  'Yes <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">Current</span>'
+                              }
                             } else {
                               endDateField.disabled = false
+                              endDateField.value = new Date().toISOString().split("T")[0] // Set to today's date
                               endDateLabel.parentElement.classList.remove("opacity-50")
+                              if (currentLabel) {
+                                currentLabel.textContent = "No"
+                              }
                             }
                           }
                         }}
                       />
                       <Label htmlFor="currentEducation" className="text-gray-600 flex items-center">
-                        <span>Yes</span>
-                        {(!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31") && (
+                        {!state.currentItem?.endDate || state.currentItem?.endDate === null ? "Yes" : "No"}
+                        {(!state.currentItem?.endDate || state.currentItem?.endDate === null) && (
                           <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
                             Current
                           </span>
@@ -1873,12 +1976,12 @@ function ProfilePage() {
                     name="endDate"
                     type="date"
                     defaultValue={
-                      state.currentItem?.endDate && state.currentItem?.endDate !== "2099-12-31"
+                      state.currentItem?.endDate && state.currentItem?.endDate !== null
                         ? new Date(state.currentItem.endDate).toISOString().split("T")[0]
                         : ""
                     }
                     className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                    disabled={!state.currentItem?.endDate || state.currentItem?.endDate === "2099-12-31"}
+                    disabled={!state.currentItem?.endDate || state.currentItem?.endDate === null}
                   />
                 </div>
                 <div className="space-y-2">
@@ -2050,23 +2153,6 @@ function ProfilePage() {
                   <Select name="level" defaultValue={state.currentItem?.level || "Intermediate"}>
                     <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
                       <SelectValue placeholder="Select proficiency level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Native">Native</SelectItem>
-                      <SelectItem value="Fluent">Fluent</SelectItem>
-                      <SelectItem value="Advanced">Advanced</SelectItem>
-                      <SelectItem value="Intermediate">Intermediate</SelectItem>
-                      <SelectItem value="Basic">Basic</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="proficiency" className="text-gray-700">
-                    Display Proficiency As
-                  </Label>
-                  <Select name="proficiency" defaultValue={state.currentItem?.proficiency || "Intermediate"}>
-                    <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
-                      <SelectValue placeholder="Select display proficiency" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Native">Native</SelectItem>

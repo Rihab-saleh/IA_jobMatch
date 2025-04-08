@@ -214,79 +214,102 @@ class AdminService {
     }
   }
 
-  // Admin Service - getAllAdmins method correction
-  async getAllAdmins(page = 1, limit = 10, search = "") {
-    try {
-      const skip = (page - 1) * limit;
-
-      // Build search query if search parameter is provided
-      let searchQuery = {};
-      if (search) {
-        searchQuery = {
+// In adminService.js - replace the current getAllAdmins method with this:
+async getAllAdmins(page = 1, limit = 10, search = "") {
+  try {
+    const skip = (page - 1) * limit;
+    
+    // Use aggregation to properly filter with search
+    const admins = await Admin.aggregate([
+      {
+        $lookup: {
+          from: 'people', // Assuming your Person collection is named 'people'
+          localField: 'person',
+          foreignField: '_id',
+          as: 'personData'
+        }
+      },
+      {
+        $unwind: {
+          path: '$personData',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $match: search ? {
           $or: [
-            { 'person.firstName': { $regex: search, $options: 'i' } },
-            { 'person.lastName': { $regex: search, $options: 'i' } },
-            { 'person.email': { $regex: search, $options: 'i' } }
+            { 'personData.firstName': { $regex: search, $options: 'i' } },
+            { 'personData.lastName': { $regex: search, $options: 'i' } },
+            { 'personData.email': { $regex: search, $options: 'i' } }
           ]
-        };
+        } : {}
+      },
+      {
+        $skip: skip
+      },
+      {
+        $limit: limit
+      },
+      {
+        $project: {
+          _id: 1,
+          firstName: '$personData.firstName',
+          lastName: '$personData.lastName',
+          email: '$personData.email',
+          phoneNumber: '$personData.phoneNumber',
+          role: '$personData.role',
+          isActive: '$personData.isActive',
+          createdAt: 1
+        }
       }
+    ]);
 
-      // Find all admin records and populate person data
-      const adminRecords = await Admin.find()
-        .skip(skip)
-        .limit(limit)
-        .populate({
-          path: "person",
-          select: "-password",
-          match: search ? {
-            $or: [
-              { firstName: { $regex: search, $options: 'i' } },
-              { lastName: { $regex: search, $options: 'i' } },
-              { email: { $regex: search, $options: 'i' } }
-            ]
-          } : {}
-        })
-        .lean();
+    // Count total admins matching the search criteria
+    const totalAdmins = await Admin.aggregate([
+      {
+        $lookup: {
+          from: 'people',
+          localField: 'person',
+          foreignField: '_id',
+          as: 'personData'
+        }
+      },
+      {
+        $unwind: {
+          path: '$personData',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $match: search ? {
+          $or: [
+            { 'personData.firstName': { $regex: search, $options: 'i' } },
+            { 'personData.lastName': { $regex: search, $options: 'i' } },
+            { 'personData.email': { $regex: search, $options: 'i' } }
+          ]
+        } : {}
+      },
+      {
+        $count: 'total'
+      }
+    ]);
 
-      // Extract person data and add _id field for frontend compatibility
-      const admins = adminRecords
-        .filter(record => record.person) // Filter out records where person is null (due to search)
-        .map((record) => {
-          return {
-            ...record.person,
-            _id: record.person._id, // Ensure _id is explicitly included
-            adminId: record._id // Include the admin record ID if needed
-          };
-        });
+    const total = totalAdmins.length > 0 ? totalAdmins[0].total : 0;
 
-      // Count total admins that match the search criteria
-      const totalAdmins = search 
-        ? (await Admin.find().populate({
-            path: "person",
-            match: {
-              $or: [
-                { firstName: { $regex: search, $options: 'i' } },
-                { lastName: { $regex: search, $options: 'i' } },
-                { email: { $regex: search, $options: 'i' } }
-              ]
-            }
-          })).filter(admin => admin.person).length
-        : await Admin.countDocuments();
-
-      return {
-        admins,
-        pagination: {
-          total: totalAdmins,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          pages: Math.ceil(totalAdmins / limit),
-        },
-      };
-    } catch (err) {
-      console.error("Error in getAllAdmins:", err);
-      throw new Error(err.message);
-    }
+    return {
+      admins,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / limit),
+      },
+    };
+  } catch (err) {
+    console.error("Error in getAllAdmins:", err);
+    throw new Error(err.message);
   }
+}
 
   async getAdminById(adminId) {
     try {

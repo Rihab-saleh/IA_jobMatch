@@ -674,76 +674,76 @@ export default function CVBuilderPage() {
   }
 
   const generatePDF = async () => {
-    if (!resumeRef.current) return
-
+    if (!resumeRef.current) {
+      toast.error("No resume content found");
+      return;
+    }
+  
     try {
-      setGeneratingPdf(true)
-
-      const tempDiv = document.createElement("div")
-      tempDiv.style.width = "100%"
-      tempDiv.style.padding = "20px"
-      tempDiv.style.backgroundColor = "white"
-
-      const resumeContent = resumeRef.current.cloneNode(true)
-      resumeContent.style.transform = "none"
-      resumeContent.style.height = "auto"
-      resumeContent.style.width = "100%"
-
-      tempDiv.appendChild(resumeContent)
-      document.body.appendChild(tempDiv)
-
+      setGeneratingPdf(true);
+      
+      // Créer un clone profond du contenu
+      const element = resumeRef.current.cloneNode(true);
+      
+      // Appliquer les styles nécessaires pour le PDF
+      element.style.width = "210mm"; // Largeur A4
+      element.style.minHeight = "297mm"; // Hauteur A4
+      element.style.padding = "0";
+      element.style.margin = "0";
+      element.style.boxSizing = "border-box";
+      
+      // Créer un conteneur pour le PDF
+      const container = document.createElement("div");
+      container.style.position = "fixed";
+      container.style.left = "-9999px";
+      container.style.top = "0";
+      container.appendChild(element);
+      document.body.appendChild(container);
+  
+      // Options pour html2pdf
       const opt = {
-        margin: [10, 10, 10, 10],
+        margin: 10,
         filename: `${personalInfo.firstName}_${personalInfo.lastName}_Resume.pdf`,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
+        html2canvas: { 
           scale: 2,
-          useCORS: true,
           logging: false,
-          backgroundColor: "#FFFFFF",
+          useCORS: true,
+          letterRendering: true,
         },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      }
-
-      await html2pdf().set(opt).from(tempDiv).save()
-
-      document.body.removeChild(tempDiv)
-      toast.success("Resume downloaded successfully")
+        jsPDF: { 
+          unit: "mm", 
+          format: "a4", 
+          orientation: "portrait" 
+        },
+      };
+  
+      // Générer le PDF
+      await html2pdf()
+        .set(opt)
+        .from(element)
+        .save()
+        .then(() => {
+          toast.success("Resume downloaded successfully");
+        })
+        .catch((error) => {
+          console.error("PDF generation error:", error);
+          toast.error("Failed to generate PDF");
+        })
+        .finally(() => {
+          // Nettoyer le DOM
+          if (container.parentNode) {
+            document.body.removeChild(container);
+          }
+          setGeneratingPdf(false);
+        });
+  
     } catch (error) {
-      console.error("Error generating PDF:", error)
-      toast.error("Failed to generate PDF")
-    } finally {
-      setGeneratingPdf(false)
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF");
+      setGeneratingPdf(false);
     }
-  }
-
-  if (authLoading || loading) {
-    return (
-      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center">
-          <Loader2 className="h-12 w-12 animate-spin text-purple-700 mb-4" />
-          <p className="text-lg text-gray-600">Loading your CV data...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!user && !authLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8 flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="text-center max-w-md">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Unauthorized Access</h2>
-          <p className="text-gray-600 mb-6">You must be logged in to access the CV Builder.</p>
-          <Button
-            onClick={() => navigate("/login", { state: { from: "/cv-builder" } })}
-            className="bg-purple-700 hover:bg-purple-800 text-white"
-          >
-            Log In
-          </Button>
-        </div>
-      </div>
-    )
-  }
+  };
 
   if (previewMode) {
     return (
