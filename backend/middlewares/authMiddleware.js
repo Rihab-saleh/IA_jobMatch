@@ -3,6 +3,7 @@ const dotenv = require("dotenv");
 const User = require("../models/user_model");
 const Admin = require("../models/admin_model");
 const Person = require("../models/person_model");
+const e = require("express");
 
 dotenv.config();
 const SECRET_KEY = process.env.JWT_SECRET || "your_secret_key";
@@ -93,32 +94,26 @@ const authMiddleware = async (req, res, next) => {
 
   // Check if the header follows the Bearer token format
   if (!authHeader.startsWith("Bearer ")) {
-    console.log(
-      "Auth Middleware: Invalid Authorization format, expected 'Bearer token'"
-    );
+    console.log("Auth Middleware: Invalid Authorization format");
     return res.status(401).json({ error: "Invalid token format" });
   }
 
   const token = authHeader.replace("Bearer ", "");
 
-  // Verify token structure (should have 3 parts separated by dots)
+  // Verify token structure
   const tokenParts = token.split(".");
   if (tokenParts.length !== 3) {
-    console.log("Auth Middleware: Invalid token structure, expected 3 parts");
+    console.log("Auth Middleware: Invalid token structure");
     return res.status(401).json({ error: "Invalid token structure" });
   }
 
   try {
     console.log("Auth Middleware: Verifying token");
     const decoded = jwt.verify(token, SECRET_KEY);
-    console.log(
-      "Auth Middleware: Decoded token:",
-      JSON.stringify(decoded, null, 2)
-    );
+    console.log("Auth Middleware: Decoded token:", decoded);
 
-    // Check if the token contains a user ID (could be either id or userId)
+    // Check if the token contains a user ID
     const userId = decoded.id || decoded.userId;
-
     if (!userId) {
       console.log("Auth Middleware: Token does not contain user ID");
       return res.status(401).json({ error: "Invalid token structure" });
@@ -130,11 +125,8 @@ const authMiddleware = async (req, res, next) => {
     const user = await User.findById(userId);
     let personData = null;
 
-    // If found in User model, get the associated Person data
     if (user) {
-      console.log(
-        "Auth Middleware: User found in User model, getting Person data"
-      );
+      console.log("Auth Middleware: User found in User model");
       personData = await Person.findById(user.person).select("-password");
 
       if (!personData) {
@@ -142,50 +134,31 @@ const authMiddleware = async (req, res, next) => {
         return res.status(401).json({ error: "User data incomplete" });
       }
 
-      // Set user object with necessary data
       req.user = {
-        _id: userId, // Use the ID from the token directly
+        _id: userId,
         person: personData._id,
+        email: personData.email,
+        fullName: `${personData.firstName} ${personData.lastName}`,
         role: personData.role,
       };
     } else {
-      // If not found in User model, check in Admin model
       const admin = await Admin.findById(userId);
       if (admin) {
         console.log("Auth Middleware: User found in Admin model");
         req.user = {
-          _id: userId, // Use the ID from the token directly
+          _id: userId,
           role: "admin",
         };
       } else {
-        // If not found in User or Admin model, check in Person model (for other users)
-        console.log(
-          "Auth Middleware: User not found in User or Admin model, checking Person model"
-        );
-        personData = await Person.findById(userId).select("-password");
-
-        if (!personData) {
-          console.log("Auth Middleware: User not found in any model");
-          return res.status(401).json({ error: "User not found" });
-        }
-
-        // Set user object with necessary data
-        req.user = {
-          _id: userId, // Use the ID from the token directly
-          role: personData.role,
-        };
+        console.log("Auth Middleware: User not found in User or Admin model");
+        return res.status(401).json({ error: "User not found" });
       }
     }
 
-    console.log(
-      "Auth Middleware: User authenticated",
-      req.user._id,
-      "Role:",
-      req.user.role
-    );
+    console.log("Auth Middleware: User authenticated:", req.user);
     next();
   } catch (err) {
-    console.log("Auth Middleware: Error", err.message);
+    console.log("Auth Middleware: Error verifying token:", err.message);
 
     if (err.name === "TokenExpiredError") {
       return res.status(401).json({ error: "Token expired" });
