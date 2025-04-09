@@ -1,74 +1,77 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
-import { Textarea } from "../components/ui/textarea"
-import { Switch } from "../components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card"
-import { Label } from "../components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
-import { Bell, Lock, User, CreditCard, LogOut, Trash2 } from "lucide-react"
+import { useState, useEffect } from "react";
+import { Button } from "../components/ui/button";
+import { Switch } from "../components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
+import { Label } from "../components/ui/label";
+import { Bell, Lock, CreditCard, LogOut, Trash2 } from "lucide-react";
+import { notificationService } from "../services/notification-service";
 
 export default function SettingsPage() {
-  const [profileData, setProfileData] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@example.com",
-    phone: "+1 (555) 123-4567",
-    bio: "Senior Frontend Developer with 5+ years of experience in building responsive web applications.",
-    location: "New York, USA",
-    website: "https://johndoe.com",
-    github: "github.com/johndoe",
-    linkedin: "linkedin.com/in/johndoe",
-  })
-
   const [notificationSettings, setNotificationSettings] = useState({
-    emailAlerts: true,
-    jobRecommendations: true,
-    applicationUpdates: true,
-    marketingEmails: false,
-    smsAlerts: true,
-    browserNotifications: true,
-  })
+    emailAlerts: false,
+    jobRecommendations: false,
+    applicationUpdates: false,
+  });
 
   const [privacySettings, setPrivacySettings] = useState({
     profileVisibility: "public",
     showEmail: false,
     showPhone: false,
-    allowMessaging: true,
-    allowRecruiters: true,
-  })
+  });
 
-  const handleProfileChange = (e) => {
-    const { name, value } = e.target
-    setProfileData({
-      ...profileData,
-      [name]: value,
-    })
-  }
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const handleNotificationToggle = (setting) => {
-    setNotificationSettings({
-      ...notificationSettings,
-      [setting]: !notificationSettings[setting],
-    })
-  }
+  // Fetch notification settings when the component loads
+  useEffect(() => {
+    const fetchNotificationSettings = async () => {
+      try {
+        const userId = "currentUserId"; // Replace with actual user ID from auth context or state
+        const settings = await notificationService.getSettings(userId);
+        setNotificationSettings(settings);
+      } catch (error) {
+        console.error("Error fetching notification settings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handlePrivacyChange = (setting, value) => {
-    setPrivacySettings({
-      ...privacySettings,
-      [setting]: value,
-    })
-  }
+    fetchNotificationSettings();
+  }, []);
 
-  const handleSaveProfile = (e) => {
-    e.preventDefault()
-    // Here you would typically send the updated profile data to your API
-    console.log("Profile data saved:", profileData)
-    // Show success message or handle errors
-  }
+  // Handle toggling notification settings
+  const handleNotificationToggle = (key) => {
+    setNotificationSettings((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  // Handle toggling privacy settings
+  const handlePrivacyToggle = (key) => {
+    setPrivacySettings((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  // Save updated notification settings
+  const saveNotificationSettings = async () => {
+    try {
+      setSaving(true);
+      const userId = "currentUserId"; // Replace with actual user ID from auth context or state
+      await notificationService.updateSettings(userId, notificationSettings);
+      alert("Notification settings updated successfully!");
+    } catch (error) {
+      console.error("Error updating notification settings:", error);
+      alert("Failed to update notification settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -76,12 +79,8 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold mb-2">Settings</h1>
         <p className="text-gray-600 mb-8">Manage your account settings and preferences</p>
 
-        <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
-            <TabsTrigger value="profile" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              <span className="hidden sm:inline">Profile</span>
-            </TabsTrigger>
+        <Tabs defaultValue="notifications" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value="notifications" className="flex items-center gap-2">
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">Notifications</span>
@@ -96,165 +95,6 @@ export default function SettingsPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Profile Tab */}
-          <TabsContent value="profile">
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
-                <CardDescription>Update your personal information and how it appears on your profile</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSaveProfile}>
-                  <div className="space-y-6">
-                    {/* Profile Picture */}
-                    <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6">
-                      <div className="relative">
-                        <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                          <img
-                            src="/placeholder.svg?height=96&width=96"
-                            alt="Profile"
-                            width={96}
-                            height={96}
-                            className="object-cover"
-                          />
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="absolute bottom-0 right-0 rounded-full w-8 h-8 p-0"
-                        >
-                          <span className="sr-only">Change Avatar</span>
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                          </svg>
-                        </Button>
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium mb-1">Profile Picture</h3>
-                        <p className="text-sm text-gray-500 mb-3">
-                          Upload a clear, professional photo to help recruiters recognize you
-                        </p>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
-                            Upload New
-                          </Button>
-                          <Button variant="outline" size="sm" className="text-red-500">
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Name */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="firstName">First Name</Label>
-                        <Input
-                          id="firstName"
-                          name="firstName"
-                          value={profileData.firstName}
-                          onChange={handleProfileChange}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="lastName">Last Name</Label>
-                        <Input
-                          id="lastName"
-                          name="lastName"
-                          value={profileData.lastName}
-                          onChange={handleProfileChange}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Contact Information */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email Address</Label>
-                        <Input
-                          id="email"
-                          name="email"
-                          type="email"
-                          value={profileData.email}
-                          onChange={handleProfileChange}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number</Label>
-                        <Input id="phone" name="phone" value={profileData.phone} onChange={handleProfileChange} />
-                      </div>
-                    </div>
-
-                    {/* Bio */}
-                    <div className="space-y-2">
-                      <Label htmlFor="bio">Professional Bio</Label>
-                      <Textarea id="bio" name="bio" rows={4} value={profileData.bio} onChange={handleProfileChange} />
-                      <p className="text-sm text-gray-500">
-                        Write a short introduction about yourself, your skills, and experience.
-                      </p>
-                    </div>
-
-                    {/* Location */}
-                    <div className="space-y-2">
-                      <Label htmlFor="location">Location</Label>
-                      <Input
-                        id="location"
-                        name="location"
-                        value={profileData.location}
-                        onChange={handleProfileChange}
-                      />
-                    </div>
-
-                    {/* Social Links */}
-                    <div className="space-y-4">
-                      <h3 className="font-medium">Social Links</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="website">Personal Website</Label>
-                          <Input
-                            id="website"
-                            name="website"
-                            value={profileData.website}
-                            onChange={handleProfileChange}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="github">GitHub</Label>
-                          <Input id="github" name="github" value={profileData.github} onChange={handleProfileChange} />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="linkedin">LinkedIn</Label>
-                        <Input
-                          id="linkedin"
-                          name="linkedin"
-                          value={profileData.linkedin}
-                          onChange={handleProfileChange}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </form>
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                <Button variant="outline">Cancel</Button>
-                <Button className="bg-purple-700 hover:bg-purple-800" onClick={handleSaveProfile}>
-                  Save Changes
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-
           {/* Notifications Tab */}
           <TabsContent value="notifications">
             <Card>
@@ -263,100 +103,70 @@ export default function SettingsPage() {
                 <CardDescription>Manage how and when you receive notifications</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="font-medium">Email Notifications</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="emailAlerts" className="font-normal">
-                          Email Alerts
-                        </Label>
-                        <p className="text-sm text-gray-500">Receive important account notifications via email</p>
+                {loading ? (
+                  <p>Loading notification settings...</p>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      <h3 className="font-medium">Email Notifications</h3>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label htmlFor="emailAlerts" className="font-normal">
+                              Email Alerts
+                            </Label>
+                            <p className="text-sm text-gray-500">Receive important account notifications via email</p>
+                          </div>
+                          <Switch
+                            id="emailAlerts"
+                            checked={notificationSettings.emailAlerts}
+                            onCheckedChange={() => handleNotificationToggle("emailAlerts")}
+                            className="bg-gray-300 data-[state=checked]:bg-purple-700"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label htmlFor="jobRecommendations" className="font-normal">
+                              Job Recommendations
+                            </Label>
+                            <p className="text-sm text-gray-500">
+                              Receive personalized job recommendations based on your profile
+                            </p>
+                          </div>
+                          <Switch
+                            id="jobRecommendations"
+                            checked={notificationSettings.jobRecommendations}
+                            onCheckedChange={() => handleNotificationToggle("jobRecommendations")}
+                            className="bg-gray-300 data-[state=checked]:bg-purple-700"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label htmlFor="applicationUpdates" className="font-normal">
+                              Application Updates
+                            </Label>
+                            <p className="text-sm text-gray-500">Receive updates about your job applications</p>
+                          </div>
+                          <Switch
+                            id="applicationUpdates"
+                            checked={notificationSettings.applicationUpdates}
+                            onCheckedChange={() => handleNotificationToggle("applicationUpdates")}
+                            className="bg-gray-300 data-[state=checked]:bg-purple-700"
+                          />
+                        </div>
                       </div>
-                      <Switch
-                        id="emailAlerts"
-                        checked={notificationSettings.emailAlerts}
-                        onCheckedChange={() => handleNotificationToggle("emailAlerts")}
-                      />
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="jobRecommendations" className="font-normal">
-                          Job Recommendations
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Receive personalized job recommendations based on your profile
-                        </p>
-                      </div>
-                      <Switch
-                        id="jobRecommendations"
-                        checked={notificationSettings.jobRecommendations}
-                        onCheckedChange={() => handleNotificationToggle("jobRecommendations")}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="applicationUpdates" className="font-normal">
-                          Application Updates
-                        </Label>
-                        <p className="text-sm text-gray-500">Receive updates about your job applications</p>
-                      </div>
-                      <Switch
-                        id="applicationUpdates"
-                        checked={notificationSettings.applicationUpdates}
-                        onCheckedChange={() => handleNotificationToggle("applicationUpdates")}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="marketingEmails" className="font-normal">
-                          Marketing Emails
-                        </Label>
-                        <p className="text-sm text-gray-500">Receive promotional emails and newsletters</p>
-                      </div>
-                      <Switch
-                        id="marketingEmails"
-                        checked={notificationSettings.marketingEmails}
-                        onCheckedChange={() => handleNotificationToggle("marketingEmails")}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="font-medium">Other Notifications</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="smsAlerts" className="font-normal">
-                          SMS Alerts
-                        </Label>
-                        <p className="text-sm text-gray-500">Receive important notifications via SMS</p>
-                      </div>
-                      <Switch
-                        id="smsAlerts"
-                        checked={notificationSettings.smsAlerts}
-                        onCheckedChange={() => handleNotificationToggle("smsAlerts")}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="browserNotifications" className="font-normal">
-                          Browser Notifications
-                        </Label>
-                        <p className="text-sm text-gray-500">Receive notifications in your browser</p>
-                      </div>
-                      <Switch
-                        id="browserNotifications"
-                        checked={notificationSettings.browserNotifications}
-                        onCheckedChange={() => handleNotificationToggle("browserNotifications")}
-                      />
-                    </div>
-                  </div>
-                </div>
+                  </>
+                )}
               </CardContent>
               <CardFooter>
-                <Button className="bg-purple-700 hover:bg-purple-800">Save Preferences</Button>
+                <Button
+                  className="bg-purple-700 hover:bg-purple-800"
+                  onClick={saveNotificationSettings}
+                  disabled={saving}
+                >
+                  {saving ? "Saving..." : "Save Preferences"}
+                </Button>
               </CardFooter>
             </Card>
           </TabsContent>
@@ -373,22 +183,23 @@ export default function SettingsPage() {
                   <h3 className="font-medium">Profile Visibility</h3>
                   <div className="space-y-2">
                     <Label htmlFor="profileVisibility">Who can see your profile</Label>
-                    <Select
+                    <select
+                      id="profileVisibility"
+                      className="w-full border rounded-md p-2"
                       value={privacySettings.profileVisibility}
-                      onValueChange={(value) => handlePrivacyChange("profileVisibility", value)}
+                      onChange={(e) =>
+                        setPrivacySettings((prev) => ({
+                          ...prev,
+                          profileVisibility: e.target.value,
+                        }))
+                      }
                     >
-                      <SelectTrigger id="profileVisibility">
-                        <SelectValue placeholder="Select visibility" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="public">Public - Anyone can view</SelectItem>
-                        <SelectItem value="recruiters">Recruiters Only</SelectItem>
-                        <SelectItem value="private">Private - Only you can view</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <option value="public">Public - Anyone can view</option>
+                      <option value="recruiters">Recruiters Only</option>
+                      <option value="private">Private - Only you can view</option>
+                    </select>
                   </div>
                 </div>
-
                 <div className="space-y-4">
                   <h3 className="font-medium">Contact Information</h3>
                   <div className="space-y-3">
@@ -402,7 +213,8 @@ export default function SettingsPage() {
                       <Switch
                         id="showEmail"
                         checked={privacySettings.showEmail}
-                        onCheckedChange={(checked) => handlePrivacyChange("showEmail", checked)}
+                        onCheckedChange={() => handlePrivacyToggle("showEmail")}
+                        className="bg-gray-300 data-[state=checked]:bg-purple-700"
                       />
                     </div>
                     <div className="flex items-center justify-between">
@@ -415,47 +227,13 @@ export default function SettingsPage() {
                       <Switch
                         id="showPhone"
                         checked={privacySettings.showPhone}
-                        onCheckedChange={(checked) => handlePrivacyChange("showPhone", checked)}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="font-medium">Communication</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="allowMessaging" className="font-normal">
-                          Allow Messaging
-                        </Label>
-                        <p className="text-sm text-gray-500">Allow others to send you messages</p>
-                      </div>
-                      <Switch
-                        id="allowMessaging"
-                        checked={privacySettings.allowMessaging}
-                        onCheckedChange={(checked) => handlePrivacyChange("allowMessaging", checked)}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="allowRecruiters" className="font-normal">
-                          Allow Recruiters to Contact You
-                        </Label>
-                        <p className="text-sm text-gray-500">Allow recruiters to contact you about job opportunities</p>
-                      </div>
-                      <Switch
-                        id="allowRecruiters"
-                        checked={privacySettings.allowRecruiters}
-                        onCheckedChange={(checked) => handlePrivacyChange("allowRecruiters", checked)}
+                        onCheckedChange={() => handlePrivacyToggle("showPhone")}
+                        className="bg-gray-300 data-[state=checked]:bg-purple-700"
                       />
                     </div>
                   </div>
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button className="bg-purple-700 hover:bg-purple-800">Save Privacy Settings</Button>
-              </CardFooter>
             </Card>
           </TabsContent>
 
@@ -468,65 +246,16 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  <h3 className="font-medium">Account Information</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <div>
-                        <p className="font-medium">Account Type</p>
-                        <p className="text-sm text-gray-500">Free Account</p>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        Upgrade
-                      </Button>
-                    </div>
-                    <div>
-                      <p className="font-medium">Account Created</p>
-                      <p className="text-sm text-gray-500">October 15, 2023</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="font-medium">Password</h3>
-                  <div className="space-y-2">
-                    <Button variant="outline" className="w-full sm:w-auto">
-                      Change Password
+                  <h3 className="font-medium text-red-500">Danger Zone</h3>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button variant="outline" className="border-red-200 text-red-500 hover:bg-red-50">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out of All Devices
                     </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="font-medium">Language & Region</h3>
-                  <div className="space-y-2">
-                    <Label htmlFor="language">Language</Label>
-                    <Select defaultValue="en">
-                      <SelectTrigger id="language">
-                        <SelectValue placeholder="Select language" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="es">Spanish</SelectItem>
-                        <SelectItem value="fr">French</SelectItem>
-                        <SelectItem value="de">German</SelectItem>
-                        <SelectItem value="zh">Chinese</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t">
-                  <div className="space-y-4">
-                    <h3 className="font-medium text-red-500">Danger Zone</h3>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <Button variant="outline" className="border-red-200 text-red-500 hover:bg-red-50">
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Sign Out of All Devices
-                      </Button>
-                      <Button variant="outline" className="border-red-200 text-red-500 hover:bg-red-50">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Account
-                      </Button>
-                    </div>
+                    <Button variant="outline" className="border-red-200 text-red-500 hover:bg-red-50">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Account
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -535,6 +264,5 @@ export default function SettingsPage() {
         </Tabs>
       </div>
     </div>
-  )
+  );
 }
-

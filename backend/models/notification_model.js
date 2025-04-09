@@ -1,11 +1,47 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
-const notificationSchema = new mongoose.Schema({
-    content: { type: String, required: true },
-    dateCreated: { type: Date, required: true },
-    isRead: { type: Boolean, required: true, default: false },
-}, { timestamps: true });
+const notificationSettingsSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    unique: true
+  },
+  email: {
+    type: Boolean,
+    default: true
+  },
+  jobAlerts: {
+    type: Boolean,
+    default: true
+  },
+  applicationUpdates: {
+    type: Boolean,
+    default: true
+  },
+  frequency: {
+    type: String,
+    enum: ['immediately', 'daily', 'weekly'],
+    default: 'daily'
+  },
+  lastUpdated: {
+    type: Date,
+    default: Date.now
+  }
+}, {
+  timestamps: true,
+  toJSON: {
+    virtuals: true,
+    transform: (doc, ret) => {
+      delete ret._id;
+      delete ret.__v;
+      return ret;
+    }
+  }
+});
 
-const Notification = mongoose.model('Notification', notificationSchema);
+notificationSettingsSchema.index({ userId: 1 });
 
-module.exports = Notification;
+const NotificationSettings = mongoose.model('NotificationSettings', notificationSettingsSchema);
+
+export default NotificationSettings;
