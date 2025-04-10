@@ -41,7 +41,7 @@ transporter.verify((error) => {
 
 // Fonctions d'authentification
 const generateToken = (id, role, fullName, email) => {
-  return jwt.sign({ id, role, fullName, email }, SECRET_KEY, { expiresIn: "2h" })
+  return jwt.sign({ id, role, fullName, email }, SECRET_KEY, { expiresIn: "7d" })
 }
 
 const generateRefreshToken = (id) => {
