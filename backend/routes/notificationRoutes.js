@@ -24,6 +24,8 @@ router.put("/:userId", authMiddleware, userMiddleware, notificationController.up
 // Route to send job notifications to a user
 router.post("/:userId/job-alert", authMiddleware, userMiddleware, notificationController.sendJobAlertEmail);
 
+router.get("/", authMiddleware, notificationController.getNotifications);
 
+router.put("/:notificationId/mark-as-read", authMiddleware, notificationController.markAsReadNotification);
 
 module.exports = router;

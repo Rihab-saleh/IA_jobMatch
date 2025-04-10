@@ -86,12 +86,12 @@ const authMiddleware = async (req, res, next) => {
 
   // Get the token from the Authorization header
   const authHeader = req.header("Authorization");
+  console.log("Authorization Header Received:", authHeader);
 
   if (!authHeader) {
-    console.log("Auth Middleware: No Authorization header provided");
+    console.log("No Authorization header provided");
     return res.status(401).json({ error: "Authentication required" });
   }
-
   // Check if the header follows the Bearer token format
   if (!authHeader.startsWith("Bearer ")) {
     console.log("Auth Middleware: Invalid Authorization format");

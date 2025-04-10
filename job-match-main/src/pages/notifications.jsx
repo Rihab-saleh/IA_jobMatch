@@ -1,126 +1,140 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger,
-} from "../components/ui/tabs";
 import { Button } from "../components/ui/button";
-import { 
-  Bell, 
-  Briefcase, 
-  MapPin, 
-  Clock, 
-  CheckCircle, 
-  Trash2, 
-  Settings,
-} from "lucide-react";
+import { Bell, Briefcase, MapPin, Clock, CheckCircle, Trash2, Mail, AlertCircle, User } from "lucide-react";
 import { notificationService } from "../services/notification-service";
+import { Link } from "react-router-dom";
 
 const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
   const getIcon = () => {
+    const iconMap = {
+      job_match: <Briefcase className="h-5 w-5 text-purple-600" />,
+      application_update: <CheckCircle className="h-5 w-5 text-blue-600" />,
+      profile_suggestion: <User className="h-5 w-5 text-green-600" />,
+      system_alert: <AlertCircle className="h-5 w-5 text-orange-600" />,
+      message: <Mail className="h-5 w-5 text-cyan-600" />,
+      default: <Bell className="h-5 w-5 text-gray-600" />,
+    };
+    return iconMap[notification.type] || iconMap.default;
+  };
+
+  const handleAction = () => {
+    if (!notification.read) {
+      onMarkAsRead(notification._id);
+    }
+  };
+
+  // Get the appropriate link URL based on notification type
+  const getActionLink = () => {
     switch (notification.type) {
       case "job_match":
-        return <Briefcase className="h-5 w-5 text-purple-600" />;
+        return `/jobs/${notification.jobId}`;
       case "application_update":
-        return <CheckCircle className="h-5 w-5 text-blue-600" />;
+        return `/applications/${notification.applicationId}`;
       case "profile_suggestion":
-        return <Bell className="h-5 w-5 text-green-600" />;
+        return "/profile/edit";
       default:
-        return <Bell className="h-5 w-5 text-gray-600" />;
+        return "#";
     }
   };
 
   return (
-    <div className={`bg-white rounded-lg border p-4 ${!notification.read ? "border-l-4 border-l-purple-700" : ""}`}>
+    <div
+      className={`bg-white rounded-lg border p-4 transition-all hover:shadow-md ${
+        !notification.read ? "border-l-4 border-l-purple-700 bg-purple-50" : ""
+      }`}
+    >
       <div className="flex items-start gap-4">
-        <div className="shrink-0 p-2 rounded-full bg-gray-100">
+        <Link
+          to={getActionLink()}
+          className="shrink-0 p-2 rounded-full bg-gray-100 hover:bg-gray-200 cursor-pointer"
+          onClick={handleAction}
+        >
           {getIcon()}
-        </div>
+        </Link>
 
         <div className="flex-1">
           <div className="flex justify-between items-start">
-            <h3 className="font-semibold">{notification.title}</h3>
+            <Link
+              to={getActionLink()}
+              className="font-semibold cursor-pointer hover:text-purple-700"
+              onClick={handleAction}
+            >
+              {notification.title}
+            </Link>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">{notification.time}</span>
-              {!notification.read && (
-                <button
-                  onClick={() => onMarkAsRead(notification.id)}
-                  className="text-purple-700 hover:text-purple-900 text-xs font-medium"
-                >
-                  Mark as read
-                </button>
-              )}
-              <button 
-                onClick={() => onDelete(notification.id)} 
-                className="text-gray-400 hover:text-red-500"
+              <span className="text-xs text-gray-500">
+                {new Date(notification.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+              <button
+                onClick={() => onDelete(notification._id)}
+                className="text-gray-400 hover:text-red-500 transition-colors"
+                aria-label="Delete notification"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
           </div>
 
-          {notification.type === "job_match" && (
-            <div>
-              <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                <Briefcase className="h-4 w-4" />
-                <span>{notification.company}</span>
-                <span>•</span>
-                <MapPin className="h-4 w-4" />
-                <span>{notification.location}</span>
-              </div>
-              <div className="mt-2 flex items-center">
-                <div className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
-                  {notification.matchPercentage}% Match
+          <div className="mt-1">
+            <p className="text-sm text-gray-600">{notification.message}</p>
+
+            {notification.type === "job_match" && (
+              <div className="mt-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Briefcase className="h-4 w-4" />
+                  <span>{notification.company}</span>
+                  <span>•</span>
+                  <MapPin className="h-4 w-4" />
+                  <span>{notification.location}</span>
                 </div>
-                <div className="ml-auto">
-                  <Link to={`/jobs/${notification.id}`}>
-                    <Button size="sm" className="bg-purple-700 hover:bg-purple-800">
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
+                    {notification.matchPercentage}% Match
+                  </div>
+                  <Link to={getActionLink()}>
+                    <Button size="sm" className="bg-purple-700 hover:bg-purple-800" onClick={handleAction}>
                       View Job
                     </Button>
                   </Link>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {notification.type === "application_update" && (
-            <div>
-              <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                <Briefcase className="h-4 w-4" />
-                <span>{notification.company}</span>
-                <span>•</span>
-                <Clock className="h-4 w-4" />
-                <span>Status: {notification.status}</span>
-              </div>
-              <div className="mt-2 flex items-center">
-                <div className="ml-auto">
-                  <Link to={`/applications/${notification.id}`}>
-                    <Button size="sm" className="bg-purple-700 hover:bg-purple-800">
+            {notification.type === "application_update" && (
+              <div className="mt-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Briefcase className="h-4 w-4" />
+                  <span>{notification.jobTitle}</span>
+                  <span>•</span>
+                  <Clock className="h-4 w-4" />
+                  <span>Status: {notification.status}</span>
+                </div>
+                <div className="mt-2 flex justify-end">
+                  <Link to={getActionLink()}>
+                    <Button size="sm" className="bg-purple-700 hover:bg-purple-800" onClick={handleAction}>
                       View Application
                     </Button>
                   </Link>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {notification.type === "profile_suggestion" && (
-            <div>
-              <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-              <div className="mt-2 flex items-center">
-                <div className="ml-auto">
-                  <Link to="/profile">
-                    <Button size="sm" className="bg-purple-700 hover:bg-purple-800">
-                      Update Profile
-                    </Button>
-                  </Link>
-                </div>
+            {notification.type === "profile_suggestion" && (
+              <div className="mt-2 flex justify-end">
+                <Link to={getActionLink()}>
+                  <Button size="sm" className="bg-purple-700 hover:bg-purple-800" onClick={handleAction}>
+                    Update Profile
+                  </Button>
+                </Link>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -130,14 +144,18 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const response = await notificationService.getNotifications(); // API call to fetch notifications
-        setNotifications(response);
-      } catch (error) {
-        console.error("Error fetching notifications:", error);
+        setLoading(true);
+        const data = await notificationService.getNotifications();
+        setNotifications(data || []);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching notifications:", err);
+        setError("Failed to load notifications. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -148,152 +166,75 @@ export default function NotificationsPage() {
 
   const markAsRead = async (id) => {
     try {
-      await notificationService.markAsRead(id); // API call to mark notification as read
-      setNotifications((prev) =>
-        prev.map((notification) =>
-          notification.id === id ? { ...notification, read: true } : notification
-        )
-      );
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
+      await notificationService.markAsRead(id);
+      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, read: true } : n)));
+    } catch (err) {
+      console.error("Error marking notification as read:", err);
     }
   };
 
   const deleteNotification = async (id) => {
     try {
-      await notificationService.deleteNotification(id); // API call to delete notification
-      setNotifications((prev) => prev.filter((notification) => notification.id !== id));
-    } catch (error) {
-      console.error("Error deleting notification:", error);
+      await notificationService.deleteNotification(id);
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+    } catch (err) {
+      console.error("Error deleting notification:", err);
     }
   };
 
-  const unreadCount = notifications.filter((notification) => !notification.read).length;
-
-  const EmptyState = ({ icon, title, message }) => (
-    <div className="text-center py-12">
-      {icon}
-      <h3 className="text-lg font-medium text-gray-700 mb-2">{title}</h3>
-      <p className="text-gray-500">{message}</p>
-    </div>
-  );
-
   if (loading) {
-    return <div>Loading notifications...</div>;
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="animate-pulse space-y-4">
+            <div className="h-10 bg-gray-200 rounded w-1/3"></div>
+            <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+            <div className="h-12 bg-gray-200 rounded"></div>
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-100 rounded-lg"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto text-center py-12">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-700 mb-2">Error loading notifications</h3>
+          <p className="text-gray-500 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()} className="bg-purple-700 hover:bg-purple-800">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Notifications</h1>
+        <h1 className="text-3xl font-bold mb-4">Notifications</h1>
+        {notifications.length > 0 ? (
+          <div className="space-y-4">
+            {notifications.map((notification) => (
+              <NotificationItem
+                key={notification._id}
+                notification={notification}
+                onMarkAsRead={markAsRead}
+                onDelete={deleteNotification}
+              />
+            ))}
           </div>
-          <Link to="/settings">
-            <Button variant="outline" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Settings
-            </Button>
-          </Link>
-        </div>
-
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8">
-            <TabsTrigger value="all" className="relative">
-              All
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="job_matches">Job Matches</TabsTrigger>
-            <TabsTrigger value="applications">Applications</TabsTrigger>
-            <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all" className="space-y-4">
-            {notifications.length > 0 ? (
-              notifications.map((notification) => (
-                <NotificationItem
-                  key={notification.id}
-                  notification={notification}
-                  onMarkAsRead={markAsRead}
-                  onDelete={deleteNotification}
-                />
-              ))
-            ) : (
-              <EmptyState 
-                icon={<Bell className="h-12 w-12 text-gray-300 mx-auto mb-4" />}
-                title="No notifications"
-                message="You don't have any notifications at the moment."
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="job_matches" className="space-y-4">
-            {notifications.filter((n) => n.type === "job_match").length > 0 ? (
-              notifications
-                .filter((n) => n.type === "job_match")
-                .map((notification) => (
-                  <NotificationItem
-                    key={notification.id}
-                    notification={notification}
-                    onMarkAsRead={markAsRead}
-                    onDelete={deleteNotification}
-                  />
-                ))
-            ) : (
-              <EmptyState 
-                icon={<Briefcase className="h-12 w-12 text-gray-300 mx-auto mb-4" />}
-                title="No job matches"
-                message="You don't have any job match notifications at the moment."
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="applications" className="space-y-4">
-            {notifications.filter((n) => n.type === "application_update").length > 0 ? (
-              notifications
-                .filter((n) => n.type === "application_update")
-                .map((notification) => (
-                  <NotificationItem
-                    key={notification.id}
-                    notification={notification}
-                    onMarkAsRead={markAsRead}
-                    onDelete={deleteNotification}
-                  />
-                ))
-            ) : (
-              <EmptyState 
-                icon={<CheckCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />}
-                title="No application updates"
-                message="You don't have any application notifications at the moment."
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="suggestions" className="space-y-4">
-            {notifications.filter((n) => n.type === "profile_suggestion").length > 0 ? (
-              notifications
-                .filter((n) => n.type === "profile_suggestion")
-                .map((notification) => (
-                  <NotificationItem
-                    key={notification.id}
-                    notification={notification}
-                    onMarkAsRead={markAsRead}
-                    onDelete={deleteNotification}
-                  />
-                ))
-            ) : (
-              <EmptyState 
-                icon={<Bell className="h-12 w-12 text-gray-300 mx-auto mb-4" />}
-                title="No suggestions"
-                message="You don't have any profile suggestions at the moment."
-              />
-            )}
-          </TabsContent>
-        </Tabs>
+        ) : (
+          <div className="text-center py-12 bg-gray-50 rounded-lg">
+            <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">No notifications available.</p>
+          </div>
+        )}
       </div>
     </div>
   );

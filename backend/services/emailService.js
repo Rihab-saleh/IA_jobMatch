@@ -1,7 +1,6 @@
 import nodemailer from 'nodemailer';
 import mongoose from 'mongoose';
 import NotificationSettings from '../models/notification_model.js';
-import User from '../models/user_model.js';
 
 // Cache du transporteur SMTP
 let transporter = null;
@@ -34,7 +33,61 @@ export function getTransporter() {
 }
 
 /**
- * Envoie un email générique
+ * Récupère les notifications d'un utilisateur
+ */
+export async function getNotifications(userId) {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error("ID utilisateur invalide");
+  }
+
+  try {
+    // Récupérer les notifications pour l'utilisateur
+    const notifications = await NotificationSettings.find({ userId }).sort({ createdAt: -1 });
+
+    if (!notifications || notifications.length === 0) {
+      return { success: true, message: "Aucune notification trouvée", notifications: [] };
+    }
+
+    return { success: true, notifications };
+  } catch (error) {
+    console.error("Erreur lors de la récupération des notifications :", error.message);
+    throw new Error("Impossible de récupérer les notifications");
+  }
+}
+
+/**
+ * Marque une notification comme lue
+ */
+export async function markAsRead(notificationId) {
+  if (!mongoose.Types.ObjectId.isValid(notificationId)) {
+    throw new Error("ID notification invalide");
+  }
+
+  try {
+    // Recherche et mise à jour de la notification
+    const updatedNotification = await NotificationSettings.findByIdAndUpdate(
+      notificationId,
+      { read: true },
+      { new: true }
+    );
+
+    if (!updatedNotification) {
+      throw new Error("Notification introuvable");
+    }
+
+    return {
+      success: true,
+      message: "Notification marquée comme lue",
+      notification: updatedNotification,
+    };
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour de la notification :", error.message);
+    throw new Error("Impossible de marquer la notification comme lue");
+  }
+}
+
+/**
+ * Envoie un email
  */
 export async function sendEmail({ to, subject, text, html }) {
   try {
@@ -65,20 +118,41 @@ export async function sendEmail({ to, subject, text, html }) {
  * Récupère les paramètres de notification d'un utilisateur
  */
 export async function getNotificationSettings(userId, userEmail, userName) {
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    throw new Error('ID utilisateur invalide');
+  try {
+    console.log('getNotificationSettings appelé avec:', { userId, userEmail, userName });
+    
+    // Vérification de l'ID
+    if (!userId) {
+      throw new Error('ID utilisateur manquant');
+    }
+    
+    let settings = null;
+    
+    // Essayez de trouver les paramètres si l'ID est valide
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      try {
+        settings = await NotificationSettings.findOne({ userId });
+        console.log('Paramètres trouvés:', settings);
+      } catch (dbError) {
+        console.error('Erreur lors de la recherche des paramètres:', dbError);
+      }
+    } else {
+      console.warn('ID utilisateur non valide pour MongoDB:', userId);
+    }
+
+    // Retournez les paramètres trouvés ou des valeurs par défaut
+    return {
+      email: settings?.email ?? true,
+      jobAlerts: settings?.jobAlerts ?? true,
+      applicationUpdates: settings?.applicationUpdates ?? true,
+      frequency: settings?.frequency ?? 'daily',
+      userEmail: userEmail, // Email du token
+      userName: userName    // Nom du token
+    };
+  } catch (error) {
+    console.error('Erreur dans getNotificationSettings:', error);
+    throw error;
   }
-
-  const settings = await NotificationSettings.findOne({ userId });
-
-  return {
-    email: settings?.email ?? true,
-    jobAlerts: settings?.jobAlerts ?? true,
-    applicationUpdates: settings?.applicationUpdates ?? true,
-    frequency: settings?.frequency ?? 'daily',
-    userEmail: userEmail, // Utilise l'email du token
-    userName: userName // Utilise le nom complet du token
-  };
 }
 
 /**
@@ -97,7 +171,8 @@ export async function updateNotificationSettings(userId, { email, jobAlerts, app
       applicationUpdates,
       frequency: ['immediately', 'daily', 'weekly'].includes(frequency) 
         ? frequency 
-        : 'daily'
+        : 'daily',
+      lastUpdated: Date.now()
     },
     { new: true, upsert: true }
   );
@@ -110,7 +185,9 @@ export async function updateNotificationSettings(userId, { email, jobAlerts, app
   };
 }
 
-
+/**
+ * Envoie un email d'alerte d'emploi ou de mise à jour de candidature
+ */
 export async function sendJobAlertEmail(type, data, req) {
   const userName = req.user.fullName; // Get the user's full name from the token
   const recipientEmail = req.user.email; // Get the user's email from the token
@@ -181,26 +258,18 @@ export async function sendJobAlertEmail(type, data, req) {
       break;
   }
 
-  // Send the email using Nodemailer
-  try {
-    const transporter = getTransporter();
-
-    const info = await transporter.sendMail({
-      from: `"${process.env.EMAIL_FROM_NAME || 'Notification System'}" <${process.env.EMAIL_USER}>`,
-      to: recipientEmail,
-      subject: emailContent.subject,
-      text: emailContent.text,
-      html: emailContent.html,
-    });
-
-    console.log('Email sent successfully:', info.messageId);
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('Error sending email:', error.message);
-    return { success: false, error: error.message };
-  }
+  // Send the email using the sendEmail function
+  return await sendEmail({
+    to: recipientEmail,
+    subject: emailContent.subject,
+    text: emailContent.text,
+    html: emailContent.html
+  });
 }
 
+/**
+ * Vérifie la configuration email
+ */
 export async function verifyEmailConfig() {
   try {
     const transport = getTransporter();
@@ -213,3 +282,15 @@ export async function verifyEmailConfig() {
     };
   }
 }
+
+// Pour compatibilité avec CommonJS
+export default {
+  getTransporter,
+  getNotifications,
+  markAsRead,
+  sendEmail,
+  getNotificationSettings,
+  updateNotificationSettings,
+  sendJobAlertEmail,
+  verifyEmailConfig
+};

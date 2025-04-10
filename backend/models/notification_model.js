@@ -24,6 +24,10 @@ const notificationSettingsSchema = new mongoose.Schema({
     enum: ['immediately', 'daily', 'weekly'],
     default: 'daily'
   },
+  read: {
+    type: Boolean,
+    default: false // Par défaut, les notifications ne sont pas lues
+  },
   lastUpdated: {
     type: Date,
     default: Date.now
