@@ -1,6 +1,6 @@
-import nodemailer from 'nodemailer';
-import mongoose from 'mongoose';
-import NotificationSettings from '../models/notification_model.js';
+const nodemailer = require('nodemailer');
+const mongoose = require('mongoose');
+const NotificationSettings = require('../models/notification_model.js');
 
 // Cache du transporteur SMTP
 let transporter = null;
@@ -8,7 +8,7 @@ let transporter = null;
 /**
  * Crée ou retourne le transporteur SMTP configuré
  */
-export function getTransporter() {
+ function getTransporter() {
   if (transporter) return transporter;
 
   if (!process.env.EMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
@@ -35,7 +35,7 @@ export function getTransporter() {
 /**
  * Récupère les notifications d'un utilisateur
  */
-export async function getNotifications(userId) {
+ async function getNotifications(userId) {
   if (!mongoose.Types.ObjectId.isValid(userId)) {
     throw new Error("ID utilisateur invalide");
   }
@@ -58,7 +58,7 @@ export async function getNotifications(userId) {
 /**
  * Marque une notification comme lue
  */
-export async function markAsRead(notificationId) {
+ async function markAsRead(notificationId) {
   if (!mongoose.Types.ObjectId.isValid(notificationId)) {
     throw new Error("ID notification invalide");
   }
@@ -89,7 +89,7 @@ export async function markAsRead(notificationId) {
 /**
  * Envoie un email
  */
-export async function sendEmail({ to, subject, text, html }) {
+ async function sendEmail({ to, subject, text, html }) {
   try {
     const transport = getTransporter();
 
@@ -117,7 +117,7 @@ export async function sendEmail({ to, subject, text, html }) {
 /**
  * Récupère les paramètres de notification d'un utilisateur
  */
-export async function getNotificationSettings(userId, userEmail, userName) {
+ async function getNotificationSettings(userId, userEmail, userName) {
   try {
     console.log('getNotificationSettings appelé avec:', { userId, userEmail, userName });
     
@@ -158,7 +158,7 @@ export async function getNotificationSettings(userId, userEmail, userName) {
 /**
  * Met à jour les paramètres de notification
  */
-export async function updateNotificationSettings(userId, { email, jobAlerts, applicationUpdates, frequency }) {
+ async function updateNotificationSettings(userId, { email, jobAlerts, applicationUpdates, frequency }) {
   if (!mongoose.Types.ObjectId.isValid(userId)) {
     throw new Error('ID utilisateur invalide');
   }
@@ -188,7 +188,7 @@ export async function updateNotificationSettings(userId, { email, jobAlerts, app
 /**
  * Envoie un email d'alerte d'emploi ou de mise à jour de candidature
  */
-export async function sendJobAlertEmail(type, data, req) {
+ async function sendJobAlertEmail(type, data, req) {
   const userName = req.user.fullName; // Get the user's full name from the token
   const recipientEmail = req.user.email; // Get the user's email from the token
   const greeting = userName ? `Bonjour ${userName},` : 'Bonjour,';
@@ -270,7 +270,7 @@ export async function sendJobAlertEmail(type, data, req) {
 /**
  * Vérifie la configuration email
  */
-export async function verifyEmailConfig() {
+ async function verifyEmailConfig() {
   try {
     const transport = getTransporter();
     await transport.verify();
@@ -282,9 +282,7 @@ export async function verifyEmailConfig() {
     };
   }
 }
-
-// Pour compatibilité avec CommonJS
-export default {
+module.exports = {
   getTransporter,
   getNotifications,
   markAsRead,
