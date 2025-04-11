@@ -103,7 +103,7 @@ connectDB()
 app.use("/api/auth", authRoutes);
 app.use("/api/users", authMiddleware, userRoutes);
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
-app.use("/api/recommendations", authMiddleware, recommendationRoutes);
+app.use("/api/recommendations",  recommendationRoutes);
 app.use("/api/jobs", authMiddleware, jobRoutes);
 app.use("/api/notifications", authMiddleware, notificationRoutes);
 
