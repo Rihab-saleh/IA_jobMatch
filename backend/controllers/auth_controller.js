@@ -6,14 +6,14 @@ const authService = require("../services/authService")
 const signup = async (req, res) => {
   try {
     // Validate request body
-    const { firstName, lastName, email, password, age } = req.body
+    const { firstName, lastName, email, password, age ,phoneNumber} = req.body
 
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({ error: "All fields are required" })
     }
 
     // Call auth service to handle signup
-    const response = await authService.signup({ firstName, lastName, email, password, age })
+    const response = await authService.signup({ firstName, lastName, email, password, age , phoneNumber})
     res.status(201).json(response)
   } catch (err) {
     console.error("Signup error:", err)

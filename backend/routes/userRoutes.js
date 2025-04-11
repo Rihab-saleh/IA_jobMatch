@@ -38,6 +38,8 @@ router.post(
   upload.single("profilePicture"),
   userController.uploadProfilePicture
 )
+
+router.get("/profile/:userId/picture", userMiddleware, userController.getProfilePicture)
 router.delete("/profile/:userId/picture", userMiddleware, userController.deleteProfilePicture)
 router.get('/languages/:userId', userController.getLanguages);
 router.post('/languages/:userId', userMiddleware, userController.addLanguage);

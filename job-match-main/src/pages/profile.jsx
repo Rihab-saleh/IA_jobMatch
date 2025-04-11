@@ -12,7 +12,6 @@ import {
   X,
   MapPin,
   Briefcase,
-  RefreshCw,
   Trash2,
   Camera,
   User,
@@ -161,7 +160,61 @@ function ProfilePage() {
       loadProfileData()
     }
   }, [user, authLoading])
+  useEffect(() => {
+    if (state.savedProfileData && state.savedProfileData.profilePicture) {
+      console.log("Profile Picture URL:", state.savedProfileData.profilePicture.url)
+    }
+  }, [state.savedProfileData])
 
+  // Helper function to format profile picture URL
+  const formatProfilePictureUrl = (url) => {
+    if (!url) return null
+
+    // If it's already an absolute URL, return it as is
+    if (url.startsWith("http")) return url
+
+    console.log("Processing URL:", url)
+
+    // Case 1: URL contains the pattern "/api/users/profile/:userId/picture/uploads/profiles/"
+    const uploadPathMatch = url.match(/\/api\/users\/profile\/.*?\/picture(\/uploads\/profiles\/.+)$/)
+    if (uploadPathMatch) {
+      const formattedUrl = `${apiBaseUrl}${uploadPathMatch[1]}`
+      console.log("Case 1 match. Formatted URL:", formattedUrl)
+      return formattedUrl
+    }
+
+    // Case 2: URL directly contains "/uploads/profiles/"
+    if (url.includes("/uploads/profiles/")) {
+      const profilesIndex = url.indexOf("/uploads/profiles/")
+      if (profilesIndex !== -1) {
+        const relativePath = url.substring(profilesIndex)
+        const formattedUrl = `${apiBaseUrl}${relativePath}`
+        console.log("Case 2 match. Formatted URL:", formattedUrl)
+        return formattedUrl
+      }
+    }
+
+    // Case 3: URL is just a filename that should go in /uploads/profiles/
+    if (!url.includes("/") && /\.(jpg|jpeg|png|gif|webp)$/i.test(url)) {
+      const formattedUrl = `${apiBaseUrl}/uploads/profiles/${url}`
+      console.log("Case 3 match. Formatted URL:", formattedUrl)
+      return formattedUrl
+    }
+
+    // Case 4: URL starts with /api/
+    if (url.startsWith("/api/")) {
+      const formattedUrl = `${apiBaseUrl}${url.substring(4)}`
+      console.log("Case 4 match. Formatted URL:", formattedUrl)
+      return formattedUrl
+    }
+
+    // Case 5: Default fallback - just append to API base URL
+    const formattedUrl = `${apiBaseUrl}${url.startsWith("/") ? url : `/${url}`}`
+    console.log("Case 5 fallback. Formatted URL:", formattedUrl)
+    return formattedUrl
+  }
+
+  // Modify the loadProfileData function to handle the profile picture better
   const loadProfileData = async () => {
     try {
       if (!user || !user._id) {
@@ -173,8 +226,11 @@ function ProfilePage() {
         return
       }
 
-      const [profile, skills, experiences, formations, certifications, languages] = await Promise.all([
-        userService.getUserProfile(user._id),
+      // First get the profile data which should already include the profile picture
+      const profile = await userService.getUserProfile(user._id)
+
+      // Then get the other data
+      const [skills, experiences, formations, certifications, languages] = await Promise.all([
         userService.getUserSkills(user._id).catch(() => []),
         userService.getExperiences(user._id).catch(() => []),
         userService.getFormations(user._id).catch(() => []),
@@ -182,13 +238,23 @@ function ProfilePage() {
         userService.getLanguages(user._id).catch(() => []),
       ])
 
+      // Get the profile picture URL from the profile data
+      const profilePictureUrl = profile.user.person.profilePicture?.url || null
+
+      console.log("Raw Profile Picture URL from profile data:", profilePictureUrl)
+
+      // Format the URL properly
+      const formattedProfilePictureUrl = formatProfilePictureUrl(profilePictureUrl)
+      console.log("Raw URL:", profilePictureUrl)
+      console.log("Formatted URL:", formattedProfilePictureUrl)
+
       setState((prev) => ({
         ...prev,
         profileData: {
           firstName: profile.user.person.firstName || "",
           lastName: profile.user.person.lastName || "",
           email: profile.user.person.email || "",
-          phone: profile.user.person.phoneNumber || "", // Ensure this is correctly mapped
+          phone: profile.user.person.phoneNumber || "",
           location: profile.profile.location || "",
           jobTitle: profile.profile.jobTitle || "",
           bio: profile.profile.bio || "",
@@ -197,12 +263,12 @@ function ProfilePage() {
           firstName: profile.user.person.firstName || "",
           lastName: profile.user.person.lastName || "",
           email: profile.user.person.email || "",
-          phone: profile.user.person.phoneNumber || "", // Ensure this is correctly mapped
+          phone: profile.user.person.phoneNumber || "",
           location: profile.profile.location || "",
           jobTitle: profile.profile.jobTitle || "",
           bio: profile.profile.bio || "",
         },
-        profilePicture: profile.user.person.profilePicture?.url || null,
+        profilePicture: formattedProfilePictureUrl,
         skills: Array.isArray(skills) ? skills : [],
         experiences: Array.isArray(experiences) ? experiences : [],
         formations: Array.isArray(formations) ? formations : [],
@@ -228,7 +294,7 @@ function ProfilePage() {
       }
     }
   }
-
+  console.log("Profile Picture URL:", state.profilePicture)
   const handleSkillOperation = (operation, skill = null) => {
     if (!user || !user._id) {
       toast.error("You must be logged in to perform this action")
@@ -348,26 +414,20 @@ function ProfilePage() {
     setState((prev) => ({ ...prev, isUploading: true }))
 
     try {
-      const reader = new FileReader()
-      reader.onload = () => {
-        setState((prev) => ({
-          ...prev,
-          profilePicture: reader.result,
-        }))
-      }
-      reader.readAsDataURL(file)
-
+      // Upload the file to the backend
       const response = await userService.uploadProfilePicture(user._id, file)
 
-      // Ajout des logs de débogage
-      console.log("URL de l'image de profil:", response.profilePicture?.url)
-      console.log("URL complète:", `${apiBaseUrl}${response.profilePicture?.url}`)
+      // Get the URL from the response and format it properly
+      const profilePictureUrl = response.profilePicture?.url || null
+      const formattedProfilePictureUrl = formatProfilePictureUrl(profilePictureUrl)
 
+      // Update the state with the formatted URL
       setState((prev) => ({
         ...prev,
-        profilePicture: response.profilePicture?.url || null,
+        profilePicture: formattedProfilePictureUrl,
         isUploading: false,
       }))
+
       toast.success("Profile picture updated successfully")
     } catch (error) {
       setState((prev) => ({ ...prev, isUploading: false }))
@@ -421,7 +481,18 @@ function ProfilePage() {
       }))
 
       toast.success("Profile updated successfully")
+      setState((prev) => ({ ...prev, saving: true }));
+    await userService.updateUserProfile(user._id, state.profileData);
+
+    // Update the global context with the new user data
+    updateUser({
+      ...user,
+      firstName: state.profileData.firstName,
+      lastName: state.profileData.lastName,
+    });
     } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.error("Failed to update profile. Please try again.");
       if (error.message === "Unauthorized") {
         navigate("/login", {
           state: { from: "/profile", message: "Your session has expired. Please log in again." },
@@ -432,6 +503,8 @@ function ProfilePage() {
     } finally {
       setState((prev) => ({ ...prev, saving: false }))
     }
+  
+
   }
 
   const openDialog = (dialogName, item = null) => {
@@ -784,18 +857,9 @@ function ProfilePage() {
   }
 
   if (state.error) {
-    return (
-      <div className="container mx-auto px-4 py-8 flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="text-center max-w-md">
-          <Button onClick={() => window.location.reload()} className="bg-purple-700 hover:bg-purple-800">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Try Again
-          </Button>
-        </div>
-      </div>
-    )
+    window.location.reload()
   }
-
+  console.log("Profile Data:", state.savedProfileData)
   return (
     <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
       <div className="max-w-6xl mx-auto">
@@ -812,7 +876,7 @@ function ProfilePage() {
               <div className="relative">
                 {state.profilePicture ? (
                   <img
-                    src={`${apiBaseUrl}${state.profilePicture}`}
+                    src={state.profilePicture || "/placeholder.svg"}
                     alt="Profile"
                     className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
                   />
@@ -873,7 +937,7 @@ function ProfilePage() {
                   <div className="relative mb-4">
                     {state.profilePicture ? (
                       <img
-                        src={`${apiBaseUrl}${state.profilePicture}`}
+                        src={state.profilePicture || "/placeholder.svg"}
                         alt="Profile"
                         className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md"
                       />

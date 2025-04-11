@@ -17,7 +17,7 @@ export default function Register() {
     lastName: "",
     email: "",
     password: "",
-    mobile: "",
+    phoneNumber: "",
     age: "",
     rememberPassword: false,
     notifications: true,
@@ -55,8 +55,8 @@ export default function Register() {
       newErrors.password = "8 caractères minimum"
     }
 
-    if (!/^\d{8}$/.test(formData.mobile)) {
-      newErrors.mobile = "8 chiffres requis"
+    if (!/^\d{8}$/.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = "8 chiffres requis"
     }
 
     const age = parseInt(formData.age)
@@ -215,19 +215,19 @@ export default function Register() {
             <label className="block text-base font-medium mb-2">
               Téléphone
               <Input
-                name="mobile"
+                name="phoneNumber"
                 type="tel"
-                value={formData.mobile}
+                value={formData.phoneNumber}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className={`w-full mt-1 ${errors.mobile ? "border-red-500" : ""}`}
-                placeholder="12345678"
+                className={`w-full mt-1 ${errors.phoneNumber ? "border-red-500" : ""}`}
+                placeholder=""
                 required
               />
-              {errors.mobile && (
+              {errors.phoneNumber && (
                 <p className="text-red-500 text-sm mt-1 flex items-center">
                   <AlertCircle className="h-4 w-4 mr-1" />
-                  {errors.mobile}
+                  {errors.phoneNumber}
                 </p>
               )}
             </label>

@@ -109,7 +109,7 @@ app.use("/api/notifications", authMiddleware, notificationRoutes);
 
 
 // Servir les fichiers statiques (ex. : uploads)
-app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads/profiles")));
 
 // Gestion des routes non trouvées
 app.use((req, res, next) => {

@@ -96,7 +96,24 @@ export const userService = {
       headers: { "Content-Type": "multipart/form-data" },
     })
   },
-
+ 
+  getProfilePicture: async (userId) => {
+    try {
+      const response = await api.get(`users/profile/${userId}/picture`)
+      // Check if response data exists and has profilePicture property
+      if (response.data && response.data.profilePicture) {
+        return response.data.profilePicture
+      } else {
+        // Return null if no profile picture found
+        console.log("No profile picture found in response")
+        return null
+      }
+    } catch (error) {
+      console.error("Error fetching profile picture:", error)
+      // Return null instead of throwing the error to prevent Promise.all from failing
+      return null
+    }
+  },
   deleteProfilePicture(userId) {
     return api.delete(`users/profile/${userId}/picture`)
   },

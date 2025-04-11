@@ -50,7 +50,7 @@ const generateRefreshToken = (id) => {
 
 // Fonction d'inscription
 const signup = async (userData) => {
-  const { firstName, lastName, email, password, age } = userData
+  const { firstName, lastName, email, password, age, phoneNumber } = userData
 
   if (!firstName || !lastName || !email || !password) {
     throw new Error("All fields are required")
@@ -71,6 +71,7 @@ const signup = async (userData) => {
     lastName,
     email,
     age: age || null,
+    phoneNumber: phoneNumber || "",
     password: hashedPassword,
     role: "user",
     accountStatusRequests: [],

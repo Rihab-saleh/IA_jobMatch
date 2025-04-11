@@ -411,7 +411,23 @@ const uploadProfilePicture = async (req, res) => {
     }
   });
 };
+const getProfilePicture = async (req, res) => {
+  try {
+    const userId = req.params.userId;
 
+    // Fetch the user and their associated person data
+    const user = await User.findById(userId).populate("person");
+    if (!user || !user.person || !user.person.profilePicture) {
+      return res.status(404).json({ error: "Profile picture not found" });
+    }
+
+    // Return the profile picture
+    res.status(200).json({ profilePicture: user.person.profilePicture });
+  } catch (error) {
+    console.error("Error fetching profile picture:", error);
+    res.status(500).json({ error: "Failed to fetch profile picture" });
+  }
+};
 const deleteProfilePicture = async (req, res) => {
   processRequest(res, async () => {
     const targetUserId = req.params.userId;
@@ -593,6 +609,7 @@ module.exports = {
   getUserRecommendations,
   requestAccountStatusChange,
   uploadProfilePicture,
+  getProfilePicture,
   deleteProfilePicture,
   getCertifications,
   addCertification,
