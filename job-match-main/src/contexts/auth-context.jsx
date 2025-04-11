@@ -12,7 +12,9 @@ export const AuthContext = createContext({
   loading: true,
   login: () => {},
   register: () => {},
-  logout: () => {}
+  logout: () => {},
+  getUserRole: () => {},
+  getFullName: () => {},
 });
 
 // Create the AuthProvider component
@@ -74,16 +76,39 @@ export function AuthProvider({ children }) {
           throw new Error("Token expiré");
         }
 
-        const { data } = await api.get("/auth/verify");
-console.log("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", data)
-        setState({
-          user: {
-            ...data.user,
-            role: decoded.role || 'user'
-          },
-          isAuthenticated: true,
-          loading: false
-        });
+        try {
+          const { data } = await api.get("/auth/verify");
+          console.log("Verify response:", data);
+          
+          setState({
+            user: {
+              ...data.user,
+              id: decoded.id,
+              email: decoded.email || decoded.lastName, // Some tokens have email in lastName field
+              role: decoded.role || 'user',
+              firstName: data.user?.firstName || decoded.firstName,
+              lastName: data.user?.lastName || decoded.lastName,
+              fullName: data.user?.fullName || decoded.fullName,
+            },
+            isAuthenticated: true,
+            loading: false
+          });
+        } catch (error) {
+          console.log("Verify API failed, using token data only");
+          // If API verification fails, use token data only
+          setState({
+            user: {
+              id: decoded.id,
+              email: decoded.email || decoded.lastName, // Some tokens have email in lastName field
+              role: decoded.role || 'user',
+              firstName: decoded.firstName,
+              lastName: decoded.lastName,
+              fullName: decoded.fullName,
+            },
+            isAuthenticated: true,
+            loading: false
+          });
+        }
       } catch (error) {
         console.error("Erreur de vérification du token:", error);
         logout();
@@ -101,15 +126,20 @@ console.log("0000000000000000000000000000000000000000000000000000000000000000000
         throw new Error("Format d'email invalide");
       }
 
-      const  data  = await authService.login({ email, password });
-console.log("----------------------------------------------", await authService.login({ email, password }))
+      const data = await authService.login({ email, password });
+      console.log("Login response:", data);
+      
       localStorage.setItem("auth_token", data.token);
       const decoded = jwtDecode(data.token);
 
       setState({
         user: {
-          ...data.user,
-          role: decoded.role || 'user'
+          id: data.id || decoded.id,
+          email: data.email || decoded.email || decoded.lastName,
+          role: decoded.role || data.role || 'user',
+          firstName: data.firstName || decoded.firstName,
+          lastName: data.lastName || decoded.lastName,
+          fullName: data.fullName || decoded.fullName,
         },
         isAuthenticated: true,
         loading: false
@@ -118,6 +148,7 @@ console.log("----------------------------------------------", await authService.
       return { success: true, role: decoded.role };
     } catch (error) {
       console.error("Erreur de connexion:", error);
+      setState(prev => ({ ...prev, loading: false }));
       return {
         success: false,
         error: error.message || "Identifiants invalides"
@@ -130,15 +161,20 @@ console.log("----------------------------------------------", await authService.
     try {
       setState(prev => ({ ...prev, loading: true }));
       
-      const { data } = await authService.register(userData);
+      const response = await authService.register(userData);
+      const data = response;
 
-      localStorage.setItem("auth_token", await authService.register(userData));
+      localStorage.setItem("auth_token", data.token);
       const decoded = jwtDecode(data.token);
 
       setState({
         user: {
-          ...data.user,
-          role: decoded.role || 'user'
+          id: data.id || decoded.id,
+          email: data.email || decoded.email || decoded.lastName,
+          role: decoded.role || data.role || 'user',
+          firstName: data.firstName || decoded.firstName,
+          lastName: data.lastName || decoded.lastName,
+          fullName: data.fullName || decoded.fullName,
         },
         isAuthenticated: true,
         loading: false
@@ -147,6 +183,7 @@ console.log("----------------------------------------------", await authService.
       return { success: true, role: decoded.role };
     } catch (error) {
       console.error("Erreur d'inscription:", error);
+      setState(prev => ({ ...prev, loading: false }));
       return {
         success: false,
         error: error.message || "Erreur d'inscription"
@@ -157,6 +194,7 @@ console.log("----------------------------------------------", await authService.
   // Logout function
   const logout = () => {
     localStorage.removeItem("auth_token");
+    localStorage.removeItem("userId");
     setState({
       user: null,
       isAuthenticated: false,
@@ -164,9 +202,64 @@ console.log("----------------------------------------------", await authService.
     });
     window.location.href = "/login"; // Redirect to login page after logout
   };
+  
+  // Improved getUserRole method to handle different token structures
+  const getUserRole = () => {
+    if (!state.user) return null;
+    
+    const role = state.user.role;
+    if (!role) return 'user'; // Default to user if no role found
+    
+    // Normalize role to lowercase for consistent comparison
+    const normalizedRole = typeof role === 'string' ? role.toLowerCase() : '';
+    
+    // Check for admin role
+    if (normalizedRole.includes('admin')) return 'admin';
+    
+    // Check for user role
+    if (normalizedRole === 'user' || normalizedRole === '') return 'user';
+    
+    // If role contains a name (as in some of your token examples), 
+    // it's probably not actually a role but a name
+    if (normalizedRole.includes(' ') && !normalizedRole.includes('admin') && !normalizedRole.includes('user')) {
+      return 'user'; // Default to user if role appears to be a name
+    }
+    
+    return normalizedRole;
+  }
+
+  // Improved getFullName method to handle different token structures
+  const getFullName = () => {
+    if (!state.user) return "";
+    
+    // Try to get fullName directly if available
+    if (state.user.fullName) {
+      return state.user.fullName;
+    }
+    
+    // Check if the role field might contain a name (as seen in your token examples)
+    if (typeof state.user.role === 'string' && 
+        state.user.role.includes(' ') && 
+        !state.user.role.toLowerCase().includes('admin') && 
+        !state.user.role.toLowerCase().includes('user')) {
+      return state.user.role;
+    }
+    
+    // Try to get name from firstName and lastName fields
+    const firstName = state.user.firstName || state.user.first_name || "";
+    const lastName = state.user.lastName || state.user.last_name || "";
+    
+    // If lastName looks like an email and not a name, don't use it
+    const formattedLastName = lastName && lastName.includes('@') ? "" : lastName;
+    
+    const fullName = `${firstName} ${formattedLastName}`.trim();
+    
+    // Return the constructed name or a default if empty
+    return fullName || (state.user.email ? state.user.email.split('@')[0] : "User");
+  }
 
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, getUserRole, getFullName }}>
       {children}
     </AuthContext.Provider>
   );

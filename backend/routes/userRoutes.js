@@ -27,7 +27,10 @@ router.delete("/experiences/:userId/:experienceId", userMiddleware, userControll
 router.put("/profile/:userId/job-title", userMiddleware, userController.updateJobTitle)
 router.put("/profile/:userId/location", userMiddleware, userController.updateLocation)
 router.post("/account/status-request", userMiddleware, userController.requestAccountStatusChange)
-
+router.get("/certifications/:userId", userController.getCertifications)
+router.post("/certifications/:userId", userMiddleware, userController.addCertification)
+router.put("/certifications/:userId/:certificationId", userMiddleware, userController.updateCertification)
+router.delete("/certifications/:userId/:certificationId", userMiddleware, userController.deleteCertification)
 // Profile picture routes
 router.post(
   "/profile/:userId/picture",
@@ -36,6 +39,13 @@ router.post(
   userController.uploadProfilePicture
 )
 router.delete("/profile/:userId/picture", userMiddleware, userController.deleteProfilePicture)
+router.get('/languages/:userId', userController.getLanguages);
+router.post('/languages/:userId', userMiddleware, userController.addLanguage);
+router.put('/languages/:userId/:languageId', userMiddleware, userController.updateLanguage);
+router.delete('/languages/:userId/:languageId', userMiddleware, userController.deleteLanguage);
+
+// Route pour le numéro de téléphone
+router.put('/profile/:userId/phone', userMiddleware, userController.updatePhoneNumber);
 
 module.exports = router
 

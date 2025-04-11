@@ -26,6 +26,7 @@ const userSchema = new mongoose.Schema({
       type: Boolean,
       default: true
     },
+    
     accountStatusRequest: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'request',

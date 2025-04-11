@@ -214,9 +214,22 @@ class AdminService {
     }
   }
 
-  async getAllAdmins(page = 1, limit = 10) {
+  // Admin Service - getAllAdmins method correction
+  async getAllAdmins(page = 1, limit = 10, search = "") {
     try {
       const skip = (page - 1) * limit;
+
+      // Build search query if search parameter is provided
+      let searchQuery = {};
+      if (search) {
+        searchQuery = {
+          $or: [
+            { 'person.firstName': { $regex: search, $options: 'i' } },
+            { 'person.lastName': { $regex: search, $options: 'i' } },
+            { 'person.email': { $regex: search, $options: 'i' } }
+          ]
+        };
+      }
 
       // Find all admin records and populate person data
       const adminRecords = await Admin.find()
@@ -225,21 +238,40 @@ class AdminService {
         .populate({
           path: "person",
           select: "-password",
+          match: search ? {
+            $or: [
+              { firstName: { $regex: search, $options: 'i' } },
+              { lastName: { $regex: search, $options: 'i' } },
+              { email: { $regex: search, $options: 'i' } }
+            ]
+          } : {}
         })
         .lean();
 
-      // Extract person data from admin records
+      // Extract person data and add _id field for frontend compatibility
       const admins = adminRecords
+        .filter(record => record.person) // Filter out records where person is null (due to search)
         .map((record) => {
-          // Ensure we have person data
-          if (!record.person) {
-            return null;
-          }
-          return record.person;
-        })
-        .filter(Boolean); // Remove any null values
+          return {
+            ...record.person,
+            _id: record.person._id, // Ensure _id is explicitly included
+            adminId: record._id // Include the admin record ID if needed
+          };
+        });
 
-      const totalAdmins = await Admin.countDocuments();
+      // Count total admins that match the search criteria
+      const totalAdmins = search 
+        ? (await Admin.find().populate({
+            path: "person",
+            match: {
+              $or: [
+                { firstName: { $regex: search, $options: 'i' } },
+                { lastName: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } }
+              ]
+            }
+          })).filter(admin => admin.person).length
+        : await Admin.countDocuments();
 
       return {
         admins,
@@ -258,19 +290,33 @@ class AdminService {
 
   async getAdminById(adminId) {
     try {
-      // Find admin record and populate person data
-      const adminRecord = await Admin.findOne({ person: adminId })
+      // First try to find by person ID
+      let adminRecord = await Admin.findOne({ person: adminId })
         .populate({
           path: "person",
           select: "-password",
         })
         .lean();
 
-      if (!adminRecord || !adminRecord.person) {
-        return null;
+      // If not found, try to find by admin ID
+      if (!adminRecord) {
+        adminRecord = await Admin.findById(adminId)
+          .populate({
+            path: "person",
+            select: "-password",
+          })
+          .lean();
       }
 
-      return adminRecord.person;
+      if (!adminRecord || !adminRecord.person) {
+        throw new Error("Admin not found");
+      }
+
+      // Return person data with admin ID
+      return {
+        ...adminRecord.person,
+        adminId: adminRecord._id
+      };
     } catch (err) {
       console.error("Error in getAdminById:", err);
       throw new Error(err.message);
@@ -279,6 +325,19 @@ class AdminService {
 
   async updateAdmin(adminId, adminData) {
     try {
+      // Find the admin record first
+      const adminRecord = await Admin.findOne({ person: adminId });
+      
+      // If not found by person ID, try by admin ID
+      if (!adminRecord) {
+        const adminByAdminId = await Admin.findById(adminId);
+        if (adminByAdminId) {
+          adminId = adminByAdminId.person; // Use the person ID for the update
+        } else {
+          throw new Error("Admin not found");
+        }
+      }
+
       // Prevent changing role from admin
       if (adminData.role && adminData.role !== "admin") {
         throw new Error("Cannot change admin role");
@@ -290,12 +349,6 @@ class AdminService {
       } else {
         // If no password provided, remove it from update data
         delete adminData.password;
-      }
-
-      // Find admin record
-      const adminRecord = await Admin.findOne({ person: adminId });
-      if (!adminRecord) {
-        throw new Error("Admin record not found");
       }
 
       // Update person record
@@ -320,16 +373,26 @@ class AdminService {
         throw new Error("Cannot delete the last admin");
       }
 
-      // Find and delete admin record
-      const adminRecord = await Admin.findOneAndDelete({ person: adminId });
+      // Find admin record by person ID first
+      let adminRecord = await Admin.findOne({ person: adminId });
+      
+      // If not found, try by admin ID
       if (!adminRecord) {
-        throw new Error("Admin record not found");
+        adminRecord = await Admin.findById(adminId);
+        if (adminRecord) {
+          adminId = adminRecord.person; // Use the person ID for deletion
+        } else {
+          throw new Error("Admin not found");
+        }
       }
+
+      // Delete admin record
+      await Admin.findOneAndDelete({ person: adminId });
 
       // Delete person record
       const deletedPerson = await Person.findByIdAndDelete(adminId);
       if (!deletedPerson) {
-        throw new Error("Admin not found");
+        throw new Error("Admin person record not found");
       }
 
       return { message: "Admin deleted successfully" };

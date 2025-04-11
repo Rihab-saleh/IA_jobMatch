@@ -5,6 +5,7 @@ const { getJobEmbedding } = require('./jobCacheService');
 const User = require('../models/user_model');
 const natural = require('natural');
 const UserPreferences = require('../models/UserPreferences_model');
+const { searchJobs } = require('./scrappedJobsService');
 // Initialize tokenizer for keyword extraction
 const tokenizer = new natural.WordTokenizer();
 const stopwords = ['a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'about', 'as'];
@@ -109,7 +110,7 @@ console.log(userPreferences)
     const pageNum = Number.parseInt(page);
     const limitNum = Number.parseInt(limit);
 
-    const data = await getUnifiedJobs(query, location, pageNum, limitNum);
+    const data = await searchJobs({"query": "software developer"});
     const jobs= data.jobs;
    // console.log(jobs)
     // Process jobs in parallel (with concurrency limit)
