@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { Search, Menu, X, Bell, User, Settings, LogOut } from 'lucide-react'
+import { Search, Menu, X, Bell, User, Settings, LogOut } from "lucide-react"
 import { useAuth } from "../contexts/auth-context"
 
 const AdminHeader = ({ logout, fullName }) => {
@@ -53,7 +53,7 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
   const location = useLocation()
   const isActive = (path) => location.pathname === path
 
-  // Updated navigation links for users
+  // Updated navigation links for authenticated users
   const userNavLinks = [
     { path: "/", label: "Home" },
     { path: "/jobs", label: "Find Jobs" },
@@ -64,21 +64,15 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
     { path: "/notifications", label: "Notifications" },
     { path: "/settings", label: "Settings" },
   ]
-  
-  // Default links for non-authenticated users
+
+  // Default links for non-authenticated users - only Home and Find Jobs
   const defaultLinks = [
     { path: "/", label: "Home" },
     { path: "/jobs", label: "Find Jobs" },
-    { path: "/dashboard", label: "Dashboard" },
-    { path: "/recommendations", label: "Recommendations" },
-    { path: "/profile", label: "Profile" },
-    { path: "/cv-builder", label: "CV Builder" },
-    { path: "/notifications", label: "Notifications" },
-    { path: "/settings", label: "Settings" },
   ]
 
   // Choose which links to display based on authentication status
-  const navLinks = isAuthenticated && userRole === "user" ? userNavLinks : defaultLinks
+  const navLinks = isAuthenticated ? userNavLinks : defaultLinks
 
   // Account dropdown links
   const accountLinks = [
