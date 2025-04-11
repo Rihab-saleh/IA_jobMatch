@@ -1,5 +1,6 @@
 // Import required modules
 const jobService = require("../services/jobService")
+const searchJobsService = require("../services/jobApiService")
 
 // Use environment variables for API credentials
 const ADZUNA_API_ID = process.env.ADZUNA_API_ID || "5349e2d4"
@@ -16,7 +17,7 @@ const createMockResults = ({ what = "", where = "", page = 1, results_per_page =
   sources: { indeed: 0, linkedin: 0, google: 0 },
 })
 
-const searchJobs = async (req, res) => {
+const searchJobs1 = async (req, res) => {
   try {
     const {
       what = "",
@@ -49,7 +50,25 @@ const searchJobs = async (req, res) => {
     res.status(500).json({ error: "An error occurred while searching for jobs" })
   }
 }
+const searchJobs = async (req, res) => {
+  try {
+    const filters = req.body; // Get filters from the request body
+    const { jobs, apiJobCounts } = await searchJobsService.searchJobs(filters); // Call the service method
 
+    res.status(200).json({
+      success: true,
+      jobs,
+      apiJobCounts,
+    });
+  } catch (error) {
+    console.error("Error in searchJobs controller:", error);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while searching for jobs.",
+      error: error.message,
+    });
+  }
+};
 const searchJobsBySkills = async (req, res) => {
   try {
     const { skills = "", location = "", page = "1", limit = "10" } = req.query

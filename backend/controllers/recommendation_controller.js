@@ -6,7 +6,7 @@ const recommendationService = require('../services/recommendationService');
 exports.getRecommendationsForUser = async (userId, limit) => {
   //const userId = req.query.userId;
 //const limit = parseInt(req.query.limit, 10) || 10;
-
+  console.log("User ID:", userId);
   if (!userId) {
     return res.status(400).json({ error: 'User ID is required' });
   }
@@ -18,6 +18,7 @@ exports.getRecommendationsForUser = async (userId, limit) => {
     console.error('Error fetching recommendations for user:', error);
     throw new Error('Failed to fetch recommendations');
   }
+ 
 };
 
 /**
@@ -38,4 +39,5 @@ exports.getRecommendationsFromText = async (req, res) => {
     console.error('Error fetching recommendations from text:', error);
     res.status(500).json({ error: 'Failed to fetch recommendations' });
   }
+
 };
