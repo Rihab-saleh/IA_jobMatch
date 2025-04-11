@@ -384,7 +384,20 @@ class UserService {
       profilePicture: person.profilePicture,
     };
   }
-
+  async getProfilePicture(userId) {
+    try {
+      const token = localStorage.getItem("auth_token");
+      const response = await axios.get(`${apiBaseUrl}/users/${userId}/profile-picture`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response.data.profilePicture;
+    } catch (error) {
+      console.error("Error fetching profile picture:", error);
+      throw error;
+    }
+  }
   // Certifications Methods
   async getCertifications(userId) {
     const profile = await Profile.findOne({ userId })

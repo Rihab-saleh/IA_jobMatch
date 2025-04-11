@@ -16,7 +16,7 @@ export default function Login() {
   const searchParams = new URLSearchParams(location.search)
   const registrationSuccess = searchParams.get("registered") === "true"
   const emailFromRegistration = searchParams.get("email") || ""
-  const from = location.state?.from || "/dashboard"
+  const from = location.state?.from || "/profile"
 
   const [formData, setFormData] = useState({
     email: emailFromRegistration,
