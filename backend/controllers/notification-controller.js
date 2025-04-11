@@ -1,10 +1,10 @@
-import * as emailService from '../services/emailService.js';
-import Notification from '../models/notification_model.js';
+const emailService = require('../services/emailService.js');
+const Notification = require('../models/notification_model.js');
 
 /**
  * Récupère les paramètres de notification
  */
-export const getSettings = async (req, res) => {
+ const getSettings = async (req, res) => {
   try {
     console.log('getSettings appelé avec userId:', req.params.userId);
     console.log('User dans la requête:', req.user);
@@ -38,7 +38,7 @@ export const getSettings = async (req, res) => {
 /**
  * Met à jour les paramètres de notification
  */
-export const updateSettings = async (req, res) => {
+ const updateSettings = async (req, res) => {
   try {
     const updatedSettings = await emailService.updateNotificationSettings(
       req.params.userId,
@@ -54,7 +54,7 @@ export const updateSettings = async (req, res) => {
 /**
  * Envoie un email d'alerte d'emploi
  */
-export const sendJobAlertEmail = async (req, res) => {
+ const sendJobAlertEmail = async (req, res) => {
   try {
     const { type, data } = req.body;
 
@@ -78,7 +78,7 @@ export const sendJobAlertEmail = async (req, res) => {
 /**
  * Récupère les notifications de l'utilisateur
  */
-export const getNotifications = async (req, res) => {
+ const getNotifications = async (req, res) => {
   try {
     if (!req.user || !req.user._id) {
       return res.status(401).json({ error: "Utilisateur non authentifié" });
@@ -97,7 +97,7 @@ export const getNotifications = async (req, res) => {
 /**
  * Marque une notification comme lue
  */
-export const markAsReadNotification = async (req, res) => {
+ const markAsReadNotification = async (req, res) => {
   try {
     const { notificationId } = req.params;
 
@@ -125,7 +125,7 @@ export const markAsReadNotification = async (req, res) => {
 /**
  * Vérifie la configuration email
  */
-export const checkEmailConfig = async (req, res) => {
+ const checkEmailConfig = async (req, res) => {
   try {
     const result = await emailService.verifyEmailConfig();
     res.json(result);
@@ -134,3 +134,4 @@ export const checkEmailConfig = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+module.exports = { checkEmailConfig, getSettings, updateSettings, sendJobAlertEmail, getNotifications, markAsReadNotification };
