@@ -22,13 +22,11 @@ const profileSchema = new mongoose.Schema({
   location: { 
     type: String, 
     required: true, 
-    minlength: 2, 
     maxlength: 100 
   },
   jobTitle: {  // Changed from jobTitle to match frontend
     type: String, 
     required: false, 
-    minlength: 2, 
     maxlength: 50 
   },
   bio: {  // Added for frontend compatibility

@@ -83,8 +83,7 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
     { path: "/recommendations", label: "Recommendations" },
     { path: "/profile", label: "Profile" },
     { path: "/cv-builder", label: "CV Builder" },
-    { path: "/notifications", label: "Notifications" },
-    { path: "/settings", label: "Settings" },
+  
   ]
 
   // Default links for non-authenticated users - only Home and Find Jobs

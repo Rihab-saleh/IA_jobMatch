@@ -6,6 +6,7 @@ const User = require('../models/user_model');
 const natural = require('natural');
 const UserPreferences = require('../models/UserPreferences_model');
 const { searchJobs } = require('./jobApiService');
+const userService = require('./userService');
 // Initialize tokenizer for keyword extraction
 const tokenizer = new natural.WordTokenizer();
 const stopwords = ['a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'about', 'as'];
@@ -51,7 +52,39 @@ function extractKeywords(text) {
 /**
  * Create a text representation of a user profile for embedding
  */
-function createUserProfileText(userPreferences) {
+function createUserProfileText(profileData) {
+  const experiencesText = profileData.experiences
+    ?.map(exp => `${exp.title} ${exp.company} ${exp.description || ''}`)
+    .join(' ');
+
+  const formationsText = profileData.formations
+    ?.map(formation => `${formation.degree} ${formation.institution} ${formation.fieldOfStudy || ''}`)
+    .join(' ');
+
+  const languagesText = profileData.languages
+    ?.map(language => `${language.name} ${language.proficiency}`)
+    .join(' ');
+
+  const skillsText = profileData.skills
+    ?.map(skill => skill.name)
+    .join(' ');
+
+  const certificationsText = profileData.certifications
+    ?.map(cert => cert.name)
+    .join(' ');
+
+  return [
+    experiencesText,
+    formationsText,
+    languagesText,
+    certificationsText,
+    skillsText,
+    profileData.location || '',
+    profileData.jobTitle || '',
+    profileData.bio || ''
+  ].join(' ');
+}
+function createUserPreferenceText(userPreferences) {
   return [
       userPreferences.sectors.join(' '),
       userPreferences.contractTypes.join(' '),
@@ -73,22 +106,22 @@ function createUserProfileText(userPreferences) {
  */
 async function getRecommendationsForUser(userId, limit = 10) {
     try {
-      const user = await User.findById(userId).populate('UserPreferences');
+      const user = await User.findById(userId)
       // Find the user and their preferences
-      const userPreferences = user.UserPreferences;
+      const userProfile = await userService.getUserProfile(userId);
    
-console.log(userPreferences)
+console.log(userProfile)
       if (!user) {
         throw new Error('User not found');
       }
 
       // If no user preferences are set, return empty recommendations
-      if (!userPreferences) {
+      if (!userProfile) {
         return [];
       }
 
     // Create text representation of user profile
-    const userProfileText = createUserProfileText(userPreferences);
+    const userProfileText = createUserProfileText(userProfile);
     console.log('User profile text:', userProfileText);
     // Generate embedding for user profile
     const userEmbedding = await generateEmbedding(userProfileText);

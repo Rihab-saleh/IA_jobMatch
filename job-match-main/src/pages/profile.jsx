@@ -33,7 +33,6 @@ import { userService } from "../services/user-service"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "../components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
 import { Label } from "../components/ui/label"
-import { Switch } from "../components/ui/switch"
 import { Separator } from "../components/ui/separator"
 
 function ProfilePage() {
@@ -441,31 +440,39 @@ function ProfilePage() {
 
   const saveProfile = async () => {
     if (!user || !user._id) {
-      toast.error("You must be logged in to perform this action")
-      return
+      toast.error("You must be logged in to perform this action");
+      return;
     }
-
+  
     // Validate phone number before saving
     if (state.profileData.phone && !validatePhoneNumber(state.profileData.phone)) {
-      toast.error("Phone number must be between 10-15 digits. Please include country code if needed.")
-      return
+      toast.error("Phone number must be between 10-15 digits. Please include country code if needed.");
+      return;
     }
-
-    setState((prev) => ({ ...prev, saving: true }))
+  
+    // Debug what's being sent to the server
+    console.log("Profile data being sent:", {
+      ...state.profileData,
+    });
+  
+    setState((prev) => ({ ...prev, saving: true }));
     try {
       // Format phone number to remove any non-digit characters
-      const formattedPhone = state.profileData.phone ? state.profileData.phone.replace(/\D/g, "") : ""
-
-      await userService.updateUserProfile(user._id, {
+      const formattedPhone = state.profileData.phone ? state.profileData.phone.replace(/\D/g, "") : "";
+  
+      // Prepare the profile data to send
+      const profileDataToSend = {
         ...state.profileData,
         phoneNumber: formattedPhone,
-      })
-
+      };
+  
+      await userService.updateUserProfile(user._id, profileDataToSend);
+  
       // Update phone number separately using the dedicated endpoint
       if (formattedPhone !== state.savedProfileData.phone) {
-        await userService.updatePhoneNumber(user._id, { phoneNumber: formattedPhone })
+        await userService.updatePhoneNumber(user._id, { phoneNumber: formattedPhone });
       }
-
+  
       // Update savedProfileData with the current profileData
       setState((prev) => ({
         ...prev,
@@ -478,35 +485,25 @@ function ProfilePage() {
           phone: formattedPhone,
         },
         saving: false,
-      }))
-
-      toast.success("Profile updated successfully")
-      setState((prev) => ({ ...prev, saving: true }));
-    await userService.updateUserProfile(user._id, state.profileData);
-
-    // Update the global context with the new user data
-    updateUser({
-      ...user,
-      firstName: state.profileData.firstName,
-      lastName: state.profileData.lastName,
-    });
+      }));
+  
+      toast.success("Profile updated successfully");
     } catch (error) {
       console.error("Error updating profile:", error);
-      toast.error("Failed to update profile. Please try again.");
-      if (error.message === "Unauthorized") {
+      if (error.response && error.response.data) {
+        console.error("Server response:", error.response.data);
+        toast.error(`Error: ${error.response.data.error || error.message}`);
+      } else if (error.message === "Unauthorized") {
         navigate("/login", {
           state: { from: "/profile", message: "Your session has expired. Please log in again." },
-        })
+        });
       } else {
-        toast.error(`Error: ${error.message || "Failed to update profile"}`)
+        toast.error(`Error: ${error.message || "Failed to update profile"}`);
       }
     } finally {
-      setState((prev) => ({ ...prev, saving: false }))
+      setState((prev) => ({ ...prev, saving: false }));
     }
-  
-
-  }
-
+  };
   const openDialog = (dialogName, item = null) => {
     setState((prev) => ({
       ...prev,
@@ -1814,11 +1811,12 @@ function ProfilePage() {
                       Currently Working
                     </Label>
                     <div className="flex items-center space-x-2 h-10 pt-2">
-                      <Switch
+                      <input
+                        type="checkbox"
                         id="current"
                         name="current"
                         defaultChecked={!state.currentItem?.endDate || state.currentItem?.endDate === null}
-                        className="data-[state=checked]:bg-green-500"
+                        className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                         onChange={(e) => {
                           const endDateField = document.getElementById("endDate")
                           const endDateLabel = document.querySelector('label[for="endDate"]')
@@ -1831,21 +1829,21 @@ function ProfilePage() {
                               endDateLabel.parentElement.classList.add("opacity-50")
                               if (currentLabel) {
                                 currentLabel.innerHTML =
-                                  'Yes <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">Current</span>'
+                                  'Currently Working <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">Current</span>'
                               }
                             } else {
                               endDateField.disabled = false
                               endDateField.value = new Date().toISOString().split("T")[0] // Set to today's date
                               endDateLabel.parentElement.classList.remove("opacity-50")
                               if (currentLabel) {
-                                currentLabel.textContent = "No"
+                                currentLabel.textContent = "Currently Working"
                               }
                             }
                           }
                         }}
                       />
                       <Label htmlFor="current" className="text-gray-600 flex items-center">
-                        {!state.currentItem?.endDate || state.currentItem?.endDate === null ? "Yes" : "No"}
+                        Currently Working
                         {(!state.currentItem?.endDate || state.currentItem?.endDate === null) && (
                           <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
                             Current
@@ -1990,11 +1988,12 @@ function ProfilePage() {
                       Currently Studying
                     </Label>
                     <div className="flex items-center space-x-2 h-10 pt-2">
-                      <Switch
+                      <input
+                        type="checkbox"
                         id="currentEducation"
                         name="current"
                         defaultChecked={!state.currentItem?.endDate || state.currentItem?.endDate === null}
-                        className="data-[state=checked]:bg-green-500"
+                        className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                         onChange={(e) => {
                           const endDateField = document.getElementById("educationEndDate")
                           const endDateLabel = document.querySelector('label[for="educationEndDate"]')
@@ -2007,21 +2006,21 @@ function ProfilePage() {
                               endDateLabel.parentElement.classList.add("opacity-50")
                               if (currentLabel) {
                                 currentLabel.innerHTML =
-                                  'Yes <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">Current</span>'
+                                  'Currently Studying <span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">Current</span>'
                               }
                             } else {
                               endDateField.disabled = false
                               endDateField.value = new Date().toISOString().split("T")[0] // Set to today's date
                               endDateLabel.parentElement.classList.remove("opacity-50")
                               if (currentLabel) {
-                                currentLabel.textContent = "No"
+                                currentLabel.textContent = "Currently Studying"
                               }
                             }
                           }
                         }}
                       />
                       <Label htmlFor="currentEducation" className="text-gray-600 flex items-center">
-                        {!state.currentItem?.endDate || state.currentItem?.endDate === null ? "Yes" : "No"}
+                        Currently Studying
                         {(!state.currentItem?.endDate || state.currentItem?.endDate === null) && (
                           <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
                             Current
