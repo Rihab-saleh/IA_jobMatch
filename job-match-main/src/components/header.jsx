@@ -6,6 +6,8 @@ import { Search, Menu, X, Bell, User, Settings, LogOut } from "lucide-react"
 import { useAuth } from "../contexts/auth-context"
 
 const AdminHeader = ({ logout, fullName }) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+
   return (
     <header className="border-b bg-white sticky top-0 z-50">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -15,33 +17,38 @@ const AdminHeader = ({ logout, fullName }) => {
         </Link>
 
         <div className="flex items-center gap-3">
-          <div className="relative group">
+          <div className="relative">
             <div className="flex items-center">
-              <button className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
+              <button
+                className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+              >
                 <User className="h-4 w-4" />
               </button>
               {fullName && <span className="ml-2 text-sm font-medium">{fullName}</span>}
             </div>
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
-              <div className="px-4 py-2 text-sm text-gray-700 border-b">
-                {fullName || "Admin Account"}
-                <span className="ml-2 px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded-full">Admin</span>
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                <div className="px-4 py-2 text-sm text-gray-700 border-b">
+                  {fullName || "Admin Account"}
+                  <span className="ml-2 px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded-full">Admin</span>
+                </div>
+                <Link
+                  to="/admin/settings"
+                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Admin Settings
+                </Link>
+                <button
+                  onClick={logout}
+                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </button>
               </div>
-              <Link
-                to="/admin/settings"
-                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Admin Settings
-              </Link>
-              <button
-                onClick={logout}
-                className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </button>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -52,6 +59,21 @@ const AdminHeader = ({ logout, fullName }) => {
 const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout, userRole, fullName }) => {
   const location = useLocation()
   const isActive = (path) => location.pathname === path
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownOpen && !event.target.closest(".user-dropdown")) {
+        setDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [dropdownOpen])
 
   // Updated navigation links for authenticated users
   const userNavLinks = [
@@ -110,43 +132,54 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
                 <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
               </Link>
 
-              <div className="relative group">
+              <div className="relative user-dropdown">
                 <div className="flex items-center">
-                  <button className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
+                  <button
+                    className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700"
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                  >
                     <User className="h-4 w-4" />
                   </button>
                   {fullName && <span className="ml-2 text-sm font-medium">{fullName}</span>}
                 </div>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
-                  <div className="px-4 py-2 text-sm text-gray-700 border-b">
-                    {fullName || "My Account"}
-                    {userRole === "admin" && (
-                      <span className="ml-2 px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded-full">Admin</span>
-                    )}
-                    {userRole === "user" && (
-                      <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">User</span>
-                    )}
-                  </div>
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                    <div className="px-4 py-2 text-sm text-gray-700 border-b">
+                      {fullName || "My Account"}
+                      {userRole === "admin" && (
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded-full">
+                          Admin
+                        </span>
+                      )}
+                      {userRole === "user" && (
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">User</span>
+                      )}
+                    </div>
 
-                  {accountLinks.map(({ path, label, icon: Icon }) => (
-                    <Link
-                      key={path}
-                      to={path}
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    {accountLinks.map(({ path, label, icon: Icon }) => (
+                      <Link
+                        key={path}
+                        to={path}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setDropdownOpen(false)}
+                      >
+                        <Icon className="mr-2 h-4 w-4" />
+                        {label}
+                      </Link>
+                    ))}
+
+                    <button
+                      onClick={() => {
+                        logout()
+                        setDropdownOpen(false)
+                      }}
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
-                      <Icon className="mr-2 h-4 w-4" />
-                      {label}
-                    </Link>
-                  ))}
-
-                  <button
-                    onClick={logout}
-                    className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
-                  </button>
-                </div>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           ) : (
