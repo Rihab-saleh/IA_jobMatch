@@ -210,12 +210,7 @@ async function processJobsInBatches(jobs, userEmbedding, user, concurrency = 10)
   return results;
 }
 
-/**
- * Get job recommendations based on a text profile
- * @param {string} profileText - Text description of user profile
- * @param {number} limit - Maximum number of recommendations to return
- * @returns {Promise<Array>} - Array of recommended jobs with scores
- */
+
 async function getRecommendationsFromText(profileText, limit = 10) {
   try {
     // Extract keywords from profile text
@@ -226,7 +221,7 @@ async function getRecommendationsFromText(profileText, limit = 10) {
     
     // Create basic filters for API
     const apiFilters = {
-      keywords: keywords.slice(0, 5).join(',') // Use top 5 keywords
+      keywords: keywords.slice(0, 5).join(',') 
     };
     
     // Extract location if present in profile text

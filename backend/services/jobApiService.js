@@ -704,6 +704,5 @@ async function searchJobs(filters) {
     return { jobs: [], apiJobCounts: {} };
   }
 }
-
-
+ 
 module.exports = {searchJobs, fetchAdzunaJobs, fetchReedJobs, fetchApiJobsJobs, fetchJoobleJobs, fetchFindworkJobs, fetchRemotiveJobs};
