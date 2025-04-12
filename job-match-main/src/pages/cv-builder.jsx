@@ -562,7 +562,7 @@ export default function CVBuilderPage() {
       if (operation === "add") {
         const apiData = {
           name: data.name,
-          proficiency: data.level,
+          level: data.level,
         }
 
         const response = await userService.addLanguage(user._id, apiData)
@@ -582,7 +582,7 @@ export default function CVBuilderPage() {
       if (operation === "update" && currentItem) {
         const apiData = {
           name: data.name,
-          proficiency: data.level,
+          level: data.level,
         }
 
         await userService.updateLanguage(user._id, currentItem.id, apiData)
