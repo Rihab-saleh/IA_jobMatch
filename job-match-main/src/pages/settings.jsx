@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "../components/ui/button"
-import { Switch } from "../components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card"
 import { Label } from "../components/ui/label"
@@ -59,16 +58,16 @@ export default function SettingsPage() {
       try {
         setLoading(true)
         const settings = await notificationService.getSettings(userId)
-        
+
         setNotificationSettings({
           email: settings.email || false,
           jobAlerts: settings.jobAlerts || false,
           applicationUpdates: settings.applicationUpdates || false,
           frequency: settings.frequency || "daily",
           userEmail: settings.userEmail || "",
-          userName: settings.userName || ""
+          userName: settings.userName || "",
         })
-    
+
         setError(null)
       } catch (error) {
         console.error("Error fetching notification settings:", error)
@@ -205,11 +204,12 @@ export default function SettingsPage() {
                             </Label>
                             <p className="text-sm text-gray-500">Receive important account notifications via email</p>
                           </div>
-                          <Switch
+                          <input
+                            type="checkbox"
                             id="email"
                             checked={notificationSettings.email}
-                            onCheckedChange={() => handleNotificationToggle("email")}
-                            className="bg-gray-300 data-[state=checked]:bg-purple-700"
+                            onChange={() => handleNotificationToggle("email")}
+                            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -221,11 +221,12 @@ export default function SettingsPage() {
                               Receive personalized job recommendations based on your profile
                             </p>
                           </div>
-                          <Switch
+                          <input
+                            type="checkbox"
                             id="jobAlerts"
                             checked={notificationSettings.jobAlerts}
-                            onCheckedChange={() => handleNotificationToggle("jobAlerts")}
-                            className="bg-gray-300 data-[state=checked]:bg-purple-700"
+                            onChange={() => handleNotificationToggle("jobAlerts")}
+                            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -235,11 +236,12 @@ export default function SettingsPage() {
                             </Label>
                             <p className="text-sm text-gray-500">Receive updates about your job applications</p>
                           </div>
-                          <Switch
+                          <input
+                            type="checkbox"
                             id="applicationUpdates"
                             checked={notificationSettings.applicationUpdates}
-                            onCheckedChange={() => handleNotificationToggle("applicationUpdates")}
-                            className="bg-gray-300 data-[state=checked]:bg-purple-700"
+                            onChange={() => handleNotificationToggle("applicationUpdates")}
+                            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                           />
                         </div>
                       </div>
@@ -314,11 +316,12 @@ export default function SettingsPage() {
                         </Label>
                         <p className="text-sm text-gray-500">Allow others to see your email address</p>
                       </div>
-                      <Switch
+                      <input
+                        type="checkbox"
                         id="showEmail"
                         checked={privacySettings.showEmail}
-                        onCheckedChange={() => handlePrivacyToggle("showEmail")}
-                        className="bg-gray-300 data-[state=checked]:bg-purple-700"
+                        onChange={() => handlePrivacyToggle("showEmail")}
+                        className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                       />
                     </div>
                     <div className="flex items-center justify-between">
@@ -328,11 +331,12 @@ export default function SettingsPage() {
                         </Label>
                         <p className="text-sm text-gray-500">Allow others to see your phone number</p>
                       </div>
-                      <Switch
+                      <input
+                        type="checkbox"
                         id="showPhone"
                         checked={privacySettings.showPhone}
-                        onCheckedChange={() => handlePrivacyToggle("showPhone")}
-                        className="bg-gray-300 data-[state=checked]:bg-purple-700"
+                        onChange={() => handlePrivacyToggle("showPhone")}
+                        className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                       />
                     </div>
                   </div>

@@ -78,10 +78,25 @@ function ProfilePage() {
     languages: [],
     activeDialog: null,
     currentItem: null,
+    dateErrors: {
+      experience: {
+        startDate: "",
+        endDate: "",
+      },
+      education: {
+        startDate: "",
+        endDate: "",
+      },
+      certification: {
+        issueDate: "",
+        expirationDate: "",
+      },
+    },
   })
 
   const [completionPercentage, setCompletionPercentage] = useState(0)
   const [activeTab, setActiveTab] = useState("personal")
+
   const validatePhoneNumber = (phoneNumber) => {
     // Skip validation if empty
     if (!phoneNumber) return true
@@ -159,6 +174,7 @@ function ProfilePage() {
       loadProfileData()
     }
   }, [user, authLoading])
+
   useEffect(() => {
     if (state.savedProfileData && state.savedProfileData.profilePicture) {
       console.log("Profile Picture URL:", state.savedProfileData.profilePicture.url)
@@ -213,7 +229,6 @@ function ProfilePage() {
     return formattedUrl
   }
 
-  // Modify the loadProfileData function to handle the profile picture better
   const loadProfileData = async () => {
     try {
       if (!user || !user._id) {
@@ -293,7 +308,105 @@ function ProfilePage() {
       }
     }
   }
-  console.log("Profile Picture URL:", state.profilePicture)
+
+  const validateExperienceDates = (startDate, endDate, isCurrent) => {
+    const today = new Date().toISOString().split("T")[0]
+    const errors = {
+      startDate: "",
+      endDate: "",
+    }
+
+    if (!startDate) {
+      errors.startDate = "Start date is required"
+    } else if (startDate > today) {
+      errors.startDate = "Start date cannot be in the future"
+    }
+
+    if (!isCurrent) {
+      if (!endDate) {
+        errors.endDate = "End date is required"
+      } else if (endDate < startDate) {
+        errors.endDate = "End date cannot be before start date"
+      } else if (endDate > today) {
+        errors.endDate = "End date cannot be in the future"
+      }
+    }
+
+    setState((prev) => ({
+      ...prev,
+      dateErrors: {
+        ...prev.dateErrors,
+        experience: errors,
+      },
+    }))
+
+    return !errors.startDate && !errors.endDate
+  }
+
+  const validateEducationDates = (startDate, endDate, isCurrent) => {
+    const today = new Date().toISOString().split("T")[0]
+    const errors = {
+      startDate: "",
+      endDate: "",
+    }
+
+    if (!startDate) {
+      errors.startDate = "Start date is required"
+    } else if (startDate > today) {
+      errors.startDate = "Start date cannot be in the future"
+    }
+
+    if (!isCurrent) {
+      if (!endDate) {
+        errors.endDate = "End date is required"
+      } else if (endDate < startDate) {
+        errors.endDate = "End date cannot be before start date"
+      } else if (endDate > today) {
+        errors.endDate = "End date cannot be in the future"
+      }
+    }
+
+    setState((prev) => ({
+      ...prev,
+      dateErrors: {
+        ...prev.dateErrors,
+        education: errors,
+      },
+    }))
+
+    return !errors.startDate && !errors.endDate
+  }
+
+  const validateCertificationDates = (issueDate, expirationDate) => {
+    const today = new Date().toISOString().split("T")[0]
+    const errors = {
+      issueDate: "",
+      expirationDate: "",
+    }
+
+    if (!issueDate) {
+      errors.issueDate = "Issue date is required"
+    } else if (issueDate > today) {
+      errors.issueDate = "Issue date cannot be in the future"
+    }
+
+    if (expirationDate) {
+      if (expirationDate < issueDate) {
+        errors.expirationDate = "Expiration date cannot be before issue date"
+      }
+    }
+
+    setState((prev) => ({
+      ...prev,
+      dateErrors: {
+        ...prev.dateErrors,
+        certification: errors,
+      },
+    }))
+
+    return !errors.issueDate && !errors.expirationDate
+  }
+
   const handleSkillOperation = (operation, skill = null) => {
     if (!user || !user._id) {
       toast.error("You must be logged in to perform this action")
@@ -440,39 +553,39 @@ function ProfilePage() {
 
   const saveProfile = async () => {
     if (!user || !user._id) {
-      toast.error("You must be logged in to perform this action");
-      return;
+      toast.error("You must be logged in to perform this action")
+      return
     }
-  
+
     // Validate phone number before saving
     if (state.profileData.phone && !validatePhoneNumber(state.profileData.phone)) {
-      toast.error("Phone number must be between 10-15 digits. Please include country code if needed.");
-      return;
+      toast.error("Phone number must be between 10-15 digits. Please include country code if needed.")
+      return
     }
-  
+
     // Debug what's being sent to the server
     console.log("Profile data being sent:", {
       ...state.profileData,
-    });
-  
-    setState((prev) => ({ ...prev, saving: true }));
+    })
+
+    setState((prev) => ({ ...prev, saving: true }))
     try {
       // Format phone number to remove any non-digit characters
-      const formattedPhone = state.profileData.phone ? state.profileData.phone.replace(/\D/g, "") : "";
-  
+      const formattedPhone = state.profileData.phone ? state.profileData.phone.replace(/\D/g, "") : ""
+
       // Prepare the profile data to send
       const profileDataToSend = {
         ...state.profileData,
         phoneNumber: formattedPhone,
-      };
-  
-      await userService.updateUserProfile(user._id, profileDataToSend);
-  
+      }
+
+      await userService.updateUserProfile(user._id, profileDataToSend)
+
       // Update phone number separately using the dedicated endpoint
       if (formattedPhone !== state.savedProfileData.phone) {
-        await userService.updatePhoneNumber(user._id, { phoneNumber: formattedPhone });
+        await userService.updatePhoneNumber(user._id, { phoneNumber: formattedPhone })
       }
-  
+
       // Update savedProfileData with the current profileData
       setState((prev) => ({
         ...prev,
@@ -485,30 +598,45 @@ function ProfilePage() {
           phone: formattedPhone,
         },
         saving: false,
-      }));
-  
-      toast.success("Profile updated successfully");
+      }))
+
+      toast.success("Profile updated successfully")
     } catch (error) {
-      console.error("Error updating profile:", error);
+      console.error("Error updating profile:", error)
       if (error.response && error.response.data) {
-        console.error("Server response:", error.response.data);
-        toast.error(`Error: ${error.response.data.error || error.message}`);
+        console.error("Server response:", error.response.data)
+        toast.error(`Error: ${error.response.data.error || error.message}`)
       } else if (error.message === "Unauthorized") {
         navigate("/login", {
           state: { from: "/profile", message: "Your session has expired. Please log in again." },
-        });
+        })
       } else {
-        toast.error(`Error: ${error.message || "Failed to update profile"}`);
+        toast.error(`Error: ${error.message || "Failed to update profile"}`)
       }
     } finally {
-      setState((prev) => ({ ...prev, saving: false }));
+      setState((prev) => ({ ...prev, saving: false }))
     }
-  };
+  }
+
   const openDialog = (dialogName, item = null) => {
     setState((prev) => ({
       ...prev,
       activeDialog: dialogName,
       currentItem: item,
+      dateErrors: {
+        experience: {
+          startDate: "",
+          endDate: "",
+        },
+        education: {
+          startDate: "",
+          endDate: "",
+        },
+        certification: {
+          issueDate: "",
+          expirationDate: "",
+        },
+      },
     }))
   }
 
@@ -530,26 +658,17 @@ function ProfilePage() {
     const formData = new FormData(e.target)
     const isCurrent = formData.get("current") === "on"
     const startDate = formData.get("startDate")
-    const endDate = formData.get("endDate")
 
-    // Date validation
-    const today = new Date().toISOString().split("T")[0]
+    // Always require an end date, even for current positions
+    let endDate = formData.get("endDate")
 
-    // Check if start date is in the future
-    if (startDate > today) {
-      toast.error("Start date cannot be in the future")
-      return
+    // If current is checked and no end date is provided, use today's date
+    if (isCurrent && (!endDate || endDate === "")) {
+      endDate = new Date().toISOString().split("T")[0]
     }
 
-    // Check if end date is before start date
-    if (!isCurrent && endDate && endDate < startDate) {
-      toast.error("End date cannot be before start date")
-      return
-    }
-
-    // Check if end date is in the future
-    if (!isCurrent && endDate && endDate > today) {
-      toast.error("End date cannot be in the future")
+    // Validate dates
+    if (!validateExperienceDates(startDate, endDate, isCurrent)) {
       return
     }
 
@@ -558,7 +677,7 @@ function ProfilePage() {
       jobTitle: formData.get("jobTitle"),
       location: formData.get("location"),
       startDate: startDate,
-      endDate: isCurrent ? null : endDate || null, // Use null for current positions instead of 2099-12-31
+      endDate: endDate, // Always provide an end date
       description: formData.get("description"),
       current: isCurrent,
     }
@@ -587,7 +706,6 @@ function ProfilePage() {
       toast.error(`Error: ${error.message || "Failed to save experience"}`)
     }
   }
-
   const handleEducationSubmit = async (e) => {
     e.preventDefault()
     if (!user || !user._id) {
@@ -598,28 +716,19 @@ function ProfilePage() {
     const formData = new FormData(e.target)
     const isCurrent = formData.get("current") === "on"
     const startDate = formData.get("startDate")
-    const endDate = formData.get("endDate")
     const schoolName = formData.get("institution")
     const degreeName = formData.get("degree")
 
-    // Date validation
-    const today = new Date().toISOString().split("T")[0]
+    // Always require an end date, even for current positions
+    let endDate = formData.get("endDate")
 
-    // Check if start date is in the future
-    if (startDate > today) {
-      toast.error("Start date cannot be in the future")
-      return
+    // If current is checked and no end date is provided, use today's date
+    if (isCurrent && (!endDate || endDate === "")) {
+      endDate = new Date().toISOString().split("T")[0]
     }
 
-    // Check if end date is before start date
-    if (!isCurrent && endDate && endDate < startDate) {
-      toast.error("End date cannot be before start date")
-      return
-    }
-
-    // Check if end date is in the future
-    if (!isCurrent && endDate && endDate > today) {
-      toast.error("End date cannot be in the future")
+    // Validate dates
+    if (!validateEducationDates(startDate, endDate, isCurrent)) {
       return
     }
 
@@ -640,7 +749,7 @@ function ProfilePage() {
       degree: degreeName,
       fieldOfStudy: formData.get("fieldOfStudy"),
       startDate: startDate,
-      endDate: isCurrent ? null : endDate || null, // Use null for current education instead of 2099-12-31
+      endDate: endDate, // Always provide an end date
       description: formData.get("description"),
       current: isCurrent,
     }
@@ -678,11 +787,19 @@ function ProfilePage() {
     }
 
     const formData = new FormData(e.target)
+    const issueDate = formData.get("issueDate")
+    const expirationDate = formData.get("expirationDate") || null
+
+    // Validate dates
+    if (!validateCertificationDates(issueDate, expirationDate)) {
+      return
+    }
+
     const data = {
       name: formData.get("name"),
       issuer: formData.get("issuingOrganization"),
-      issueDate: formData.get("issueDate"),
-      expirationDate: formData.get("expirationDate") || null,
+      issueDate: issueDate,
+      expirationDate: expirationDate,
       credentialId: formData.get("credentialId") || null,
       credentialURL: formData.get("credentialUrl") || null,
     }
@@ -808,7 +925,6 @@ function ProfilePage() {
 
   const formatDate = (dateString) => {
     if (!dateString) return "Present"
-    // Remove the check for 2099 and rely on the "current" flag instead
     const date = new Date(dateString)
     return date.toLocaleDateString("en-US", { year: "numeric", month: "short" })
   }
@@ -856,7 +972,7 @@ function ProfilePage() {
   if (state.error) {
     window.location.reload()
   }
-  console.log("Profile Data:", state.savedProfileData)
+
   return (
     <div className="container mx-auto px-4 py-8 bg-gray-50 min-h-screen">
       <div className="max-w-6xl mx-auto">
@@ -878,7 +994,10 @@ function ProfilePage() {
                     className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center border-2 border-white shadow-md">
+                  <div
+                    className="w-16 h-16 rounded-full bg-white flex items-center justify-center
+                    border-2 border-white shadow-md"
+                  >
                     <User className="h-8 w-8 text-gray-300" />
                   </div>
                 )}
@@ -1600,7 +1719,8 @@ function ProfilePage() {
                           className="bg-purple-600 hover:bg-purple-700 text-white"
                         >
                           <PlusCircle className="h-4 w-4 mr-2" />
-                          Add Certification
+                          <span className="hidden sm:inline">Add Certification</span>
+                          <span className="sm:hidden">Add</span>
                         </Button>
                       </div>
                     ) : (
@@ -1869,7 +1989,16 @@ function ProfilePage() {
                       }
                       className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                       required
+                      onChange={() => {
+                        const startDate = document.getElementById("startDate").value
+                        const endDate = document.getElementById("endDate").value
+                        const isCurrent = document.getElementById("current").checked
+                        validateExperienceDates(startDate, endDate, isCurrent)
+                      }}
                     />
+                    {state.dateErrors.experience.startDate && (
+                      <p className="text-red-500 text-xs mt-1">{state.dateErrors.experience.startDate}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="endDate" className="text-gray-700">
@@ -1886,7 +2015,16 @@ function ProfilePage() {
                       }
                       className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                       disabled={!state.currentItem?.endDate || state.currentItem?.endDate === null}
+                      onChange={() => {
+                        const startDate = document.getElementById("startDate").value
+                        const endDate = document.getElementById("endDate").value
+                        const isCurrent = document.getElementById("current").checked
+                        validateExperienceDates(startDate, endDate, isCurrent)
+                      }}
                     />
+                    {state.dateErrors.experience.endDate && (
+                      <p className="text-red-500 text-xs mt-1">{state.dateErrors.experience.endDate}</p>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -1981,7 +2119,16 @@ function ProfilePage() {
                       }
                       className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                       required
+                      onChange={() => {
+                        const startDate = document.getElementById("startDate").value
+                        const endDate = document.getElementById("educationEndDate").value
+                        const isCurrent = document.getElementById("currentEducation").checked
+                        validateEducationDates(startDate, endDate, isCurrent)
+                      }}
                     />
+                    {state.dateErrors.education.startDate && (
+                      <p className="text-red-500 text-xs mt-1">{state.dateErrors.education.startDate}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="currentEducation" className="text-gray-700">
@@ -2045,7 +2192,16 @@ function ProfilePage() {
                     }
                     className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                     disabled={!state.currentItem?.endDate || state.currentItem?.endDate === null}
+                    onChange={() => {
+                      const startDate = document.getElementById("startDate").value
+                      const endDate = document.getElementById("educationEndDate").value
+                      const isCurrent = document.getElementById("currentEducation").checked
+                      validateEducationDates(startDate, endDate, isCurrent)
+                    }}
                   />
+                  {state.dateErrors.education.endDate && (
+                    <p className="text-red-500 text-xs mt-1">{state.dateErrors.education.endDate}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description" className="text-gray-700">
@@ -2126,11 +2282,19 @@ function ProfilePage() {
                       }
                       className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                       required
+                      onChange={() => {
+                        const issueDate = document.getElementById("issueDate").value
+                        const expirationDate = document.getElementById("expirationDate").value
+                        validateCertificationDates(issueDate, expirationDate)
+                      }}
                     />
+                    {state.dateErrors.certification.issueDate && (
+                      <p className="text-red-500 text-xs mt-1">{state.dateErrors.certification.issueDate}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="expirationDate" className="text-gray-700">
-                      Expiration Date (if applicable)
+                      Expiration Date 
                     </Label>
                     <Input
                       id="expirationDate"
@@ -2142,7 +2306,15 @@ function ProfilePage() {
                           : ""
                       }
                       className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      onChange={() => {
+                        const issueDate = document.getElementById("issueDate").value
+                        const expirationDate = document.getElementById("expirationDate").value
+                        validateCertificationDates(issueDate, expirationDate)
+                      }}
                     />
+                    {state.dateErrors.certification.expirationDate && (
+                      <p className="text-red-500 text-xs mt-1">{state.dateErrors.certification.expirationDate}</p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

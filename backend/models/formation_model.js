@@ -7,6 +7,7 @@ const formationSchema = new mongoose.Schema({
     fieldOfStudy: { type: String, required: false },
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
+    current: { type: Boolean, default: false },
     description: { type: String, required: true },
 }, { timestamps: true });
 
