@@ -23,19 +23,33 @@ import {
   Mail,
   Lock,
   Save,
+  Check,
+  Ban,
 } from "lucide-react"
 import { adminService } from "../services/admin-service"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../components/ui/tooltip"
 import { Alert, AlertTitle, AlertDescription } from "../components/ui/alert"
 
-// Custom Modal Component
+// Update the Modal component to make it more visually clear
 function Modal({ isOpen, onClose, children }) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+    <div
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-200"
+      onClick={(e) => {
+        // Close when clicking the backdrop, but not when clicking the modal content
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative border border-gray-200 animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors"
+        >
           <X className="h-5 w-5" />
         </button>
         {children}
@@ -76,6 +90,9 @@ export default function AdminPage() {
     totalUsersPages: 1,
     totalJobsPages: 1,
     totalAdminsPages: 1,
+    totalJobsCount: 0,
+    totalUsersCount: 0,
+    totalAdminsCount: 0,
     usersSearchQuery: "",
     jobsSearchQuery: "",
     adminsSearchQuery: "",
@@ -95,6 +112,8 @@ export default function AdminPage() {
       age: "",
       role: "admin",
     },
+    statusChangeModalOpen: false,
+    userToToggleStatus: null,
   })
 
   const debouncedUsersSearch = useDebounce(state.usersSearchQuery, 500)
@@ -131,6 +150,61 @@ export default function AdminPage() {
     isExternal: true,
   })
 
+  // Fetch all totals on initial load
+  useEffect(() => {
+    const fetchAllTotals = async () => {
+      setState((prev) => ({ ...prev, loading: true }))
+
+      try {
+        // Fetch jobs count
+        const [scrapedResponse, externalResponse] = await Promise.all([
+          adminService.getAllScrapedJobs({ page: 1, limit: 1 }).catch((err) => {
+            console.error("Error fetching scraped jobs count:", err)
+            return { count: 0 }
+          }),
+          adminService.getAllExternalJobs({ page: 1, limit: 1 }).catch((err) => {
+            console.error("Error fetching external jobs count:", err)
+            return { count: 0 }
+          }),
+        ])
+
+        const totalScrapedJobs = scrapedResponse.count || scrapedResponse.data?.count || 0
+        const totalExternalJobs = externalResponse.count || externalResponse.data?.count || 0
+        const totalJobs = totalScrapedJobs + totalExternalJobs
+
+        // Fetch users count
+        const usersResponse = await adminService.getAllUsers({ page: 1, limit: 1 }).catch((err) => {
+          console.error("Error fetching users count:", err)
+          return { data: { pagination: { total: 0 } } }
+        })
+
+        const totalUsers = usersResponse.data?.pagination?.total || 0
+
+        // Fetch admins count
+        const adminsResponse = await adminService.getAllAdmins().catch((err) => {
+          console.error("Error fetching admins count:", err)
+          return { pagination: { total: 0 }, admins: [] }
+        })
+
+        const totalAdmins = adminsResponse.pagination?.total || adminsResponse.admins?.length || 0
+
+        setState((prev) => ({
+          ...prev,
+          totalJobsCount: totalJobs,
+          totalUsersCount: totalUsers,
+          totalAdminsCount: totalAdmins,
+          loading: false,
+        }))
+      } catch (err) {
+        console.error("Error fetching totals:", err)
+        setState((prev) => ({ ...prev, error: err.message, loading: false }))
+      }
+    }
+
+    fetchAllTotals()
+  }, []) // Empty dependency array means this runs once on mount
+
+  // Update the useEffect for fetching data to better handle search
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -138,7 +212,7 @@ export default function AdminPage() {
           setState((prev) => ({ ...prev, loading: true, error: null }))
 
           // Log the API calls for debugging
-          console.log("Fetching scraped jobs with params:", {
+          console.log("Fetching jobs with params:", {
             page: state.currentJobsPage,
             limit: 10,
             search: debouncedJobsSearch,
@@ -172,7 +246,6 @@ export default function AdminPage() {
           console.log("External jobs response:", externalResponse)
 
           // Fix: Adjust to match the actual API response structure
-          // The API returns the data directly, not nested under a 'data' property
           const scrapedJobs =
             scrapedResponse.results?.map(normalizeAdzunaJob) ||
             scrapedResponse.data?.results?.map(normalizeAdzunaJob) ||
@@ -185,6 +258,11 @@ export default function AdminPage() {
 
           const combinedJobs = [...scrapedJobs, ...externalJobs]
           console.log("Combined jobs:", combinedJobs)
+
+          // Get total counts from the API responses
+          const totalScrapedJobs = scrapedResponse.count || scrapedResponse.data?.count || 0
+          const totalExternalJobs = externalResponse.count || externalResponse.data?.count || 0
+          const totalJobs = totalScrapedJobs + totalExternalJobs
 
           // Fix: Get pagination info from the correct properties
           const totalScrapedPages =
@@ -202,6 +280,7 @@ export default function AdminPage() {
           setState((prev) => ({
             ...prev,
             jobs: combinedJobs,
+            totalJobsCount: totalJobs,
             totalJobsPages: Math.max(totalScrapedPages, totalExternalPages),
             loading: false,
           }))
@@ -222,6 +301,7 @@ export default function AdminPage() {
           setState((prev) => ({
             ...prev,
             users: usersResponse.data.users || [],
+            totalUsersCount: usersResponse.data.pagination?.total || 0,
             totalUsersPages: usersResponse.data.pagination?.pages || 1,
             loading: false,
           }))
@@ -231,16 +311,21 @@ export default function AdminPage() {
           setState((prev) => ({ ...prev, loading: true, error: null }))
 
           try {
-            const adminsResponse = await adminService.getAllAdmins()
+            const adminsResponse = await adminService.getAllAdmins({
+              page: state.currentAdminsPage,
+              limit: 10,
+              search: debouncedAdminsSearch,
+            })
             console.log("Admins API response:", adminsResponse) // Debug log
 
             // Extract admins directly from the response
-            // The backend returns { admins: [...], pagination: {...} }
             const adminsList = adminsResponse.admins || []
+            const totalAdmins = adminsResponse.pagination?.total || adminsList.length || 0
 
             setState((prev) => ({
               ...prev,
               admins: adminsList,
+              totalAdminsCount: totalAdmins,
               totalAdminsPages: Math.ceil(adminsList.length / 10) || 1,
               loading: false,
             }))
@@ -285,6 +370,7 @@ export default function AdminPage() {
       setState((prev) => ({
         ...prev,
         jobs: prev.jobs.filter((job) => job.id !== jobId),
+        totalJobsCount: Math.max(0, prev.totalJobsCount - 1), // Decrement total count
       }))
     } catch (err) {
       setState((prev) => ({ ...prev, error: err.message }))
@@ -304,15 +390,48 @@ export default function AdminPage() {
         }))
       }
       if (action === "toggle") {
-        await adminService.toggleUserStatus(userId)
+        // Find the user to toggle status for the confirmation dialog
+        const userToToggle = state.users.find((user) => user._id === userId)
         setState((prev) => ({
           ...prev,
-          users: prev.users.map((user) => (user._id === userId ? { ...user, isActive: !user.isActive } : user)),
+          statusChangeModalOpen: true,
+          userToToggleStatus: userToToggle,
         }))
       }
     } catch (err) {
       setState((prev) => ({ ...prev, error: err.message }))
     }
+  }
+
+  const confirmUserStatusChange = async () => {
+    try {
+      if (!state.userToToggleStatus) return
+
+      await adminService.toggleUserStatus(state.userToToggleStatus._id)
+      setState((prev) => ({
+        ...prev,
+        users: prev.users.map((user) =>
+          user._id === prev.userToToggleStatus._id ? { ...user, isActive: !user.isActive } : user,
+        ),
+        statusChangeModalOpen: false,
+        userToToggleStatus: null,
+      }))
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        error: err.message,
+        statusChangeModalOpen: false,
+        userToToggleStatus: null,
+      }))
+    }
+  }
+
+  const cancelUserStatusChange = () => {
+    setState((prev) => ({
+      ...prev,
+      statusChangeModalOpen: false,
+      userToToggleStatus: null,
+    }))
   }
 
   const confirmUserDeletion = async () => {
@@ -323,6 +442,7 @@ export default function AdminPage() {
       setState((prev) => ({
         ...prev,
         users: prev.users.filter((user) => user._id !== prev.userToDelete._id),
+        totalUsersCount: Math.max(0, prev.totalUsersCount - 1), // Decrement total count
         deleteConfirmOpen: false,
         userToDelete: null,
       }))
@@ -403,6 +523,7 @@ export default function AdminPage() {
       setState((prev) => ({
         ...prev,
         admins: prev.admins.filter((admin) => admin._id !== prev.adminToDelete._id),
+        totalAdminsCount: Math.max(0, prev.totalAdminsCount - 1), // Decrement total count
         deleteConfirmOpen: false,
         adminToDelete: null,
       }))
@@ -424,6 +545,7 @@ export default function AdminPage() {
         setState((prev) => ({
           ...prev,
           admins: [...prev.admins, response.data],
+          totalAdminsCount: prev.totalAdminsCount + 1, // Increment total count
           isAdminModalOpen: false,
         }))
       } else {
@@ -444,11 +566,20 @@ export default function AdminPage() {
     }
   }
 
-  // Search Functions
+  // Fix the jobs search functionality
   const handleJobsSearch = (e) => {
     setState((prev) => ({
       ...prev,
       jobsSearchQuery: e.target.value,
+    }))
+  }
+
+  const handleJobsSearchSubmit = (e) => {
+    e.preventDefault()
+    console.log("Submitting jobs search with query:", state.jobsSearchQuery)
+    setState((prev) => ({
+      ...prev,
+      currentJobsPage: 1, // Reset to page 1 when submitting search
     }))
   }
 
@@ -463,14 +594,6 @@ export default function AdminPage() {
     setState((prev) => ({
       ...prev,
       adminsSearchQuery: e.target.value,
-    }))
-  }
-
-  const handleJobsSearchSubmit = (e) => {
-    e.preventDefault()
-    setState((prev) => ({
-      ...prev,
-      currentJobsPage: 1, // Reset to page 1 when submitting search
     }))
   }
 
@@ -525,7 +648,8 @@ export default function AdminPage() {
     }).format(salary)
   }
 
-  if (state.loading) return <LoadingSpinner />
+  if (state.loading && !state.totalJobsCount && !state.totalUsersCount && !state.totalAdminsCount)
+    return <LoadingSpinner />
   if (state.error) return <ErrorDisplay message={state.error} />
 
   return (
@@ -534,9 +658,9 @@ export default function AdminPage() {
         <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
 
         <StatsOverview
-          jobsCount={state.jobs.length}
-          usersCount={state.users.length}
-          adminsCount={state.admins?.length || 0}
+          jobsCount={state.totalJobsCount}
+          usersCount={state.totalUsersCount}
+          adminsCount={state.totalAdminsCount}
           activeApis={state.apiIntegrations.filter((api) => api.status === "Connected").length}
           totalApis={state.apiIntegrations.length}
         />
@@ -573,6 +697,21 @@ export default function AdminPage() {
                 },
               }}
             >
+              {state.jobsSearchQuery && (
+                <div className="mb-4 flex items-center">
+                  <span className="text-sm text-gray-500 mr-2">
+                    Search results for: <span className="font-medium">{state.jobsSearchQuery}</span>
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setState((prev) => ({ ...prev, jobsSearchQuery: "" }))}
+                    className="text-xs"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
               <JobsTable jobs={state.jobs} onDelete={handleJobDeletion} />
             </DashboardSection>
           </TabsContent>
@@ -657,6 +796,45 @@ export default function AdminPage() {
             </DashboardSection>
           </TabsContent>
         </Tabs>
+
+        {/* User Status Change Confirmation Modal */}
+        <Modal isOpen={state.statusChangeModalOpen && state.userToToggleStatus} onClose={cancelUserStatusChange}>
+          <div className="space-y-4">
+            <Alert variant={state.userToToggleStatus?.isActive ? "destructive" : "default"}>
+              {state.userToToggleStatus?.isActive ? <Ban className="h-5 w-5" /> : <Check className="h-5 w-5" />}
+              <AlertTitle className="flex items-center gap-2 text-lg font-semibold">
+                {state.userToToggleStatus?.isActive ? "Deactivate User Account" : "Activate User Account"}
+              </AlertTitle>
+              <AlertDescription>
+                Are you sure you want to {state.userToToggleStatus?.isActive ? "deactivate" : "activate"} the account
+                for{" "}
+                <span className="font-semibold">
+                  {state.userToToggleStatus
+                    ? `${state.userToToggleStatus.firstName} ${state.userToToggleStatus.lastName}`
+                    : ""}
+                </span>
+                ?
+                <br />
+                <br />
+                {state.userToToggleStatus?.isActive
+                  ? "This will prevent the user from logging in and accessing the platform."
+                  : "This will allow the user to log in and access the platform."}
+              </AlertDescription>
+            </Alert>
+
+            <div className="flex justify-end space-x-2 mt-4">
+              <Button variant="outline" onClick={cancelUserStatusChange}>
+                Cancel
+              </Button>
+              <Button
+                variant={state.userToToggleStatus?.isActive ? "destructive" : "default"}
+                onClick={confirmUserStatusChange}
+              >
+                {state.userToToggleStatus?.isActive ? "Deactivate" : "Activate"}
+              </Button>
+            </div>
+          </div>
+        </Modal>
 
         {/* Custom Delete User Confirmation Modal */}
         <Modal isOpen={state.deleteConfirmOpen && state.userToDelete} onClose={cancelUserDeletion}>
@@ -852,9 +1030,9 @@ function ErrorDisplay({ message }) {
 function StatsOverview({ jobsCount, usersCount, adminsCount, activeApis, totalApis }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-      <StatCard title="Active Jobs" value={jobsCount} icon={<Briefcase />} />
-      <StatCard title="Users" value={usersCount} icon={<User />} />
-      <StatCard title="Admins" value={adminsCount} icon={<User />} />
+      <StatCard title="Total Jobs" value={jobsCount} icon={<Briefcase />} />
+      <StatCard title="Total Users" value={usersCount} icon={<User />} />
+      <StatCard title="Total Admins" value={adminsCount} icon={<User />} />
       <StatCard title="Active APIs" value={`${activeApis}/${totalApis}`} icon={<RefreshCw />} />
       <StatCard title="AI Model" value="GPT-4" icon={<Sparkles />} />
     </div>
@@ -875,21 +1053,27 @@ function StatCard({ title, value, icon }) {
   )
 }
 
-function DashboardSection({ title, children, searchValue, onSearch, pagination, actionButton }) {
+// Update the DashboardSection component to include a search button
+function DashboardSection({ title, children, searchValue, onSearch, onSearchSubmit, pagination, actionButton }) {
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+      {/*<div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-semibold">{title}</h2>
           {actionButton}
         </div>
-        {onSearch && (
-          <div className="relative w-full md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input placeholder="Search..." className="pl-9 w-full" value={searchValue} onChange={onSearch} />
-          </div>
+        {onSearch && onSearchSubmit && (
+          <form onSubmit={onSearchSubmit} className="relative w-full md:w-64 flex">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input placeholder="Search..." className="pl-9 w-full pr-12" value={searchValue} onChange={onSearch} />
+            </div>
+            <Button type="submit" variant="ghost" size="sm" className="ml-2 h-10">
+              Search
+            </Button>
+          </form>
         )}
-      </div>
+      </div>*/}
 
       {children}
 
@@ -918,6 +1102,7 @@ function DashboardSection({ title, children, searchValue, onSearch, pagination, 
     </div>
   )
 }
+
 function JobsTable({ jobs, onDelete }) {
   return (
     <div className="overflow-x-auto">
@@ -1239,4 +1424,3 @@ function AIConfigForm({ config, onChange, onSubmit }) {
     </form>
   )
 }
-

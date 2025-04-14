@@ -9,6 +9,7 @@ const jobRoutes = require("./routes/jobRoutes");
 const authRoutes = require("./routes/auth.routes");
 const { authMiddleware, adminMiddleware } = require("./middlewares/authMiddleware");
 const notificationRoutes = require("./routes/notificationRoutes");
+const recommendation = require("./services/index");
 console.log("Notification Routes:", notificationRoutes);
 const bcrypt = require("bcryptjs");
 const Person = require("./models/person_model");
@@ -106,7 +107,7 @@ app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
 app.use("/api/recommendations",  recommendationRoutes);
 app.use("/api/jobs", authMiddleware, jobRoutes);
 app.use("/api/notifications", authMiddleware, notificationRoutes);
-
+app.use("/api", recommendation);
 
 // Servir les fichiers statiques (ex. : uploads)
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads/profiles")));

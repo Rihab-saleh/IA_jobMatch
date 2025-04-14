@@ -6,8 +6,7 @@ const Notification = require('../models/notification_model.js');
  */
  const getSettings = async (req, res) => {
   try {
-    console.log('getSettings appelé avec userId:', req.params.userId);
-    console.log('User dans la requête:', req.user);
+    
     
     // Vérifier que l'utilisateur est authentifié
     if (!req.user || !req.user._id) {

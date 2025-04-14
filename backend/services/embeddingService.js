@@ -17,11 +17,7 @@ async function loadModel() {
   return embeddingPipeline;
 }
 
-/**
- * Generates an embedding vector for the given text
- * @param {string} text - The text to generate an embedding for
- * @returns {Promise<number[]>} - A numeric array representing the text embedding
- */
+
 async function generateEmbedding(text) {
   try {
     // First, ensure the model is loaded

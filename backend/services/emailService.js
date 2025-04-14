@@ -119,7 +119,7 @@ let transporter = null;
  */
  async function getNotificationSettings(userId, userEmail, userName) {
   try {
-    console.log('getNotificationSettings appelé avec:', { userId, userEmail, userName });
+    
     
     // Vérification de l'ID
     if (!userId) {
@@ -132,7 +132,7 @@ let transporter = null;
     if (mongoose.Types.ObjectId.isValid(userId)) {
       try {
         settings = await NotificationSettings.findOne({ userId });
-        console.log('Paramètres trouvés:', settings);
+
       } catch (dbError) {
         console.error('Erreur lors de la recherche des paramètres:', dbError);
       }

@@ -155,7 +155,7 @@ export default function Login() {
                 </label>
               </div>
 
-              <div className="flex justify-between items-center">
+              {/*<div className="flex justify-between items-center">
                 <label className="flex items-center space-x-2">
                   <Checkbox
                     name="rememberMe"
@@ -167,7 +167,7 @@ export default function Login() {
                 <Link to="/forgot-password" className="text-purple-700 font-medium">
                   Mot de passe oublié ?
                 </Link>
-              </div>
+              </div>*/}
 
               <Button
                 type="submit"

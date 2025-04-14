@@ -26,7 +26,16 @@ class UserService {
 
     return profile;
   }
-
+  async userExists(userId) {
+    try {
+      const count = await User.countDocuments({ _id: userId });
+      return count > 0;
+    } catch (error) {
+      console.error('Error checking user existence:', error);
+      return false;
+    }
+  }
+  
   async getUserAndPerson(userId) {
     const user = await User.findById(userId);
     if (!user) throw new Error("Utilisateur non trouvé");

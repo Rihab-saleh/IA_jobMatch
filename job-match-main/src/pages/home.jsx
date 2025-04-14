@@ -79,65 +79,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Jobs */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">Featured Jobs</h2>
-            <p className="text-gray-600">Choose jobs from the top employers and apply for the same.</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Job Card 1 */}
-            <div className="bg-white rounded-lg border p-6 relative">
-              <button className="absolute right-4 top-4 text-gray-400 hover:text-purple-700">
-                <Bookmark className="h-5 w-5" />
-              </button>
-
-              <h3 className="text-lg font-semibold mb-1">Technical Support Specialist</h3>
-              <div className="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded inline-block mb-2">
-                PART-TIME
-              </div>
-              <p className="text-gray-600 text-sm mb-4">Salary: 20,000 INR - 25,000 INR</p>
-
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-white border">
-                  <img src="/placeholder.svg?height=32&width=32" alt="Google Inc." width={32} height={32} />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Google Inc.</p>
-                  <p className="text-gray-500 text-xs">New Delhi, India</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1 mb-4">
-                <div className="flex -space-x-2">
-                  <div className="w-6 h-6 rounded-full border-2 border-white bg-gray-200"></div>
-                  <div className="w-6 h-6 rounded-full border-2 border-white bg-gray-200"></div>
-                </div>
-                <span className="text-xs text-gray-500">10+ applicants</span>
-              </div>
-
-              <div className="flex gap-3">
-                <Link
-                  to="/jobs/1"
-                  className="flex-1 text-center py-2 border border-gray-300 rounded text-sm font-medium hover:bg-gray-50"
-                >
-                  View details
-                </Link>
-                <Link
-                  to="/apply/1"
-                  className="flex-1 text-center py-2 bg-purple-700 text-white rounded text-sm font-medium hover:bg-purple-800"
-                >
-                  Apply now
-                </Link>
-              </div>
-            </div>
-
-            {/* More job cards would go here */}
-          </div>
-        </div>
-      </section>
+    
     </div>
   )
 }

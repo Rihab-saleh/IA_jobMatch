@@ -1,21 +1,28 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+
+const axios = require('axios');
+const cheerio = require('cheerio');
 require("dotenv").config();
 
 const app = express();
-const PORT =  3000;
+const PORT = 3001; // Changé à 3001 pour éviter les conflits
 
-const ADZUNA_APP_ID="5349e2d4"
-const ADZUNA_API_KEY="4915ded7f0af0dab86aeafbb5a6112f0"
-const JOOBLE_API_KEY="ed9a3c23-dcac-4de0-8145-71db66b6a169"
-const FINDWORK_API_KEY="ed9a3c23-dcac-4de0-8145-71db66b6a169"
-const APIJOBS_API_KEY="4e4fce558288a8005970bb642a0569749178ce05c7f753f963411eddf47b4d81"
-const REED_API_KEY="0d792c73-84b2-4f95-903e-ec4ceb3e8c11"
+const ADZUNA_APP_ID = "5349e2d4"
+const ADZUNA_API_KEY = "4915ded7f0af0dab86aeafbb5a6112f0"
+const JOOBLE_API_KEY = "ed9a3c23-dcac-4de0-8145-71db66b6a169"
+const FINDWORK_API_KEY = "ed9a3c23-dcac-4de0-8145-71db66b6a169"
+const APIJOBS_API_KEY = "4e4fce558288a8005970bb642a0569749178ce05c7f753f963411eddf47b4d81"
+const REED_API_KEY = "0d792c73-84b2-4f95-903e-ec4ceb3e8c11"
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Helper function for adding delays
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Helper functions
 const formatSalaryAdzuna = (min, max) => {
@@ -24,14 +31,14 @@ const formatSalaryAdzuna = (min, max) => {
   }
 
   if (min && !max) {
-    return `$${min}+`;
+    return `${min}+`;
   }
 
   if (!min && max) {
-    return `Up to $${max}`;
+    return `Up to ${max}`;
   }
 
-  return `$${min} - $${max}`;
+  return `${min} - ${max}`;
 };
 
 function formatSalary(min, max) {
@@ -96,6 +103,22 @@ function mapJobType(jobType, source) {
         return "contract";
       case "internship":
         return "internship";
+      default:
+        return jobType;
+    }
+  }
+  if (source === "scraped") {
+    switch (jobType) {
+      case "full_time":
+        return "Full Time";
+      case "part_time":
+        return "Part Time";
+      case "contract":
+        return "Contract";
+      case "temporary":
+        return "Temporary";
+      case "internship":
+        return "Internship";
       default:
         return jobType;
     }
@@ -239,19 +262,19 @@ async function fetchAdzunaJobs(filters, limit) {
     if (filters.distance) {
       params.append("distance", filters.distance.toString());
     }
-
+    
     if (filters.jobType && filters.jobType !== "any") {
       params.append("contract_type", mapJobType(filters.jobType, "adzuna"));
     }
 
     // Make the API request
-    const response = await fetch(`https://api.adzuna.com/v1/api/jobs/gb/search/1?${params.toString()}`);
+    const response = await axios.get(`https://api.adzuna.com/v1/api/jobs/gb/search/1?${params.toString()}`);
 
-    if (!response.ok) {
+    if (response.status !== 200) {
       throw new Error(`Adzuna API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = response.data;
 
     // Map Adzuna jobs to our normalized format
     return (data.results || []).map((job) => ({
@@ -270,6 +293,224 @@ async function fetchAdzunaJobs(filters, limit) {
     console.error("Error fetching from Adzuna:", error);
     return [];
   }
+}
+
+// Improved scraping function with better browser emulation and multiple site support
+async function fetchScrapedJobs(filters, limit) {
+  // Array to store all scraped jobs
+  const scrapedJobs = [];
+  
+  // Try multiple job sites to increase chances of successful scraping
+  const jobSites = [
+    {
+      name: 'LinkedIn Jobs',
+      url: (query, location) => `https://www.linkedin.com/jobs/search?keywords=${query}&location=${location}`,
+      scraper: async (html, site) => {
+        const $ = cheerio.load(html);
+        const jobs = [];
+        
+        $('.job-search-card').each((i, el) => {
+          try {
+            const title = $(el).find('.base-search-card__title').text().trim();
+            const company = $(el).find('.base-search-card__subtitle').text().trim();
+            const location = $(el).find('.job-search-card__location').text().trim();
+            const link = $(el).find('a.base-card__full-link').attr('href');
+            const dateEl = $(el).find('time.job-search-card__listdate');
+            const datePosted = dateEl.attr('datetime') || new Date().toISOString();
+            
+            jobs.push({
+              title,
+              company,
+              location,
+              url: link,
+              datePosted,
+              source: site.name
+            });
+          } catch (err) {
+            console.log(`Error parsing LinkedIn job: ${err.message}`);
+          }
+        });
+        
+        return jobs;
+      }
+    },
+    {
+      name: 'Indeed',
+      url: (query, location) => `https://www.indeed.com/jobs?q=${query}&l=${location}`,
+      scraper: async (html, site) => {
+        const $ = cheerio.load(html);
+        const jobs = [];
+        
+        $('.jobsearch-ResultsList > .result, .job_seen_beacon').each((i, el) => {
+          try {
+            const title = $(el).find('.jobTitle span').text().trim() || 
+                         $(el).find('h2.jobTitle').text().trim();
+            const company = $(el).find('.companyName').text().trim() || 
+                           $(el).find('.company_location .companyName').text().trim();
+            const location = $(el).find('.companyLocation').text().trim() || 
+                            $(el).find('.company_location .companyLocation').text().trim();
+            const link = $(el).find('a.jcs-JobTitle').attr('href') || 
+                        $(el).find('a.job_seen_beacon').attr('href');
+            const url = link && (link.startsWith('http') ? link : `https://www.indeed.com${link}`);
+            
+            if (title && company) {
+              jobs.push({
+                title,
+                company,
+                location: location || 'Location not specified',
+                url: url || '#',
+                datePosted: new Date().toISOString(),
+                source: site.name
+              });
+            }
+          } catch (err) {
+            console.log(`Error parsing Indeed job: ${err.message}`);
+          }
+        });
+        
+        return jobs;
+      }
+    },
+    {
+      name: 'Glassdoor',
+      url: (query, location) => `https://www.glassdoor.com/Job/jobs.htm?sc.keyword=${query}&locT=C&locId=1147401`,
+      scraper: async (html, site) => {
+        const $ = cheerio.load(html);
+        const jobs = [];
+        
+        $('.react-job-listing').each((i, el) => {
+          try {
+            const title = $(el).find('.job-title').text().trim();
+            const company = $(el).find('.employer-name').text().trim();
+            const location = $(el).find('.location').text().trim();
+            const link = $(el).attr('href');
+            const url = link && (link.startsWith('http') ? link : `https://www.glassdoor.com${link}`);
+            
+            if (title && company) {
+              jobs.push({
+                title,
+                company,
+                location: location || 'Location not specified',
+                url: url || '#',
+                datePosted: new Date().toISOString(),
+                source: site.name
+              });
+            }
+          } catch (err) {
+            console.log(`Error parsing Glassdoor job: ${err.message}`);
+          }
+        });
+        
+        return jobs;
+      }
+    }
+  ];
+
+  // Create realistic browser headers
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Referer': 'https://www.google.com/',
+    'Connection': 'keep-alive',
+    'Cache-Control': 'max-age=0',
+    'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1'
+  };
+
+  // Optional: Configure proxy (uncomment and add your proxy details if needed)
+  /*
+  const proxy = {
+    host: 'your-proxy-host',
+    port: 'your-proxy-port',
+    auth: {
+      username: 'your-proxy-username',
+      password: 'your-proxy-password'
+    }
+  };
+  */
+
+  // Encode search parameters
+  const query = filters.query ? encodeURIComponent(filters.query) : '';
+  const location = filters.location ? encodeURIComponent(filters.location) : '';
+  
+  // Try each job site until we get enough results or exhaust all options
+  for (const site of jobSites) {
+    if (scrapedJobs.length >= (limit || 10)) break;
+    
+    try {
+      console.log(`Attempting to scrape jobs from ${site.name}...`);
+      
+      // Generate the URL for this site
+      const url = site.url(query, location);
+      console.log(`Scraping URL: ${url}`);
+      
+      // Add a random delay between requests (1-3 seconds)
+      const randomDelay = Math.floor(Math.random() * 2000) + 1000;
+      await delay(randomDelay);
+      
+      // Make the request with browser-like headers
+      const response = await axios.get(url, { 
+        headers,
+        // proxy, // Uncomment if using a proxy
+        timeout: 10000, // 10 second timeout
+        maxRedirects: 5
+      });
+      
+      if (response.status === 200) {
+        // Parse the HTML and extract jobs
+        const siteJobs = await site.scraper(response.data, site);
+        
+        if (siteJobs && siteJobs.length > 0) {
+          console.log(`Successfully scraped ${siteJobs.length} jobs from ${site.name}`);
+          
+          // Add unique IDs and normalize the job data
+          const normalizedJobs = siteJobs.map((job, index) => ({
+            id: `scraped-${site.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${index}`,
+            title: job.title || 'Untitled Position',
+            company: job.company || 'Unknown Company',
+            location: job.location || 'Unspecified Location',
+            description: job.description || '',
+            salary: job.salary || undefined,
+            url: job.url || '#',
+            datePosted: job.datePosted || new Date().toISOString(),
+            jobType: job.jobType || '',
+            source: 'scraped'
+          }));
+          
+          // Add to our collection
+          scrapedJobs.push(...normalizedJobs);
+        } else {
+          console.log(`No jobs found on ${site.name}`);
+        }
+      } else {
+        console.log(`Failed to scrape ${site.name}: Status code ${response.status}`);
+      }
+    } catch (error) {
+      console.error(`Error scraping ${site.name}:`, error.message);
+      // Continue to the next site on error
+    }
+  }
+  
+  console.log(`Total scraped jobs: ${scrapedJobs.length}`);
+  
+  // Apply any additional filters
+  let filteredJobs = scrapedJobs;
+  
+  if (filters.jobType && filters.jobType !== "any") {
+    filteredJobs = filteredJobs.filter(job => 
+      job.jobType && job.jobType.toLowerCase().includes(mapJobType(filters.jobType, "scraped").toLowerCase())
+    );
+  }
+  
+  // Return the jobs, limited if specified
+  return limit ? filteredJobs.slice(0, limit) : filteredJobs;
 }
 
 async function fetchReedJobs(filters, limit) {
@@ -302,17 +543,17 @@ async function fetchReedJobs(filters, limit) {
     }
 
     // Make the API request with Basic Auth
-    const response = await fetch(`https://www.reed.co.uk/api/1.0/search?${params.toString()}`, {
+    const response = await axios.get(`https://www.reed.co.uk/api/1.0/search?${params.toString()}`, {
       headers: {
         Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
       },
     });
 
-    if (!response.ok) {
+    if (response.status !== 200) {
       throw new Error(`Reed API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = response.data;
 
     // Map Reed jobs to our normalized format
     return (data.results || []).map((job) => ({
@@ -357,22 +598,20 @@ async function fetchApiJobsJobs(filters, limit) {
     };
 
     // Make the API request with the API key in the header
-    const response = await fetch("https://api.apijobs.dev/v1/job/search", {
-      method: "POST",
+    const response = await axios.post("https://api.apijobs.dev/v1/job/search", payload, {
       headers: {
         "Content-Type": "application/json",
         apikey: apiKey,
       },
-      body: JSON.stringify(payload),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (response.status !== 200) {
+      const errorText = response.data;
       console.error(`APIJobs API error response: ${errorText}`);
       throw new Error(`APIJobs API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = response.data;
 
     // Add error handling for unexpected response format
     if (!data || !data.ok || !Array.isArray(data.hits)) {
@@ -409,24 +648,22 @@ async function fetchJoobleJobs(filters, limit) {
     }
 
     // Create a simple string payload exactly as shown in the example
-    const params = `{ keywords: '${filters.query || ""}', location: '${filters.location || ""}' }`;
+    const params = `{ "keywords": "${filters.query || ""}", "location": "${filters.location || ""}" }`;
 
     // Make the API request according to the example
-    const response = await fetch(`https://jooble.org/api/${apiKey}`, {
-      method: "POST",
+    const response = await axios.post(`https://jooble.org/api/${apiKey}`, params, {
       headers: {
         "Content-Type": "application/json",
       },
-      body: params, // Send the string directly as shown in the example
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (response.status !== 200) {
+      const errorText = response.data;
       console.error(`Jooble API error response: ${errorText}`);
       throw new Error(`Jooble API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = response.data;
 
     // Check if the response has the expected format
     if (!data || !Array.isArray(data.jobs)) {
@@ -495,19 +732,19 @@ async function fetchFindworkJobs(filters, limit) {
     console.log("Findwork API URL:", url);
 
     // Make the API request with the Token authentication as shown in the documentation
-    const response = await fetch(url, {
+    const response = await axios.get(url, {
       headers: {
         Authorization: `Token ${apiKey}`,
       },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (response.status !== 200) {
+      const errorText = response.data;
       console.error(`Findwork API error response: ${errorText}`);
       throw new Error(`Findwork API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = response.data;
 
     // Check if the response has the expected format
     if (!data || !Array.isArray(data.results)) {
@@ -552,15 +789,15 @@ async function fetchRemotiveJobs(filters, limit) {
     }
 
     // Make the API request
-    const response = await fetch(`https://remotive.com/api/remote-jobs?${params.toString()}`);
+    const response = await axios.get(`https://remotive.com/api/remote-jobs?${params.toString()}`);
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    if (response.status !== 200) {
+      const errorText = response.data;
       console.error(`Remotive API error response: ${errorText}`);
       throw new Error(`Remotive API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = response.data;
 
     // Map Remotive jobs to our normalized format
     const jobs = (data.jobs || []).map((job) => ({
@@ -586,7 +823,7 @@ async function fetchRemotiveJobs(filters, limit) {
 async function searchJobs(filters) {
   try {
     // Default to all APIs if not specified
-    const apiSources = filters.apiSources || ["adzuna", "reed", "apijobs", "jooble", "findwork"];
+    const apiSources = filters.apiSources || ["adzuna", "reed", "apijobs", "jooble", "findwork", "remotive", "scraped"];
 
     // Initialize apiJobCounts for all APIs
     const apiJobCounts = {
@@ -596,79 +833,95 @@ async function searchJobs(filters) {
       jooble: 0,
       findwork: 0,
       remotive: 0,
+      scraped: 0,
     };
 
     // Create an array of API fetch promises based on the selected sources
     const apiPromises = apiSources.map((source) => {
       switch (source) {
-        case "adzuna":
-          return fetchAdzunaJobs(filters, filters.limit)
-            .then((jobs) => {
-              apiJobCounts.adzuna = jobs.length;
-              return jobs;
-            })
-            .catch((error) => {
-              console.error("Error fetching from Adzuna:", error);
-              return [];
-            });
+      case "adzuna":
+        return fetchAdzunaJobs(filters, filters.limit)
+        .then((jobs) => {
+          apiJobCounts.adzuna = jobs.length;
+          return jobs;
+        })
+        .then((jobs) => {
+          apiJobCounts.adzuna = jobs.length;
+          return jobs;
+        })
+        .catch((error) => {
+          console.error("Error fetching from Adzuna:", error);
+          return [];
+        });
 
-        case "reed":
-          return fetchReedJobs(filters, filters.limit)
-            .then((jobs) => {
-              apiJobCounts.reed = jobs.length;
-              return jobs;
-            })
-            .catch((error) => {
-              console.error("Error fetching from Reed:", error);
-              return [];
-            });
+      case "reed":
+        return fetchReedJobs(filters, filters.limit)
+        .then((jobs) => {
+          apiJobCounts.reed = jobs.length;
+          return jobs;
+        })
+        .catch((error) => {
+          console.error("Error fetching from Reed:", error);
+          return [];
+        });
 
-        case "apijobs":
-          return fetchApiJobsJobs(filters, filters.limit)
-            .then((jobs) => {
-              apiJobCounts.apijobs = jobs.length;
-              return jobs;
-            })
-            .catch((error) => {
-              console.error("Error fetching from APIJobs:", error);
-              return [];
-            });
+      case "apijobs":
+        return fetchApiJobsJobs(filters, filters.limit)
+        .then((jobs) => {
+          apiJobCounts.apijobs = jobs.length;
+          return jobs;
+        })
+        .catch((error) => {
+          console.error("Error fetching from APIJobs:", error);
+          return [];
+        });
 
-        case "jooble":
-          return fetchJoobleJobs(filters, filters.limit)
-            .then((jobs) => {
-              apiJobCounts.jooble = jobs.length;
-              return jobs;
-            })
-            .catch((error) => {
-              console.error("Error fetching from Jooble:", error);
-              return [];
-            });
+      case "jooble":
+        return fetchJoobleJobs(filters, filters.limit)
+        .then((jobs) => {
+          apiJobCounts.jooble = jobs.length;
+          return jobs;
+        })
+        .catch((error) => {
+          console.error("Error fetching from Jooble:", error);
+          return [];
+        });
 
-        case "findwork":
-          return fetchFindworkJobs(filters, filters.limit)
-            .then((jobs) => {
-              apiJobCounts.findwork = jobs.length;
-              return jobs;
-            })
-            .catch((error) => {
-              console.error("Error fetching from Findwork:", error);
-              return [];
-            });
+      case "findwork":
+        return fetchFindworkJobs(filters, filters.limit)
+        .then((jobs) => {
+          apiJobCounts.findwork = jobs.length;
+          return jobs;
+        })
+        .catch((error) => {
+          console.error("Error fetching from Findwork:", error);
+          return [];
+        });
 
-        case "remotive":
-          return fetchRemotiveJobs(filters, filters.limit)
-            .then((jobs) => {
-              apiJobCounts.remotive = jobs.length;
-              return jobs;
-            })
-            .catch((error) => {
-              console.error("Error fetching from Remotive:", error);
-              return [];
-            });
+      case "remotive":
+        return fetchRemotiveJobs(filters, filters.limit)
+        .then((jobs) => {
+          apiJobCounts.remotive = jobs.length;
+          return jobs;
+        })
+        .catch((error) => {
+          console.error("Error fetching from Remotive:", error);
+          return [];
+        });
 
-        default:
-          return Promise.resolve([]);
+      case "scraped":
+        return fetchScrapedJobs(filters, filters.limit)
+        .then((jobs) => {
+          apiJobCounts.scraped = jobs.length;
+          return jobs;
+        })
+        .catch((error) => {
+          console.error("Error fetching from Scraped:", error);
+          return [];
+        });
+
+      default:
+        return Promise.resolve([]);
       }
     });
 
@@ -704,5 +957,46 @@ async function searchJobs(filters) {
     return { jobs: [], apiJobCounts: {} };
   }
 }
- 
-module.exports = {searchJobs, fetchAdzunaJobs, fetchReedJobs, fetchApiJobsJobs, fetchJoobleJobs, fetchFindworkJobs, fetchRemotiveJobs};
+
+// Add a route to handle job searches
+app.post('/api/jobs/search', async (req, res) => {
+  try {
+    const filters = req.body;
+    console.log("Received search request with filters:", filters);
+    const results = await searchJobs(filters);
+    console.log(`Found ${results.jobs.length} jobs in total`);
+    res.json(results);
+  } catch (error) {
+    console.error('Error in search endpoint:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add a test route to verify the server is running
+app.get('/test', (req, res) => {
+  res.send('Job API Service is running!');
+});
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Job API Service running on port ${PORT}`);
+});
+
+module.exports = {
+  searchJobs, 
+  fetchAdzunaJobs, 
+  fetchReedJobs, 
+  fetchApiJobsJobs, 
+  fetchJoobleJobs, 
+  fetchFindworkJobs, 
+  fetchRemotiveJobs, 
+  fetchScrapedJobs, 
+  formatSalaryAdzuna, 
+  formatSalary, 
+  mapJobType, 
+  extractSalaryValue, 
+  getDateFromFilter, 
+  mapEmploymentType, 
+  formatApiJobsSalary, 
+  sortJobs
+};

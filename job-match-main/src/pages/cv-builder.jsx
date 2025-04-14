@@ -5,24 +5,7 @@ import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Textarea } from "../components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
-import {
-  PlusCircle,
-  FileText,
-  Edit,
-  Trash2,
-  Upload,
-  Sparkles,
-  Loader2,
-  Save,
-  CalendarIcon,
-  MapPin,
-  Briefcase,
-  GraduationCap,
-  X,
-  Link,
-  Globe,
-  Award,
-} from "lucide-react"
+import { PlusCircle, Download, FileText, Edit, Trash2, Upload, Sparkles, Loader2, Save, CalendarIcon, MapPin, Briefcase, GraduationCap, X, Link, Globe, Award } from 'lucide-react'
 import { userService } from "../services/user-service"
 import { useAuth } from "../contexts/auth-context"
 import { useNavigate } from "react-router-dom"
@@ -36,9 +19,13 @@ import {
   DialogTrigger,
 } from "../components/ui/dialog"
 import { Label } from "../components/ui/label"
+import { Switch } from "../components/ui/switch"
 import ResumeTemplate from "./resume-template"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
 import html2pdf from "html2pdf.js"
+import { format } from "date-fns"
+import { Calendar } from "../components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover"
 
 export default function CVBuilderPage() {
   const { user, loading: authLoading } = useAuth()
@@ -91,17 +78,11 @@ export default function CVBuilderPage() {
 
   // Format date for API (YYYY-MM-DD)
   const formatDateForAPI = (dateString) => {
-    if (!dateString || dateString === "Present") return new Date().toISOString().split("T")[0]
+    if (!dateString || dateString === "Present") return "2099-12-31"
 
     // If already in YYYY-MM-DD format
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
       return dateString
-    }
-
-    // Handle DD/MM/YYYY format
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
-      const [day, month, year] = dateString.split("/")
-      return `${year}-${month}-${day}`
     }
 
     // Handle MM/YYYY format
@@ -377,7 +358,7 @@ export default function CVBuilderPage() {
           company: data.company,
           location: data.location,
           startDate: formatDateForAPI(data.startDate),
-          endDate: data.current ? new Date().toISOString().split("T")[0] : formatDateForAPI(data.endDate),
+          endDate: data.current ? "2099-12-31" : formatDateForAPI(data.endDate),
           description: data.description,
           skills: data.skills
             .split(",")
@@ -412,7 +393,7 @@ export default function CVBuilderPage() {
           company: data.company,
           location: data.location,
           startDate: formatDateForAPI(data.startDate),
-          endDate: data.current ? new Date().toISOString().split("T")[0] : formatDateForAPI(data.endDate),
+          endDate: data.current ? "2099-12-31" : formatDateForAPI(data.endDate),
           description: data.description,
           skills: data.skills
             .split(",")
@@ -474,7 +455,7 @@ export default function CVBuilderPage() {
           school: data.school,
           location: data.location,
           startDate: formatDateForAPI(data.startDate),
-          endDate: data.current ? new Date().toISOString().split("T")[0] : formatDateForAPI(data.endDate),
+          endDate: data.current ? "2099-12-31" : formatDateForAPI(data.endDate),
           description: data.description,
           fieldOfStudy: data.fieldOfStudy,
           current: data.current,
@@ -506,7 +487,7 @@ export default function CVBuilderPage() {
           school: data.school,
           location: data.location,
           startDate: formatDateForAPI(data.startDate),
-          endDate: data.current ? new Date().toISOString().split("T")[0] : formatDateForAPI(data.endDate),
+          endDate: data.current ? "2099-12-31" : formatDateForAPI(data.endDate),
           description: data.description,
           fieldOfStudy: data.fieldOfStudy,
           current: data.current,
@@ -562,7 +543,7 @@ export default function CVBuilderPage() {
       if (operation === "add") {
         const apiData = {
           name: data.name,
-          level: data.level,
+          proficiency: data.level,
         }
 
         const response = await userService.addLanguage(user._id, apiData)
@@ -582,7 +563,7 @@ export default function CVBuilderPage() {
       if (operation === "update" && currentItem) {
         const apiData = {
           name: data.name,
-          level: data.level,
+          proficiency: data.level,
         }
 
         await userService.updateLanguage(user._id, currentItem.id, apiData)
@@ -694,74 +675,75 @@ export default function CVBuilderPage() {
 
   const generatePDF = async () => {
     if (!resumeRef.current) {
-      toast.error("No resume content found")
-      return
+      toast.error("No resume content found");
+      return;
     }
-
+  
     try {
-      setGeneratingPdf(true)
-
+      setGeneratingPdf(true);
+      
       // Créer un clone profond du contenu
-      const element = resumeRef.current.cloneNode(true)
-
+      const element = resumeRef.current.cloneNode(true);
+      
       // Appliquer les styles nécessaires pour le PDF
-      element.style.width = "210mm" // Largeur A4
-      element.style.minHeight = "297mm" // Hauteur A4
-      element.style.padding = "0"
-      element.style.margin = "0"
-      element.style.boxSizing = "border-box"
-
+      element.style.width = "210mm"; // Largeur A4
+      element.style.minHeight = "297mm"; // Hauteur A4
+      element.style.padding = "0";
+      element.style.margin = "0";
+      element.style.boxSizing = "border-box";
+      
       // Créer un conteneur pour le PDF
-      const container = document.createElement("div")
-      container.style.position = "fixed"
-      container.style.left = "-9999px"
-      container.style.top = "0"
-      container.appendChild(element)
-      document.body.appendChild(container)
-
+      const container = document.createElement("div");
+      container.style.position = "fixed";
+      container.style.left = "-9999px";
+      container.style.top = "0";
+      container.appendChild(element);
+      document.body.appendChild(container);
+  
       // Options pour html2pdf
       const opt = {
         margin: 10,
         filename: `${personalInfo.firstName}_${personalInfo.lastName}_Resume.pdf`,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: {
+        html2canvas: { 
           scale: 2,
           logging: false,
           useCORS: true,
           letterRendering: true,
         },
-        jsPDF: {
-          unit: "mm",
-          format: "a4",
-          orientation: "portrait",
+        jsPDF: { 
+          unit: "mm", 
+          format: "a4", 
+          orientation: "portrait" 
         },
-      }
-
+      };
+  
       // Générer le PDF
       await html2pdf()
         .set(opt)
         .from(element)
         .save()
         .then(() => {
-          toast.success("Resume downloaded successfully")
+          toast.success("Resume downloaded successfully");
         })
         .catch((error) => {
-          console.error("PDF generation error:", error)
-          toast.error("Failed to generate PDF")
+          console.error("PDF generation error:", error);
+          toast.error("Failed to generate PDF");
         })
         .finally(() => {
           // Nettoyer le DOM
           if (container.parentNode) {
-            document.body.removeChild(container)
+            document.body.removeChild(container);
           }
-          setGeneratingPdf(false)
-        })
+          setGeneratingPdf(false);
+        });
+  
     } catch (error) {
-      console.error("Error generating PDF:", error)
-      toast.error("Failed to generate PDF")
-      setGeneratingPdf(false)
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF");
+      setGeneratingPdf(false);
     }
-  }
+  };
 
   if (previewMode) {
     return (
@@ -772,6 +754,23 @@ export default function CVBuilderPage() {
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setPreviewMode(false)}>
                 Back to Editor
+              </Button>
+              <Button
+                className="bg-purple-700 hover:bg-purple-800 text-white"
+                onClick={generatePDF}
+                disabled={generatingPdf}
+              >
+                {generatingPdf ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -815,8 +814,8 @@ export default function CVBuilderPage() {
         <Tabs defaultValue="builder" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value="builder">CV Builder</TabsTrigger>
-            <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="optimizer">AI Optimizer</TabsTrigger>
+           {/*<TabsTrigger value="templates">Templates</TabsTrigger>
+            <TabsTrigger value="optimizer">AI Optimizer</TabsTrigger>*/}
           </TabsList>
 
           <TabsContent value="builder" className="space-y-6">
@@ -1627,6 +1626,7 @@ export default function CVBuilderPage() {
               <div className="">
                 <div className="bg-white rounded-lg border p-4 sticky top-4">
                   <div className="space-y-3">
+                    
                     <Button variant="outline" className="w-full" onClick={() => setPreviewMode(true)}>
                       <FileText className="h-4 w-4 mr-2" />
                       Full Preview
@@ -1847,32 +1847,32 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
                 className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                 required
               />
-              <Button
+              <Button 
                 type="button"
-                variant="ghost"
-                size="icon"
+                variant="ghost" 
+                size="icon" 
                 className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-gray-500"
                 onClick={() => {
-                  const datePicker = document.getElementById("startDatePicker")
+                  const datePicker = document.getElementById('startDatePicker');
                   if (datePicker) {
-                    datePicker.showPicker()
+                    datePicker.showPicker();
                   }
                 }}
               >
                 <CalendarIcon className="h-4 w-4" />
               </Button>
-              <input
-                type="date"
+              <input 
+                type="date" 
                 id="startDatePicker"
                 className="sr-only"
                 onChange={(e) => {
                   if (e.target.value) {
-                    const date = new Date(e.target.value)
-                    const formattedDate = `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()}`
-                    setFormData((prev) => ({
+                    const date = new Date(e.target.value);
+                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                    setFormData(prev => ({
                       ...prev,
-                      startDate: formattedDate,
-                    }))
+                      startDate: formattedDate
+                    }));
                   }
                 }}
               />
@@ -1893,34 +1893,34 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
                 disabled={formData.current}
                 className={`border-gray-300 focus:border-purple-500 focus:ring-purple-500 ${formData.current ? "bg-gray-100 text-gray-500" : ""}`}
               />
-              <Button
+              <Button 
                 type="button"
-                variant="ghost"
-                size="icon"
+                variant="ghost" 
+                size="icon" 
                 className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-gray-500"
                 disabled={formData.current}
                 onClick={() => {
-                  const datePicker = document.getElementById("endDatePicker")
+                  const datePicker = document.getElementById('endDatePicker');
                   if (datePicker) {
-                    datePicker.showPicker()
+                    datePicker.showPicker();
                   }
                 }}
               >
                 <CalendarIcon className="h-4 w-4" />
               </Button>
-              <input
-                type="date"
+              <input 
+                type="date" 
                 id="endDatePicker"
                 className="sr-only"
                 disabled={formData.current}
                 onChange={(e) => {
                   if (e.target.value) {
-                    const date = new Date(e.target.value)
-                    const formattedDate = `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()}`
-                    setFormData((prev) => ({
+                    const date = new Date(e.target.value);
+                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                    setFormData(prev => ({
                       ...prev,
-                      endDate: formattedDate,
-                    }))
+                      endDate: formattedDate
+                    }));
                   }
                 }}
               />
@@ -1929,20 +1929,18 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
         </div>
 
         <div className="flex items-center space-x-2 py-1">
-          <input
-            type="checkbox"
+          <Switch
             id="current"
             name="current"
             checked={formData.current}
-            onChange={(e) => {
-              const checked = e.target.checked
+            onCheckedChange={(checked) => {
               setFormData((prev) => ({
                 ...prev,
                 current: checked,
                 endDate: checked ? "" : prev.endDate,
               }))
             }}
-            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            className="data-[state=checked]:bg-purple-600"
           />
           <Label htmlFor="current" className="text-sm font-medium text-gray-700">
             I currently work here
@@ -1961,6 +1959,20 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
             rows={3}
             className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
             placeholder="Describe your responsibilities and achievements..."
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="skills" className="text-sm font-medium text-gray-700">
+            Skills (comma separated)
+          </Label>
+          <Input
+            id="skills"
+            name="skills"
+            value={formData.skills}
+            onChange={handleChange}
+            placeholder="React, JavaScript, Project Management"
+            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
           />
         </div>
       </div>
@@ -2079,32 +2091,32 @@ function EducationForm({ education, onSubmit, onCancel, isSaving }) {
                 className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 required
               />
-              <Button
+              <Button 
                 type="button"
-                variant="ghost"
-                size="icon"
+                variant="ghost" 
+                size="icon" 
                 className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-gray-500"
                 onClick={() => {
-                  const datePicker = document.getElementById("eduStartDatePicker")
+                  const datePicker = document.getElementById('eduStartDatePicker');
                   if (datePicker) {
-                    datePicker.showPicker()
+                    datePicker.showPicker();
                   }
                 }}
               >
                 <CalendarIcon className="h-4 w-4" />
               </Button>
-              <input
-                type="date"
+              <input 
+                type="date" 
                 id="eduStartDatePicker"
                 className="sr-only"
                 onChange={(e) => {
                   if (e.target.value) {
-                    const date = new Date(e.target.value)
-                    const formattedDate = `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()}`
-                    setFormData((prev) => ({
+                    const date = new Date(e.target.value);
+                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                    setFormData(prev => ({
                       ...prev,
-                      startDate: formattedDate,
-                    }))
+                      startDate: formattedDate
+                    }));
                   }
                 }}
               />
@@ -2125,34 +2137,34 @@ function EducationForm({ education, onSubmit, onCancel, isSaving }) {
                 disabled={formData.current}
                 className={`border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${formData.current ? "bg-gray-100 text-gray-500" : ""}`}
               />
-              <Button
+              <Button 
                 type="button"
-                variant="ghost"
-                size="icon"
+                variant="ghost" 
+                size="icon" 
                 className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-gray-500"
                 disabled={formData.current}
                 onClick={() => {
-                  const datePicker = document.getElementById("eduEndDatePicker")
+                  const datePicker = document.getElementById('eduEndDatePicker');
                   if (datePicker) {
-                    datePicker.showPicker()
+                    datePicker.showPicker();
                   }
                 }}
               >
                 <CalendarIcon className="h-4 w-4" />
               </Button>
-              <input
-                type="date"
+              <input 
+                type="date" 
                 id="eduEndDatePicker"
                 className="sr-only"
                 disabled={formData.current}
                 onChange={(e) => {
                   if (e.target.value) {
-                    const date = new Date(e.target.value)
-                    const formattedDate = `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()}`
-                    setFormData((prev) => ({
+                    const date = new Date(e.target.value);
+                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                    setFormData(prev => ({
                       ...prev,
-                      endDate: formattedDate,
-                    }))
+                      endDate: formattedDate
+                    }));
                   }
                 }}
               />
@@ -2161,20 +2173,18 @@ function EducationForm({ education, onSubmit, onCancel, isSaving }) {
         </div>
 
         <div className="flex items-center space-x-2 py-1">
-          <input
-            type="checkbox"
+          <Switch
             id="current"
             name="current"
             checked={formData.current}
-            onChange={(e) => {
-              const checked = e.target.checked
+            onCheckedChange={(checked) => {
               setFormData((prev) => ({
                 ...prev,
                 current: checked,
                 endDate: checked ? "" : prev.endDate,
               }))
             }}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="data-[state=checked]:bg-blue-600"
           />
           <Label htmlFor="current" className="text-sm font-medium text-gray-700">
             I'm currently studying here
@@ -2277,32 +2287,32 @@ function CertificationForm({ certification, onSubmit, onCancel, isSaving }) {
                 className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                 required
               />
-              <Button
+              <Button 
                 type="button"
-                variant="ghost"
-                size="icon"
+                variant="ghost" 
+                size="icon" 
                 className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-gray-500"
                 onClick={() => {
-                  const datePicker = document.getElementById("issueDatePicker")
+                  const datePicker = document.getElementById('issueDatePicker');
                   if (datePicker) {
-                    datePicker.showPicker()
+                    datePicker.showPicker();
                   }
                 }}
               >
                 <CalendarIcon className="h-4 w-4" />
               </Button>
-              <input
-                type="date"
+              <input 
+                type="date" 
                 id="issueDatePicker"
                 className="sr-only"
                 onChange={(e) => {
                   if (e.target.value) {
-                    const date = new Date(e.target.value)
-                    const formattedDate = `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()}`
-                    setFormData((prev) => ({
+                    const date = new Date(e.target.value);
+                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                    setFormData(prev => ({
                       ...prev,
-                      issueDate: formattedDate,
-                    }))
+                      issueDate: formattedDate
+                    }));
                   }
                 }}
               />
@@ -2322,32 +2332,32 @@ function CertificationForm({ certification, onSubmit, onCancel, isSaving }) {
                 placeholder="DD/MM/YYYY"
                 className="border-gray-300 focus:border-green-500 focus:ring-green-500"
               />
-              <Button
+              <Button 
                 type="button"
-                variant="ghost"
-                size="icon"
+                variant="ghost" 
+                size="icon" 
                 className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-gray-500"
                 onClick={() => {
-                  const datePicker = document.getElementById("expirationDatePicker")
+                  const datePicker = document.getElementById('expirationDatePicker');
                   if (datePicker) {
-                    datePicker.showPicker()
+                    datePicker.showPicker();
                   }
                 }}
               >
                 <CalendarIcon className="h-4 w-4" />
               </Button>
-              <input
-                type="date"
+              <input 
+                type="date" 
                 id="expirationDatePicker"
                 className="sr-only"
                 onChange={(e) => {
                   if (e.target.value) {
-                    const date = new Date(e.target.value)
-                    const formattedDate = `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()}`
-                    setFormData((prev) => ({
+                    const date = new Date(e.target.value);
+                    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+                    setFormData(prev => ({
                       ...prev,
-                      expirationDate: formattedDate,
-                    }))
+                      expirationDate: formattedDate
+                    }));
                   }
                 }}
               />

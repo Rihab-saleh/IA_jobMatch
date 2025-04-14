@@ -92,6 +92,7 @@ function ProfilePage() {
         expirationDate: "",
       },
     },
+    showSaveNotification: false,
   })
 
   const [completionPercentage, setCompletionPercentage] = useState(0)
@@ -407,7 +408,7 @@ function ProfilePage() {
     return !errors.issueDate && !errors.expirationDate
   }
 
-  const handleSkillOperation = (operation, skill = null) => {
+  const handleSkillOperation = async (operation, skill = null) => {
     if (!user || !user._id) {
       toast.error("You must be logged in to perform this action")
       return
@@ -427,20 +428,18 @@ function ProfilePage() {
             return
           }
 
-          userService
-            .addUserSkill(user._id, {
-              name: state.newSkill,
-              level: state.skillLevel,
-            })
-            .then(() => {
-              setState((prev) => ({
-                ...prev,
-                skills: [...prev.skills, { _id: Date.now().toString(), name: prev.newSkill, level: prev.skillLevel }],
-                newSkill: "",
-                skillLevel: "Intermediate",
-              }))
-              toast.success("Skill added successfully")
-            })
+          const newSkill = await userService.addUserSkill(user._id, {
+            name: state.newSkill,
+            level: state.skillLevel,
+          })
+
+          setState((prev) => ({
+            ...prev,
+            skills: [...prev.skills, newSkill],
+            newSkill: "",
+            skillLevel: "Intermediate",
+          }))
+          toast.success("Skill added successfully")
           break
 
         case "edit":
@@ -453,33 +452,28 @@ function ProfilePage() {
           break
 
         case "update":
-          userService
-            .updateUserSkill(user._id, state.editingSkill, {
-              name: state.newSkill,
-              level: state.skillLevel,
-            })
-            .then(() => {
-              setState((prev) => ({
-                ...prev,
-                skills: prev.skills.map((s) =>
-                  s._id === prev.editingSkill ? { ...s, name: prev.newSkill, level: prev.skillLevel } : s,
-                ),
-                newSkill: "",
-                skillLevel: "Intermediate",
-                editingSkill: null,
-              }))
-              toast.success("Skill updated successfully")
-            })
+          const updatedSkill = await userService.updateUserSkill(user._id, state.editingSkill, {
+            name: state.newSkill,
+            level: state.skillLevel,
+          })
+
+          setState((prev) => ({
+            ...prev,
+            skills: prev.skills.map((s) => (s._id === state.editingSkill ? updatedSkill : s)),
+            newSkill: "",
+            skillLevel: "Intermediate",
+            editingSkill: null,
+          }))
+          toast.success("Skill updated successfully")
           break
 
         case "remove":
-          userService.removeUserSkill(user._id, skill._id).then(() => {
-            setState((prev) => ({
-              ...prev,
-              skills: prev.skills.filter((s) => s._id !== skill._id),
-            }))
-            toast.success("Skill removed successfully")
-          })
+          await userService.removeUserSkill(user._id, skill._id)
+          setState((prev) => ({
+            ...prev,
+            skills: prev.skills.filter((s) => s._id !== skill._id),
+          }))
+          toast.success("Skill removed successfully")
           break
 
         case "cancel":
@@ -493,12 +487,13 @@ function ProfilePage() {
           break
       }
     } catch (error) {
+      console.error("Skill operation error:", error)
       if (error.message === "Unauthorized") {
         navigate("/login", {
           state: { from: "/profile", message: "Your session has expired. Please log in again." },
         })
       } else {
-        toast.error(`Error: ${error.message}`)
+        toast.error(`Error: ${error.message || "Failed to perform operation"}`)
       }
     }
   }
@@ -563,12 +558,8 @@ function ProfilePage() {
       return
     }
 
-    // Debug what's being sent to the server
-    console.log("Profile data being sent:", {
-      ...state.profileData,
-    })
-
     setState((prev) => ({ ...prev, saving: true }))
+
     try {
       // Format phone number to remove any non-digit characters
       const formattedPhone = state.profileData.phone ? state.profileData.phone.replace(/\D/g, "") : ""
@@ -600,9 +591,36 @@ function ProfilePage() {
         saving: false,
       }))
 
-      toast.success("Profile updated successfully")
+      // Show success toast with custom UI
+      toast.custom(
+        (t) => (
+          <div className="bg-white border border-green-200 rounded-lg shadow-lg p-4 flex items-start">
+            <div className="flex-shrink-0">
+              <CheckCircle className="h-6 w-6 text-green-500" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-lg font-medium text-gray-900">Profile Saved</h3>
+              <p className="mt-1 text-sm text-gray-500">Your profile has been successfully updated.</p>
+              <div className="mt-4 flex">
+                <button
+                  type="button"
+                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  onClick={() => toast.dismiss(t)}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        ),
+        {
+          duration: 5000,
+        },
+      )
     } catch (error) {
       console.error("Error updating profile:", error)
+      setState((prev) => ({ ...prev, saving: false }))
+
       if (error.response && error.response.data) {
         console.error("Server response:", error.response.data)
         toast.error(`Error: ${error.response.data.error || error.message}`)
@@ -613,8 +631,6 @@ function ProfilePage() {
       } else {
         toast.error(`Error: ${error.message || "Failed to update profile"}`)
       }
-    } finally {
-      setState((prev) => ({ ...prev, saving: false }))
     }
   }
 
@@ -706,6 +722,7 @@ function ProfilePage() {
       toast.error(`Error: ${error.message || "Failed to save experience"}`)
     }
   }
+
   const handleEducationSubmit = async (e) => {
     e.preventDefault()
     if (!user || !user._id) {
@@ -842,7 +859,7 @@ function ProfilePage() {
     const data = {
       name: formData.get("languageName"),
       level: formData.get("level") || "Intermediate",
-      proficiency: formData.get("proficiency"),
+      proficiency: formData.get("level") || "Intermediate",
     }
 
     try {
@@ -1139,7 +1156,7 @@ function ProfilePage() {
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Skills ({state.skills.length})</span>
+                    <span className="text-sm font-medium text-gray-700">Skills</span>
                     {state.skills.length >= 3 ? (
                       <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
@@ -1179,14 +1196,6 @@ function ProfilePage() {
                     )}
                   </div>
                 </div>
-                <Button
-                  onClick={saveProfile}
-                  className="w-full mt-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all duration-200 transform hover:translate-y-[-2px]"
-                  disabled={state.saving}
-                >
-                  {state.saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Save Profile
-                </Button>
               </CardContent>
             </Card>
           </div>
@@ -1448,13 +1457,19 @@ function ProfilePage() {
                           </span>
                           <div className="flex gap-1">
                             <button
-                              onClick={() => handleSkillOperation("edit", skill)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleSkillOperation("edit", skill)
+                              }}
                               className="text-gray-500 hover:text-purple-600 transition-colors"
                             >
                               <Edit className="h-3 w-3" />
                             </button>
                             <button
-                              onClick={() => handleSkillOperation("remove", skill)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleSkillOperation("remove", skill)
+                              }}
                               className="text-gray-500 hover:text-red-600 transition-colors"
                             >
                               <X className="h-3 w-3" />
@@ -1836,9 +1851,10 @@ function ProfilePage() {
                             <div className="flex flex-col sm:flex-row justify-between">
                               <div>
                                 <h3 className="font-semibold text-lg text-gray-900">{lang.name}</h3>
-                                <div className="flex items-center mt-2">
+                                <div className="flex items-center mt-2 gap-2">
+                                  <span className="text-sm text-gray-600">Proficiency:</span>
                                   <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs">
-                                    {lang.proficiency}
+                                    {lang.proficiency || lang.level}
                                   </span>
                                 </div>
                               </div>
@@ -2294,7 +2310,7 @@ function ProfilePage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="expirationDate" className="text-gray-700">
-                      Expiration Date 
+                      Expiration Date
                     </Label>
                     <Input
                       id="expirationDate"

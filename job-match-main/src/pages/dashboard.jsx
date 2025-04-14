@@ -6,19 +6,7 @@ import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Badge } from "../components/ui/badge"
-import {
-  Briefcase,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Calendar,
-  MapPin,
-  Building,
-  Star,
-  Bookmark,
-  Eye,
-  Loader2,
-} from "lucide-react"
+import { CheckCircle, XCircle, AlertCircle, MapPin, Building, Star, Bookmark, Loader2 } from "lucide-react"
 import { userService } from "../services/user-service"
 import { useAuth } from "../contexts/auth-context"
 import { toast } from "sonner"
@@ -31,7 +19,6 @@ export default function DashboardPage() {
     applications: [],
     recommendedJobs: [],
     stats: {
-      totalApplications: 0,
       interviews: 0,
       profileViews: 0,
     },
@@ -105,7 +92,6 @@ export default function DashboardPage() {
           userService.getCertifications(user._id),
           userService.getLanguages(user._id).catch(() => []),
           Promise.resolve({
-            totalApplications: 0,
             interviews: 0,
             profileViews: 0,
           }),
@@ -264,34 +250,6 @@ export default function DashboardPage() {
         <p className="text-gray-600 mb-8">
           Welcome back, {state.profileData.firstName} {state.profileData.position && `(${state.profileData.position})`}
         </p>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {Object.entries(state.stats).map(([key, value]) => (
-            <Card key={key} className="border-0 shadow-md">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium capitalize">
-                  {key.replace(/([A-Z])/g, " $1").trim()}
-                </CardTitle>
-                {
-                  {
-                    totalApplications: <Briefcase className="h-4 w-4 text-gray-500" />,
-                    interviews: <Calendar className="h-4 w-4 text-gray-500" />,
-                    profileViews: <Eye className="h-4 w-4 text-gray-500" />,
-                  }[key]
-                }
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{value}</div>
-                <p className="text-xs text-gray-500">
-                  {key === "totalApplications" && "Total applications submitted"}
-                  {key === "interviews" && "Upcoming interviews scheduled"}
-                  {key === "profileViews" && "Profile views by recruiters"}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
 
         {/* Profile Completion Card */}
         <Card className="mb-8 border-0 shadow-md">
@@ -495,80 +453,22 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Main Tabs */}
-        <Tabs defaultValue="applications">
-          <TabsList className="grid w-full grid-cols-3 mb-8 bg-white shadow-sm rounded-lg p-1">
-            <TabsTrigger
-              value="applications"
-              className="data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 rounded-md"
-            >
-              Applications
-            </TabsTrigger>
+        
+        <Tabs defaultValue="saved">
+          <TabsList className="grid w-full grid-cols-2 mb-8 bg-white shadow-sm rounded-lg p-1">
             <TabsTrigger
               value="saved"
               className="data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 rounded-md"
             >
               Saved Jobs
             </TabsTrigger>
-            <TabsTrigger
+            {/*<TabsTrigger
               value="recommended"
               className="data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 rounded-md"
             >
               Recommended
-            </TabsTrigger>
+            </TabsTrigger>*/}
           </TabsList>
-
-          {/* Applications Tab */}
-          <TabsContent value="applications">
-            <Card className="border-0 shadow-md overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b">
-                <CardTitle>Recent Applications</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {state.applications.length > 0 ? (
-                  <div className="space-y-6">
-                    {state.applications.slice(0, 3).map((application, index) => (
-                      <div
-                        key={index}
-                        className="border rounded-lg p-4 hover:shadow-md transition-all duration-200 bg-white"
-                      >
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                          <div className="flex items-start gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-gray-100 border shrink-0 flex items-center justify-center">
-                              <Building className="h-6 w-6 text-gray-400" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold">{application.jobTitle || "Software Engineer"}</h3>
-                              <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 mt-1">
-                                <div className="flex items-center">
-                                  <Building className="h-4 w-4 mr-1" />
-                                  {application.company || "Tech Company Inc"}
-                                </div>
-                                <div className="flex items-center">
-                                  <MapPin className="h-4 w-4 mr-1" />
-                                  {application.location || "San Francisco, CA"}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <Badge variant="outline">{application.status || "Applied"}</Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 border border-dashed border-gray-300 rounded-lg bg-gray-50">
-                    <AlertCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No applications yet</h3>
-                    <p className="text-gray-500 mb-4">Start applying to jobs to track your applications here</p>
-                    <Link to="/jobs">
-                      <Button className="bg-purple-600 hover:bg-purple-700 text-white">Browse Jobs</Button>
-                    </Link>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Saved Jobs Tab */}
           <TabsContent value="saved">
@@ -730,4 +630,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-
