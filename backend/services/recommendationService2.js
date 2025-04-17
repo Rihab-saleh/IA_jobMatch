@@ -1,173 +1,83 @@
 // backend/services/recommendationService2.js
 
 const axios = require('axios');
-const userService = require('./userService');
+const User = require('../models/user_model');
+const UserPreferences = require('../models/UserPreferences_model');
 const { searchJobs } = require('./jobApiService');
+const userService = require('./userService');
 
 /**
  * Get job recommendations for a user using Ollama and Llama 2
  * @param {string} userId - The user ID
- * @returns {Promise<Array>} - Array of recommended job objects with all original data plus match info
+ * @returns {Promise<Array>} - Array of recommended job objects
  */
 async function getRecommendationsForUser(userId) {
   try {
-    // 1. Fetch user profile with all details
+    // 1. Fetch user profile and preferences
     const userProfile = await userService.getUserProfile(userId);
-    if (!userProfile) {
-      throw new Error('User profile not found');
-    }
-
-    // 2. Search jobs with user's preferences
-    const jobSearchParams = {
-      query: userProfile.jobTitle,
-      location: userProfile.location,
-      distance: userProfile.searchRadius || 50,
-      jobType: userProfile.preferredJobType,
-      limit: 50 // Limit to top 50 jobs for analysis
-    };
-
-    const { jobs } = await searchJobs(jobSearchParams);
-    if (!jobs || jobs.length === 0) {
-      throw new Error('No jobs found matching criteria');
-    }
-
-    // 3. Prepare the prompt with all relevant job data
-    const prompt = buildPrompt(userProfile, jobs);
-
-    // 4. Call Ollama API with timeout
-    const response = await axios.post('http://localhost:11434/api/generate', {
-      model: 'mistral:instruct',
-      prompt: prompt,
-      format: 'json',
-      options: { temperature: 0.3 }
-    }, { timeout: 15000 });
-
-    // 5. Process and validate the response
-    const recommendations = processResponse(response.data, jobs);
-
-    // 6. Return enriched job data with match info
-    return recommendations
-      .sort((a, b) => b.matchPercentage - a.matchPercentage)
-      .slice(0, 10); // Return top 10 recommendations
-
-  } catch (error) {
-    console.error('Recommendation error:', error);
-    return fallbackRecommendation(userId); // Fallback to basic matching
-  }
-}
-
-/**
- * Build the analysis prompt with all job details
- */
-function buildPrompt(userProfile, jobs) {
-  return `[INST]
-  Analyze these jobs for ${userProfile.name} (${userProfile.jobTitle}) in ${userProfile.location}.
-  Consider these factors:
-  - Title relevance (${userProfile.jobTitle})
-  - Location (${userProfile.location}, ${userProfile.searchRadius}km)
-  - Skills match (${userProfile.skills.join(', ')})
-  - Experience (${userProfile.experienceYears} years)
-
-  Return JSON array with ALL original job data plus:
-  {
-    "matchPercentage": 0-100,
-    "matchReason": "Brief explanation"
-  }
-
-  Jobs data: ${JSON.stringify(jobs.map(job => ({
-    id: job.id,
-    title: job.title,
-    company: job.company,
-    location: job.location,
-    salary: job.salary,
-    description: job.description.substring(0, 500), // Truncate long descriptions
-    requirements: job.requirements,
-    url: job.url,
-    datePosted: job.datePosted,
-    jobType: job.jobType,
-    source: job.source
-  })))}
-  [/INST]`;
-}
-
-/**
- * Process API response and merge with original job data
- */
-function processResponse(responseData, jobs) {
-  try {
-    const content = responseData.response;
-    const recommendations = JSON.parse(content);
-
-    if (!Array.isArray(recommendations)) {
-      throw new Error('Invalid response format');
-    }
-
-    // Merge recommendation data with full job objects
-    return recommendations.map(rec => {
-      const fullJob = jobs.find(j => j.id === rec.id);
-      if (!fullJob) return null;
-
-      return {
-        ...fullJob, // Include all original job data
-        matchPercentage: Math.min(100, Math.max(0, rec.matchPercentage || 0)),
-        matchReason: rec.matchReason || 'High relevance match',
-        analysisDate: new Date().toISOString()
-      };
-    }).filter(Boolean);
-
-  } catch (error) {
-    console.error('Response processing error:', error);
-    throw new Error('Failed to process recommendations');
-  }
-}
-
-/**
- * Fallback recommendation strategy
- */
-async function fallbackRecommendation(userId) {
-  const userProfile = await userService.getUserProfile(userId);
-  const { jobs } = await searchJobs({
-    query: userProfile.jobTitle,
-    location: userProfile.location,
-    limit: 10
-  });
-
-  return jobs.map(job => ({
-    ...job,
-    matchPercentage: calculateBasicMatch(job, userProfile),
-    matchReason: 'Basic title and location match',
-    isFallback: true
-  }));
-}
-
-/**
- * Basic matching algorithm for fallback
- */
-function calculateBasicMatch(job, user) {
-  let score = 0;
   
-  // Title match (30%)
-  if (job.title.toLowerCase().includes(user.jobTitle.toLowerCase())) {
-    score += 30;
-  }
+    const jobData = await searchJobs({ query: userProfile.jobTitle }); // Fetch all jobs for simplicity, adjust as needed
+    const jobs = jobData.jobs;
 
-  // Location match (40%)
-  if (job.location.toLowerCase().includes(user.location.toLowerCase())) {
-    score += 40;
-  } else if (job.location.toLowerCase().includes('remote')) {
-    score += 30;
-  }
+    // 3. Construct the prompt for Llama 2
+    let prompt = `Given the following user profile and job descriptions, identify the top 10 most relevant jobs for the user and provide a match percentage for each.
 
-  // Skills match (30%)
-  if (user.skills && user.skills.some(skill => 
-    job.description.toLowerCase().includes(skill.toLowerCase())
-  )) {
-    score += 30;
-  }
+    User Profile:
+    ${JSON.stringify(userProfile, null, 2)}\n
 
-  return Math.min(100, score);
+    Job Descriptions:\n`;
+
+    jobs.forEach(job => {
+      prompt += `---\nJob ID: ${job.id}\n${job.description}\n`;
+    });
+
+    prompt += `\n\nBased on the above information, which 10 jobs are the best fit for the user?
+    Provide a match percentage (0-100) for each job.
+    Respond with a JSON array of objects, where each object has a "jobId" and a "matchPercentage". For example: [{"jobId": 123, "matchPercentage": 95}, {"jobId": 456, "matchPercentage": 88}, ...]`;
+
+    // 4. Send the prompt to Ollama API
+    const response = await axios.post('http://localhost:11434/api/generate', {
+      prompt: prompt,
+      model: 'mistral:instruct',
+      stream: false
+    });
+
+    // 5. Parse the response to extract job IDs
+    const content = response.data.response;
+    console.log("Llama response:", content);
+    const recommendations = JSON.parse(content.trim());
+
+    // 6. Map the recommendations to the original job objects and add the match percentage
+    const recommendedJobsWithMatch = recommendations.map(recommendation => {
+      const job = jobs.find(j => j.id === recommendation.jobId);
+      if (job) {
+        return {
+          ...job,
+          matchPercentage: recommendation.matchPercentage
+        };
+      }
+      return null; // Job not found, skip it
+    }).filter(Boolean); // Remove null entries
+    return recommendedJobsWithMatch;
+
+  } catch (error) {
+    console.error('Error getting recommendations from Ollama:', error);
+    return [];
+  }
+}
+
+/**
+ * Get job recommendations based on a user profile text using Ollama and Llama 2
+ * @param {string} profileText - Text describing the user's profile
+ * @param {Array} jobs - Array of job objects to consider
+ * @returns {Promise<Array>} - Array of recommended job objects
+ */
+async function getRecommendationsFromText(profileText, jobs) {
+  // TODO: Implement recommendation logic using Ollama and Llama 2
+  return [];
 }
 
 module.exports = {
-  getRecommendationsForUser
+  getRecommendationsForUser,
+  getRecommendationsFromText,
 };
