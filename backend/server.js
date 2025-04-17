@@ -106,7 +106,7 @@ app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
 app.use("/api/recommendations",  recommendationRoutes);
 app.use("/api/jobs", authMiddleware, jobRoutes);
 app.use("/api/notifications", authMiddleware, notificationRoutes);
-
+app.use("/api/recommendation", recommendation);
 
 // Servir les fichiers statiques (ex. : uploads)
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads/profiles")));
