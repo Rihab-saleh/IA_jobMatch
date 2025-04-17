@@ -1,21 +1,39 @@
-const recommendationService = require('../services/recommendationService');
+const recommendationService = require('../services/recommendationService2');
 
 /**
  * Get job recommendations for a user with pagination
  */
-exports.getRecommendationsForUser = async (userId, page = 1, limit = 10) => {
-  console.log("User ID:", userId);
-  if (!userId) {
-    throw new Error('User ID is required');
-  }
-
+exports.getRecommendationsForUser = async (req, res) => {
   try {
-    const offset = (page - 1) * limit;
-    const recommendations = await recommendationService.getRecommendationsForUser(userId, limit, offset);
-    return recommendations;
+    const { userId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'ID utilisateur requis'
+      });
+    }
+
+    const result = await recommendationService.getRecommendationsForUser(
+      userId, 
+      page, 
+      limit
+    );
+
+    res.json({
+      success: true,
+      ...result,
+      pageCount: Math.ceil(result.total / limit)
+    });
+
   } catch (error) {
-    console.error('Error fetching recommendations for user:', error);
-    throw new Error('Failed to fetch recommendations');
+    console.error('[ERREUR] Contrôleur:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 };
 

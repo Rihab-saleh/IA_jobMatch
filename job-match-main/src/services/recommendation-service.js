@@ -14,5 +14,26 @@ export const recommendationService = {
       { profileText },
       { params: { limit } }
     )
+  },
+  
+  getJobById: async (id) => {
+      try {
+        const response = await api.get(`/jobs/${id}`);
+        return {
+          success: true,
+          data: response.data
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+    },
+  
+  
+  // Save or unsave a job
+  saveJob(jobData) {
+    return api.post('/jobs/save', jobData)
   }
 }

@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+
 const bcrypt = require("bcrypt");
 const User = require("../models/user_model");
 const AccountStatusRequest = require("../models/accountstatus_request");
@@ -8,20 +10,39 @@ const IARecommendation = require("../models/recommendation_model");
 class AdminService {
   async toggleUserStatus(userId) {
     try {
-      const user = await User.findById(userId);
-      if (!user) throw new Error("User not found");
-      user.isActive = !user.isActive;
-      await user.save();
+      // Vérifier la connexion MongoDB
+      if (mongoose.connection.readyState !== 1) {
+        throw new Error("La connexion à la base de données n'est pas active");
+      }
+  
+      // Validation de l'ID
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        throw new Error("ID utilisateur invalide");
+      }
+  
+      // Trouver l'utilisateur avec jointure
+      const user = await User.findById(userId)
+        .populate('person')
+        .orFail(() => new Error("Utilisateur introuvable"));
+  
+      // Basculer le statut
+      user.person.isActive = !user.person.isActive;
+      user.person.updatedAt = new Date();
+      
+      // Sauvegarder les modifications
+      await user.person.save();
+  
       return {
-        message: user.isActive ? "User activated successfully" : "User deactivated successfully",
-        userStatus: user.isActive,
+        success: true,
+        message: `Compte ${user.person.isActive ? 'activé' : 'désactivé'} avec succès`,
+        isActive: user.person.isActive
       };
+  
     } catch (err) {
-      console.error("Error in toggleUserStatus:", err);
-      throw new Error(err.message);
+      console.error("Erreur toggleUserStatus:", err);
+      throw new Error(`Échec de la mise à jour: ${err.message}`);
     }
   }
-  
   async deleteUser(userId) {
     try {
       // Find the user
@@ -425,123 +446,87 @@ async getAllAdmins(page = 1, limit = 10, search = "") {
     }
   }
 
-  async getAccountStatusRequests(status = "pending", page = 1, limit = 10) {
+  async getAccountStatusRequests(filters = {}, page = 1, limit = 10) {
     try {
+      const { userId, status, requestType } = filters;
       const skip = (page - 1) * limit;
+      const query = {};
 
-      // Construire la requête en fonction du statut
-      const query = status === "all" ? {} : { status };
-
-      // Récupérer les demandes avec pagination
-      const requests = await AccountStatusRequest.find(query)
-        .populate({
-          path: "user",
-          select: "firstName lastName email", // Sélectionner les champs nécessaires
-        })
-        .skip(skip)
-        .limit(limit)
-        .lean();
-
-      // Compter le nombre total de demandes
-      const totalCount = await AccountStatusRequest.countDocuments(query);
-
-      return {
-        requests,
-        pagination: {
-          total: totalCount,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          pages: Math.ceil(totalCount / limit),
-        },
-      };
-    } catch (err) {
-      console.error("Error in getAccountStatusRequests:", err);
-      throw new Error(err.message);
-    }
-  }
-
-  async getUserAccountStatusRequests(userId, page = 1, limit = 10) {
-    try {
-      const skip = (page - 1) * limit;
-      
-      // Check if user exists
-      const user = await User.findById(userId);
-      if (!user) throw new Error("User not found");
-      
-      // Get requests with pagination
-      const requests = await AccountStatusRequest.find({ user: userId })
-        .skip(skip)
-        .limit(limit)
-        .sort({ createdAt: -1 })
-        .lean();
-        
-      // Count total requests for this user
-      const totalCount = await AccountStatusRequest.countDocuments({ user: userId });
-      
-      return {
-        requests,
-        pagination: {
-          total: totalCount,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          pages: Math.ceil(totalCount / limit),
-        },
-      };
-    } catch (err) {
-      console.error("Error in getUserAccountStatusRequests:", err);
-      throw new Error(err.message);
-    }
-  }
-
-  async getUserAccountStatusRequest(userId) {
-    try {
-      // Check if user exists
-      const user = await User.findById(userId);
-      if (!user) throw new Error("User not found");
-      
-      // Get the most recent request
-      const request = await AccountStatusRequest.findOne({ user: userId })
-        .sort({ createdAt: -1 })
-        .lean();
-        
-      if (!request) {
-        throw new Error("No account status change request found");
+      if (userId) {
+        const userExists = await User.exists({ _id: userId });
+        if (!userExists) throw new Error("Utilisateur introuvable");
+        query.user = userId;
       }
-      
-      return request;
+      if (status) query.status = status;
+      if (requestType) query.requestType = requestType;
+
+      const [requests, totalCount] = await Promise.all([
+        AccountStatusRequest.find(query)
+          .skip(skip)
+          .limit(limit)
+          .sort({ createdAt: -1 })
+          .populate('user', 'email firstName lastName')
+          .lean(),
+        AccountStatusRequest.countDocuments(query)
+      ]);
+
+      return {
+        requests: requests.map(req => ({
+          ...req,
+          user: {
+            _id: req.user._id,
+            email: req.user.email,
+            fullName: `${req.user.firstName} ${req.user.lastName}`
+          }
+        })),
+        pagination: {
+          total: totalCount,
+          page: Number(page),
+          limit: Number(limit),
+          pages: Math.ceil(totalCount / limit)
+        }
+      };
     } catch (err) {
-      console.error("Error in getUserAccountStatusRequest:", err);
+      console.error("Erreur getAccountStatusRequests:", err);
       throw new Error(err.message);
     }
   }
 
+  
   async processAccountStatusRequest(requestId, action) {
     try {
       const request = await AccountStatusRequest.findById(requestId);
-      if (!request) throw new Error("Account status request not found");
+      if (!request) throw new Error("Demande introuvable");
 
       const user = await User.findById(request.user);
-      if (!user) throw new Error("User not found");
+      if (!user) throw new Error("Utilisateur introuvable");
 
       const person = await Person.findById(user.person);
-      if (!person) throw new Error("Person data not found");
+      if (!person) throw new Error("Profil utilisateur introuvable");
 
-      // Mettre à jour le statut de la demande dans la collection AccountStatusRequest
+      // Mettre à jour le statut de la demande
       request.status = action === "approve" ? "approved" : "rejected";
+      request.processedAt = new Date();
       await request.save();
 
-      // Mettre à jour le statut de l'utilisateur si la demande est approuvée
+      // Mettre à jour le statut utilisateur si approuvé
       if (action === "approve") {
-        person.status = "inactive";
+        person.isActive = request.requestType === "deactivate" ? false : true;
         await person.save();
       }
 
-      return { message: `Account status request ${action}ed successfully` };
+      return {
+        success: true,
+        message: `Demande ${request.requestType} ${request.status}`,
+        newStatus: person.isActive
+      };
+
     } catch (err) {
-      console.error("Error in processAccountStatusRequest:", err);
-      throw new Error(err.message);
+      console.error("Erreur processAccountStatusRequest:", err);
+      throw new Error(`Échec du traitement: ${err.message}`);
     }
   }
 }
 
 module.exports = new AdminService();
+

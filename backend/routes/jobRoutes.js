@@ -5,7 +5,10 @@ const { authMiddleware, adminMiddleware } = require("../middlewares/authMiddlewa
 const router = express.Router();
 
 // Public routes
-router.get("/search", jobController.searchJobs);
+
+router.get("/search1", jobController.searchJobs1); // Deprecated, kept for backward compatibility
+router.get("/search", jobController.searchJobs); // New search route
+
 router.get("/search-by-skills", jobController.searchJobsBySkills);
 
 // Protected routes

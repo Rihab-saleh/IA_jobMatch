@@ -172,16 +172,30 @@ const deleteUser = async (req, res) => {
   }
 };
 
-// Changer le statut d'un utilisateur
 const toggleUserStatus = async (req, res) => {
   try {
-    const userId = req.params.userId;
-    if (!validateId(userId, res)) return;
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "ID utilisateur requis"
+      });
+    }
 
     const result = await AdminService.toggleUserStatus(userId);
     res.json(result);
+
   } catch (error) {
-    handleError(res, error, "An error occurred while toggling user status");
+    console.error("Erreur toggleUserStatus:", error);
+    
+    const statusCode = error.message.includes("introuvable") ? 404 : 500;
+    const message = error.message.replace('Échec de la mise à jour: ', '');
+    
+    res.status(statusCode).json({
+      success: false,
+      message: message
+    });
   }
 };
 
@@ -212,31 +226,30 @@ const configureAI = async (req, res) => {
   }
 };
 
-// Récupérer les demandes de changement de statut de compte
-const getAccountStatusRequests = async (req, res) => {
-  try {
-    const status = req.query.status || "pending";
-    const page = Number.parseInt(req.query.page) || 1;
-    const limit = Number.parseInt(req.query.limit) || 10;
 
-    const result = await AdminService.getAccountStatusRequests(status, page, limit);
-    res.json(result);
-  } catch (error) {
-    handleError(res, error, "An error occurred while retrieving account status requests");
-  }
-};
-
-// Traiter une demande de changement de statut de compte
 const processAccountStatusRequest = async (req, res) => {
   try {
-    const requestId = req.params.requestId;
-    if (!validateId(requestId, res)) return;
+    const { requestId } = req.params;
+    const { action } = req.body;
+    
+    validateId(requestId);
+    
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: "Action non valide"
+      });
+    }
 
-    const action = req.body.action;
-    await AdminService.processAccountStatusRequest(requestId, action);
-    res.json({ message: `Account status request ${action}ed successfully` });
+    const result = await AdminService.processAccountStatusRequest(requestId, action);
+    res.json(result);
   } catch (error) {
-    handleError(res, error, "An error occurred while processing the account status request");
+    console.error("Erreur processAccountStatusRequest:", error);
+    const statusCode = error.message.includes("introuvable") ? 404 : 500;
+    res.status(statusCode).json({
+      success: false,
+      message: error.message
+    });
   }
 };
 
@@ -257,21 +270,30 @@ const getUserAccountStatusRequest = async (req, res) => {
 };
 
 // Récupérer toutes les demandes de changement de statut de compte pour un utilisateur
-const getUserAccountStatusRequests = async (req, res) => {
+const getAccountStatusRequests = async (req, res) => {
   try {
-    const userId = req.params.userId;
-    if (!validateId(userId, res)) return;
+    const { userId, status, requestType, page = 1, limit = 10 } = req.query;
 
-    const result = await AdminService.getUserAccountStatusRequests(userId);
-    res.json(result);
+    const result = await AdminService.getAccountStatusRequests(
+      { userId, status, requestType },
+      page,
+      limit
+    );
+
+    res.json({
+      success: true,
+      data: result.requests,
+      pagination: result.pagination
+    });
+
   } catch (error) {
-    if (error.message === "User not found") {
-      return res.status(404).json({ message: "User not found" });
-    }
-    handleError(res, error, "An error occurred while retrieving account status requests");
+    console.error("Erreur getAccountStatusRequests:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Erreur serveur"
+    });
   }
 };
-
 module.exports = {
   createAdmin,
   getAllAdmins,
@@ -285,5 +307,5 @@ module.exports = {
   getAccountStatusRequests,
   processAccountStatusRequest,
   getUserAccountStatusRequest,
-  getUserAccountStatusRequests,
+  
 };

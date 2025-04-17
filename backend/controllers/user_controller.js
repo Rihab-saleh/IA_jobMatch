@@ -345,30 +345,36 @@ const getUserRecommendations = async (req, res) => {
 };
 
 const requestAccountStatusChange = async (req, res) => {
-  processRequest(res, async () => {
+  try {
     const userId = req.user._id;
     const { requestType, reason } = req.body;
 
-    if (!requestType || requestType !== "deactivate") {
-      return res.status(400).json({ message: "Only deactivate requests are supported" });
-    }
-
-    if (!reason) {
-      return res.status(400).json({ message: "Reason is required" });
-    }
-
-    const existingRequests = await userService.getUserAccountStatusRequests(userId);
-    const hasPendingRequest = existingRequests.some((request) => request.status === "pending");
-
-    if (hasPendingRequest) {
-      return res.status(409).json({ message: "You already have a pending account status change request" });
+    if (!['activate', 'deactivate'].includes(requestType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Type de demande invalide"
+      });
     }
 
     const result = await userService.requestAccountStatusChange(userId, requestType, reason);
-    res.status(201).json(result);
-  });
-};
+    
+    res.status(201).json({
+      success: true,
+      message: result.message,
+      request: result.request
+    });
 
+  } catch (error) {
+    console.error("Error in requestAccountStatusChange:", error);
+    
+    const statusCode = error.message.includes("non trouvé") ? 404 : 400;
+    
+    res.status(statusCode).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
 // Profile Picture Methods
 const uploadProfilePicture = async (req, res) => {
   processRequest(res, async () => {

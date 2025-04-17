@@ -20,7 +20,7 @@ export const adminService = {
   },
 
   toggleUserStatus(userId) {
-    return api.put(`/admin/user/toggleStatus/${userId}`)
+    return api.put(`/admin/users/toggle-status/${userId}`)
   },
 
   getAllUsers({ page = 1, limit = 10, search = "" } = {}) {

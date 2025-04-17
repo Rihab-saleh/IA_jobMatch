@@ -1,282 +1,286 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
-import { Search, MapPin, Bookmark } from "lucide-react"
+import { Search, MapPin, Bookmark, Loader } from "lucide-react"
+import axios from "axios"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
-import { Checkbox } from "../components/ui/checkbox"
-import { getJobs } from "../services/job-service" // Import the getJobs function
 
 export default function JobsPage() {
-  const [savedJobs, setSavedJobs] = useState([])
-  const [jobs, setJobs] = useState([]) // State to store jobs
+  const [savedJobs, setSavedJobs] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('savedJobs')
+      return saved ? JSON.parse(saved) : []
+    }
+    return []
+  })
+  const [jobs, setJobs] = useState([])
+  const [filters, setFilters] = useState({
+    query: '',
+    location: '',
+    minSalary: '',
+    jobType: 'any',
+    datePosted: 'any',
+    limit: 20
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [hasMore, setHasMore] = useState(true)
+
+  const api = axios.create({
+    baseURL: 'http://localhost:3001/api/jobs',
+    timeout: 15000,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
 
   useEffect(() => {
-    async function fetchJobs() {
+    const controller = new AbortController()
+    let debounceTimer
+
+    const fetchJobs = async () => {
       try {
-        const jobsData = await getJobs()
-        setJobs(jobsData)
-      } catch (error) {
-        console.error("Failed to fetch jobs:", error)
+        setLoading(true)
+        setError('')
+        
+        const requestBody = {
+          ...filters,
+          minSalary: filters.minSalary ? Number(filters.minSalary) : null,
+          jobType: filters.jobType === 'any' ? 'any' : filters.jobType.replace(' ', '_').toLowerCase()
+        }
+
+        const response = await api.post('/search', requestBody, {
+          signal: controller.signal
+        })
+
+        setJobs(prev => {
+          const newJobs = response.data.jobs
+          setHasMore(newJobs.length >= filters.limit)
+          return filters.limit > 20 ? [...prev, ...newJobs] : newJobs
+        })
+      } catch (err) {
+        if (!axios.isCancel(err)) {
+          setError(err.response?.data?.error || err.message || 'Error searching jobs')
+          setJobs([])
+        }
+      } finally {
+        setLoading(false)
       }
     }
 
-    fetchJobs()
-  }, [])
+    const debounceFetch = () => {
+      clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(fetchJobs, 500)
+    }
 
-  const toggleSaveJob = (jobId) => {
-    if (savedJobs.includes(jobId)) {
-      setSavedJobs(savedJobs.filter((id) => id !== jobId))
-    } else {
-      setSavedJobs([...savedJobs, jobId])
+    debounceFetch()
+
+    return () => {
+      controller.abort()
+      clearTimeout(debounceTimer)
+    }
+  }, [filters])
+
+  useEffect(() => {
+    localStorage.setItem('savedJobs', JSON.stringify(savedJobs))
+  }, [savedJobs])
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault()
+    setFilters(prev => ({ ...prev, limit: 20 }))
+  }
+
+  const handleFilterChange = (name, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [name]: value,
+      ...(name !== 'limit' && { limit: 20 })
+    }))
+  }
+
+  const loadMoreJobs = () => {
+    setFilters(prev => ({ ...prev, limit: prev.limit + 20 }))
+  }
+
+  const formatDate = (dateString) => {
+    try {
+      const options = { year: 'numeric', month: 'short', day: 'numeric' }
+      return new Date(dateString).toLocaleDateString('fr-FR', options)
+    } catch {
+      return 'Date inconnue'
     }
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Job Search</h1>
-        <p className="text-gray-600 mb-6">Search for your desired job matching your skills</p>
+      <form onSubmit={handleSearchSubmit} className="bg-gray-50 p-4 rounded-lg mb-8">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-grow">
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            <Input
+              value={filters.query}
+              onChange={(e) => handleFilterChange('query', e.target.value)}
+              placeholder="Poste recherché"
+              className="pl-10"
+            />
+          </div>
+          
+          <div className="relative flex-grow">
+            <MapPin className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            <Input
+              value={filters.location}
+              onChange={(e) => handleFilterChange('location', e.target.value)}
+              placeholder="Localisation"
+              className="pl-10"
+            />
+          </div>
 
-        {/* Search Bar */}
-        <div className="bg-gray-50 p-4 rounded-lg mb-8">
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className="relative flex-grow">
-              <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Enter Job title"
-                className="pl-10 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-              />
-            </div>
-            <div className="relative flex-grow">
-              <MapPin className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Enter location"
-                className="pl-10 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-              />
-            </div>
-            <div className="relative flex-grow">
-              <Input
-                type="text"
-                placeholder="Years of experience"
-                className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-              />
-            </div>
-            <Button className="bg-purple-700 hover:bg-purple-800 px-6">Search</Button>
+          <Button 
+            type="submit"
+            className="bg-purple-700 hover:bg-purple-800 px-6"
+            disabled={loading}
+          >
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <Loader className="h-4 w-4 animate-spin" />
+                Recherche...
+              </div>
+            ) : 'Rechercher'}
+          </Button>
+        </div>
+      </form>
+
+      <div className="flex flex-col lg:flex-row gap-6">
+        <div className="w-full lg:w-1/4 bg-white rounded-lg border p-6 space-y-4">
+          <div className="border-b pb-4">
+            <h3 className="font-medium mb-3">Salaire minimum (€)</h3>
+            <Input
+              placeholder="Salaire minimum"
+              value={filters.minSalary}
+              onChange={(e) => handleFilterChange('minSalary', e.target.value)}
+              type="number"
+              min="0"
+            />
+          </div>
+
+          <div className="border-b pb-4">
+            <h3 className="font-medium mb-3">Type de contrat</h3>
+            <select
+              value={filters.jobType}
+              onChange={(e) => handleFilterChange('jobType', e.target.value)}
+              className="w-full p-2 border rounded"
+            >
+              {['any', 'full_time', 'part_time', 'contract', 'internship'].map((type) => (
+                <option key={type} value={type}>
+                  {type.replace(/_/g, ' ').toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="border-b pb-4">
+            <h3 className="font-medium mb-3">Date de publication</h3>
+            <select
+              value={filters.datePosted}
+              onChange={(e) => handleFilterChange('datePosted', e.target.value)}
+              className="w-full p-2 border rounded"
+            >
+              {['any', 'today', 'week', 'month'].map((option) => (
+                <option key={option} value={option}>
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Filters */}
-          <div className="w-full lg:w-1/4 bg-white rounded-lg border p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Filter</h2>
-              <button className="text-sm text-gray-500">Clear all</button>
-            </div>
+        <div className="w-full lg:w-3/4">
+          {error && <div className="text-red-500 mb-4 p-3 bg-red-50 rounded">{error}</div>}
 
-            {/* Salary Range */}
-            <div className="border-b pb-4 mb-4">
-              <h3 className="font-medium mb-3">Salary Range</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <Input placeholder="Min" className="w-full" />
-                <Input placeholder="Max" className="w-full" />
-              </div>
-            </div>
-
-            {/* Job Type */}
-            <div className="border-b pb-4 mb-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-medium">Job Type</h3>
-                <button className="text-gray-500">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m18 15-6-6-6 6" />
-                  </svg>
-                </button>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="all" defaultChecked className="text-purple-700 border-gray-300" />
-                  <label htmlFor="all" className="text-sm">
-                    All (2567)
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="full-time" className="text-purple-700 border-gray-300" />
-                  <label htmlFor="full-time" className="text-sm">
-                    Full-Time (450)
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="part-time" className="text-purple-700 border-gray-300" />
-                  <label htmlFor="part-time" className="text-sm">
-                    Part-Time (145)
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="internship" className="text-purple-700 border-gray-300" />
-                  <label htmlFor="internship" className="text-sm">
-                    Internship (65)
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="contract" className="text-purple-700 border-gray-300" />
-                  <label htmlFor="contract" className="text-sm">
-                    Contract (12)
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Work Mode */}
-            <div className="border-b pb-4 mb-4">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-medium">Work Mode</h3>
-                <button className="text-gray-500">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m18 15-6-6-6 6" />
-                  </svg>
-                </button>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="on-site" className="text-purple-700 border-gray-300" />
-                  <label htmlFor="on-site" className="text-sm">
-                    On-Site
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="remote" className="text-purple-700 border-gray-300" />
-                  <label htmlFor="remote" className="text-sm">
-                    Remote (180)
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox id="hybrid" className="text-purple-700 border-gray-300" />
-                  <label htmlFor="hybrid" className="text-sm">
-                    Hybrid (200)
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* More filters would go here */}
-
-            <button className="flex items-center justify-center w-full text-purple-700 font-medium">
-              <span>Expand all</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="ml-1"
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-semibold">
+              {jobs.length} offre{jobs.length !== 1 ? 's' : ''} trouvée{jobs.length !== 1 ? 's' : ''}
+            </h2>
           </div>
 
-          {/* Job Listings */}
-          <div className="w-full lg:w-3/4">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-semibold">All Jobs ({jobs.length})</h2>
-              <div className="flex items-center">
-                <span className="text-sm mr-2">Popular</span>
-                <button className="text-gray-500">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
+          <div className="space-y-6">
+            {jobs.map((job) => (
+              <div key={job.id} className="bg-white rounded-lg border p-6 relative hover:shadow-md transition-shadow">
+                <button
+                  onClick={() => setSavedJobs(prev => 
+                    prev.some(j => j.id === job.id) 
+                      ? prev.filter(j => j.id !== job.id) 
+                      : [...prev, job]
+                  )}
+                  className={`absolute right-4 top-4 ${
+                    savedJobs.some(j => j.id === job.id) ? "text-purple-700" : "text-gray-400"
+                  }`}
+                >
+                  <Bookmark className={`h-5 w-5 ${savedJobs.some(j => j.id === job.id) ? "fill-current" : ""}`} />
                 </button>
-              </div>
-            </div>
 
-            <div className="space-y-6">
-              {jobs.map((job) => (
-                <div key={job.id} className="bg-white rounded-lg border p-6 relative">
-                  <button
-                    className={`absolute right-4 top-4 ${savedJobs.includes(job.id) ? "text-purple-700" : "text-gray-400 hover:text-purple-700"}`}
-                    onClick={() => toggleSaveJob(job.id)}
-                  >
-                    <Bookmark className={`h-5 w-5 ${savedJobs.includes(job.id) ? "fill-current" : ""}`} />
-                  </button>
-
-                  <h3 className="text-lg font-semibold mb-1">{job.title}</h3>
-                  <div className={`bg-${job.type === "FULL-TIME" ? "purple" : "green"}-100 text-${job.type === "FULL-TIME" ? "purple" : "green"}-800 text-xs font-medium px-2 py-0.5 rounded inline-block mb-2`}>
-                    {job.type}
-                  </div>
-                  <p className="text-gray-600 text-sm mb-4">Salary: {job.salary}</p>
-
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 rounded-full overflow-hidden bg-white border">
-                      <img src={job.logo} alt={job.company} width={32} height={32} />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{job.company}</p>
-                      <p className="text-gray-500 text-xs">{job.location}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <Link
-                      to={`/jobs/${job.id}`}
-                      className="flex-1 text-center py-2 border border-gray-300 rounded text-sm font-medium hover:bg-gray-50"
-                    >
-                      View details
-                    </Link>
-                    <Link
-                      to={`/apply/${job.id}`}
-                      className="flex-1 text-center py-2 bg-purple-700 text-white rounded text-sm font-medium hover:bg-purple-800"
-                    >
-                      Apply now
-                    </Link>
-                  </div>
+                <h3 className="text-lg font-semibold mb-1">{job.title}</h3>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                    {job.source?.toUpperCase()}
+                  </span>
+                  {job.jobType && (
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                      {job.jobType?.replace(/_/g, ' ').toUpperCase()}
+                    </span>
+                  )}
+                  {job.datePosted && (
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                      {formatDate(job.datePosted)}
+                    </span>
+                  )}
                 </div>
-              ))}
+                
+                <div className="mt-4">
+                  <p className="text-gray-600 text-sm mb-2">
+                    {job.company} • {job.location}
+                  </p>
+                  {job.salary && (
+                    <p className="text-sm font-medium text-purple-700">
+                      Salaire: {job.salary}
+                    </p>
+                  )}
+                </div>
 
-              {/* More Job Cards */}
-              <div className="text-center mt-8">
-                <Link to="#" className="text-purple-700 font-medium hover:underline">
-                  View more
-                </Link>
+                <a
+                  href={job.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-4 px-4 py-2 bg-purple-700 text-white rounded text-sm font-medium hover:bg-purple-800 transition-colors"
+                >
+                  Voir l'offre ↗
+                </a>
               </div>
-            </div>
+            ))}
+
+            {hasMore && jobs.length > 0 && (
+              <div className="text-center mt-8">
+                <Button 
+                  onClick={loadMoreJobs}
+                  disabled={loading}
+                  className="bg-purple-700 hover:bg-purple-800 px-8"
+                >
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <Loader className="h-4 w-4 animate-spin" />
+                      Chargement...
+                    </div>
+                  ) : 'Voir plus'}
+                </Button>
+              </div>
+            )}
+
+            {!loading && jobs.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                Aucune offre trouvée avec ces critères
+              </div>
+            )}
           </div>
         </div>
       </div>

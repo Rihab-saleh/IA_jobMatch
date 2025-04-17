@@ -11,9 +11,7 @@ const userService = require('./userService');
 const tokenizer = new natural.WordTokenizer();
 const stopwords = ['a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'about', 'as'];
 
-/**
- * Calculate cosine similarity between two vectors
- */
+
 function cosineSimilarity(vecA, vecB) {
   if (!vecA || !vecB || vecA.length !== vecB.length) {
     return 0;

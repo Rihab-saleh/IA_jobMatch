@@ -4,9 +4,9 @@ import { useState, useEffect } from "react"
 import { Link, useNavigate, useLocation } from "react-router-dom"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
-import { Checkbox } from "../components/ui/checkbox"
 import { useAuth } from "../contexts/auth-context"
 import { AlertCircle, CheckCircle, Eye, EyeOff } from "lucide-react"
+import { userService } from "../services/user-service"
 
 export default function Login() {
   const { login } = useAuth()
@@ -21,10 +21,10 @@ export default function Login() {
   const [formData, setFormData] = useState({
     email: emailFromRegistration,
     password: "",
-    rememberMe: false,
   })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [reactivationLoading, setReactivationLoading] = useState(false)
   const [error, setError] = useState(null)
   const [showSuccessMessage, setShowSuccessMessage] = useState(registrationSuccess)
 
@@ -42,10 +42,10 @@ export default function Login() {
   }, [showSuccessMessage])
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target
+    const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value,
     }))
   }
 
@@ -66,6 +66,23 @@ export default function Login() {
     return isValid
   }
 
+  const handleRequestReactivation = async () => {
+    setReactivationLoading(true)
+    try {
+      await userService.requestAccountStatusChange({
+        email: formData.email,
+        requestType: "activate",
+        reason: "Demande de réactivation depuis la page de connexion"
+      })
+      setError(null)
+      setShowSuccessMessage(true)
+    } catch (err) {
+      setError(err.message || "Échec de l'envoi de la demande. Veuillez réessayer plus tard.")
+    } finally {
+      setReactivationLoading(false)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validateForm()) return
@@ -73,15 +90,17 @@ export default function Login() {
     setLoading(true)
     try {
       const result = await login(formData.email, formData.password)
+      
       if (result?.success) {
-        // Set flag that user just logged in - this helps with profile page loading
         localStorage.setItem("justLoggedIn", "true")
-
-        // Navigate to appropriate page based on role or the 'from' location
         const redirectTo = result.role === "admin" ? "/admin" : from
         navigate(redirectTo)
       } else {
-        setError(result?.error || "Identifiants incorrects")
+        if (result?.error?.includes("désactivé")) {
+          setError("Votre compte est désactivé. Souhaitez-vous demander une réactivation ?")
+        } else {
+          setError(result?.error || "Identifiants incorrects")
+        }
       }
     } catch (err) {
       setError("Erreur de connexion au serveur")
@@ -91,29 +110,43 @@ export default function Login() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex flex-col md:flex-row items-center gap-8">
-          <div className="w-full md:max-w-md">
-            <h1 className="text-3xl font-bold mb-2">Connexion</h1>
+    <div className="flex min-h-screen flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white px-4 py-8 shadow sm:rounded-lg sm:px-10">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold">Connexion</h1>
+          </div>
 
-            {showSuccessMessage && (
-              <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-md flex items-center">
-                <CheckCircle className="h-5 w-5 mr-2" />
-                Inscription réussie ! Connectez-vous maintenant.
-              </div>
-            )}
+          {showSuccessMessage && (
+            <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-md flex items-center">
+              <CheckCircle className="h-5 w-5 mr-2" />
+              Demande envoyée ! L'administrateur a été notifié.
+            </div>
+          )}
 
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md flex items-center">
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md flex flex-col">
+              <div className="flex items-center">
                 <AlertCircle className="h-5 w-5 mr-2" />
-                {error}
+                <span>{error}</span>
               </div>
-            )}
+              {error.includes("désactivé") && (
+                <Button
+                  onClick={handleRequestReactivation}
+                  disabled={reactivationLoading}
+                  className="mt-2 ml-7 text-sm bg-transparent text-red-700 hover:bg-red-100"
+                  variant="outline"
+                >
+                  {reactivationLoading ? "Envoi en cours..." : "Demander la réactivation"}
+                </Button>
+              )}
+            </div>
+          )}
 
-            <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-4">
               <div>
-                <label className="block text-lg font-medium mb-2">
+                <label className="block text-sm font-medium text-gray-700">
                   Email
                   <Input
                     name="email"
@@ -128,7 +161,7 @@ export default function Login() {
               </div>
 
               <div>
-                <label className="block text-lg font-medium mb-2">
+                <label className="block text-sm font-medium text-gray-700">
                   Mot de passe
                   <div className="relative mt-1">
                     <Input
@@ -155,43 +188,36 @@ export default function Login() {
                 </label>
               </div>
 
-              {/*<div className="flex justify-between items-center">
-                <label className="flex items-center space-x-2">
-                  <Checkbox
-                    name="rememberMe"
-                    checked={formData.rememberMe}
-                    onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, rememberMe: checked }))}
-                  />
-                  <span>Se souvenir de moi</span>
-                </label>
-                <Link to="/forgot-password" className="text-purple-700 font-medium">
-                  Mot de passe oublié ?
-                </Link>
-              </div>*/}
+              <div className="flex items-center justify-end">
+                <div className="text-sm">
+                  <Link to="/forgot-password" className="text-purple-700 font-medium">
+                    Mot de passe oublié ?
+                  </Link>
+                </div>
+              </div>
+            </div>
 
+            <div>
               <Button
                 type="submit"
-                className="w-full bg-purple-700 hover:bg-purple-800 py-6 text-lg"
-                disabled={loading}
+                className="w-full bg-purple-700 hover:bg-purple-800 py-6 text-lg text-white"
+                disabled={loading || reactivationLoading}
               >
                 {loading ? "Connexion..." : "Se connecter"}
               </Button>
-            </form>
-
-            <div className="mt-8 text-center">
-              <p className="text-gray-600">
-                Pas de compte ?{" "}
-                <Link to="/register" className="text-purple-700 font-medium">
-                  S'inscrire
-                </Link>
-              </p>
             </div>
-          </div>
+          </form>
 
-          
+          <div className="mt-6 text-center text-sm">
+            <p className="text-gray-600">
+              Pas de compte ?{" "}
+              <Link to="/register" className="text-purple-700 font-medium">
+                S'inscrire
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
   )
 }
-

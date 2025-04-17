@@ -83,7 +83,6 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
     { path: "/recommendations", label: "Recommendations" },
     { path: "/profile", label: "Profile" },
     { path: "/cv-builder", label: "CV Builder" },
-  
   ]
 
   // Default links for non-authenticated users - only Home and Find Jobs
@@ -182,12 +181,20 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
               </div>
             </>
           ) : (
-            <Link
-              to="/login"
-              className="bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-md transition-colors"
-            >
-              Login
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                to="/register"
+                className="bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-md transition-colors"
+              >
+                Register
+              </Link>
+              <Link
+                to="/login"
+                className="bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-md transition-colors"
+              >
+                Login
+              </Link>
+            </div>
           )}
 
           <button
@@ -214,6 +221,25 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
                   {label}
                 </Link>
               ))}
+
+              {!isAuthenticated && (
+                <>
+                  <Link
+                    to="/register"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-sm font-medium text-gray-600"
+                  >
+                    Register
+                  </Link>
+                  <Link
+                    to="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-sm font-medium text-gray-600"
+                  >
+                    Login
+                  </Link>
+                </>
+              )}
 
               {isAuthenticated && (
                 <div className="pt-2 border-t">

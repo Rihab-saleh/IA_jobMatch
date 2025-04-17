@@ -16,12 +16,11 @@ router.get("/check", authMiddleware, adminMiddleware, (req, res) => {
   })
 })
 
+router.get("/account-requests", authMiddleware, adminMiddleware, adminController.getAccountStatusRequests);
+router.put("/account-requests/:requestId", authMiddleware, adminMiddleware, adminController.processAccountStatusRequest);
 
-router.get("/account-requests", authMiddleware, adminMiddleware, adminController.getAccountStatusRequests)
-router.get("/account-requests/:userId", authMiddleware, adminMiddleware, adminController.getUserAccountStatusRequests)
 router.delete("/user/delete/:userId", authMiddleware, adminMiddleware, adminController.deleteUser)
-router.put("/user/toggleStatus/:userId", authMiddleware, adminMiddleware, adminController.toggleUserStatus)
-router.get("/users", authMiddleware, adminMiddleware, adminController.getAllUsers)
+router.put("/users/toggle-status/:userId", authMiddleware, adminMiddleware, adminController.toggleUserStatus);router.get("/users", authMiddleware, adminMiddleware, adminController.getAllUsers)
 router.post("/ai/configure", authMiddleware, adminMiddleware, adminController.configureAI)
 router.post("/", authMiddleware, adminMiddleware, adminController.createAdmin)
 router.get("/", authMiddleware, adminMiddleware, adminController.getAllAdmins)

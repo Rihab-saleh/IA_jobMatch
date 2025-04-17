@@ -333,40 +333,68 @@ class UserService {
   }
 
   async requestAccountStatusChange(userId, requestType, reason) {
+    // Validation des paramètres
+    const validTypes = ['activate', 'deactivate'];
+    if (!validTypes.includes(requestType)) {
+      throw new Error(`Type de demande invalide. Options valides: ${validTypes.join(', ')}`);
+    }
+
+    if (!reason || reason.trim().length < 10) {
+      throw new Error("La raison doit contenir au moins 10 caractères");
+    }
+
+    // Récupération des entités
     const { user, person } = await this.getUserAndPerson(userId);
+    if (!user || !person) {
+      throw new Error("Utilisateur non trouvé");
+    }
 
-    if (!requestType || requestType !== "deactivate")
-      throw new Error("Seules les demandes de désactivation sont prises en charge");
+    // Vérification de l'état actuel
+    if (requestType === 'activate' && person.isActive) {
+      throw new Error("Le compte est déjà actif");
+    }
 
-    if (!person.accountStatusRequests) person.accountStatusRequests = [];
+    if (requestType === 'deactivate' && !person.isActive) {
+      throw new Error("Le compte est déjà désactivé");
+    }
 
-    const hasPendingRequest = person.accountStatusRequests.some((request) => request.status === "pending");
-    if (hasPendingRequest) throw new Error("Vous avez déjà une demande de changement de statut en attente");
+    // Vérification des demandes existantes
+    const hasPendingRequest = person.accountStatusRequests?.some(
+      req => req.status === 'pending' && req.requestType === requestType
+    );
 
+    if (hasPendingRequest) {
+      throw new Error("Une demande similaire est déjà en attente");
+    }
+
+    // Création de la demande
     const newRequest = {
       requestType,
       reason,
-      status: "pending",
-      createdAt: new Date(),
+      status: 'pending',
+      createdAt: new Date()
     };
 
+    // Mise à jour de l'utilisateur
     person.accountStatusRequests.push(newRequest);
     await person.save();
 
-    const accountStatusRequest = new AccountStatusRequest({
+    // Création dans la collection dédiée
+    const statusRequest = new AccountStatusRequest({
       user: userId,
-      requestType,
-      reason,
-      status: "pending",
+      ...newRequest,
+      previousStatus: person.isActive ? 'active' : 'inactive'
     });
 
-    await accountStatusRequest.save();
+    await statusRequest.save();
 
     return {
-      message: `Votre demande de désactivation de compte a été soumise et est en attente d'approbation par un administrateur`,
-      request: newRequest,
+      success: true,
+      message: "Demande enregistrée avec succès",
+      request: statusRequest.toObject()
     };
-  }
+}
+
 
   async getUserAccountStatusRequests(userId) {
     const { user, person } = await this.getUserAndPerson(userId);

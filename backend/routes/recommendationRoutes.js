@@ -7,14 +7,21 @@ const { getRecommendationsForUser, getRecommendationsFromText } = require('../co
 router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const limit = parseInt(req?.query.limit) || 10;
-    console.log('User ID:', userId);
-    const recommendations = await getRecommendationsForUser(userId, limit);
-    
-    res.json({ success: true, recommendations });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const result = await  getRecommendationsForUser({
+      params: { userId },
+      query: { page, limit }
+    }, res);
+
+    res.json(result);
   } catch (error) {
-    console.error('Error getting recommendations:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Erreur route:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur interne'
+    });
   }
 });
 
