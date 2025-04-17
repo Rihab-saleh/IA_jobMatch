@@ -1102,7 +1102,6 @@ function DashboardSection({ title, children, searchValue, onSearch, onSearchSubm
     </div>
   )
 }
-
 function JobsTable({ jobs, onDelete }) {
   return (
     <div className="overflow-x-auto">

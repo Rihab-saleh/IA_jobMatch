@@ -15,7 +15,6 @@ async function getRecommendationsForUser(userId) {
   try {
     // 1. Fetch user profile and preferences
     const userProfile = await userService.getUserProfile(userId);
-
     const jobData = await searchJobs({ query: userProfile.jobTitle }); // Fetch all jobs for simplicity, adjust as needed
     const jobs = jobData.jobs;
 

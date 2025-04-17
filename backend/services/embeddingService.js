@@ -17,7 +17,6 @@ async function loadModel() {
   return embeddingPipeline;
 }
 
-
 async function generateEmbedding(text) {
   try {
     // First, ensure the model is loaded

@@ -75,7 +75,6 @@ async function createFirstAdmin() {
     const existingAdminRecord = await Admin.findOne({ person: adminPerson._id });
 
     if (!existingAdminRecord) {
-
       const adminRecord = new Admin({
         person: adminPerson._id,
       });

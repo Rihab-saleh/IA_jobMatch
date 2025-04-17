@@ -722,7 +722,6 @@ function ProfilePage() {
       toast.error(`Error: ${error.message || "Failed to save experience"}`)
     }
   }
-
   const handleEducationSubmit = async (e) => {
     e.preventDefault()
     if (!user || !user._id) {

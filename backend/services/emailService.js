@@ -132,7 +132,6 @@ let transporter = null;
     if (mongoose.Types.ObjectId.isValid(userId)) {
       try {
         settings = await NotificationSettings.findOne({ userId });
-
       } catch (dbError) {
         console.error('Erreur lors de la recherche des paramètres:', dbError);
       }
