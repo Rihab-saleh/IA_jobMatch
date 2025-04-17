@@ -152,6 +152,8 @@ router.get('/recommend/:userId', async (req, res) => {
           searchJobs: r.searchJobs,
           source: r.source,
           date: r.date,
+          contractType: r.contractType,
+          skills: r.skills,
           score: r.score *100,
           category: r.category,
           url: r.url

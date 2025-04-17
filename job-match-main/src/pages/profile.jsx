@@ -196,7 +196,7 @@ function ProfilePage() {
     if (uploadPathMatch) {
       const formattedUrl = `${apiBaseUrl}${uploadPathMatch[1]}`
       console.log("Case 1 match. Formatted URL:", formattedUrl)
-      return formattedUrl
+      return url
     }
 
     // Case 2: URL directly contains "/uploads/profiles/"
@@ -227,6 +227,7 @@ function ProfilePage() {
     // Case 5: Default fallback - just append to API base URL
     const formattedUrl = `${apiBaseUrl}${url.startsWith("/") ? url : `/${url}`}`
     console.log("Case 5 fallback. Formatted URL:", formattedUrl)
+    state.savedProfileData.profilePicture=url
     return formattedUrl
   }
 
@@ -1003,9 +1004,9 @@ function ProfilePage() {
             <div className="h-16 bg-gradient-to-r from-purple-600 to-indigo-600"></div>
             <CardContent className="pt-0 -mt-8 flex items-center gap-4">
               <div className="relative">
-                {state.profilePicture ? (
+                {state.savedProfileData.profilePicture? (
                   <img
-                    src={state.profilePicture || "/placeholder.svg"}
+                    src={"../assets/"+ state.savedProfileData.profilePicture|| "/placeholder.svg"}
                     alt="Profile"
                     className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
                   />
@@ -1067,9 +1068,9 @@ function ProfilePage() {
               <CardContent className="pt-0 -mt-12">
                 <div className="flex flex-col items-center">
                   <div className="relative mb-4">
-                    {state.profilePicture ? (
+                    {state.savedProfileData.profilePicture ? (
                       <img
-                        src={state.profilePicture || "/placeholder.svg"}
+                        src={"../assets/"+state.savedProfileData.profilePicture|| "/placeholder.svg"}
                         alt="Profile"
                         className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md"
                       />

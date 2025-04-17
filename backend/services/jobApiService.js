@@ -15,7 +15,7 @@ const JOOBLE_API_KEY = "ed9a3c23-dcac-4de0-8145-71db66b6a169"
 const FINDWORK_API_KEY = "ed9a3c23-dcac-4de0-8145-71db66b6a169"
 const APIJOBS_API_KEY = "4e4fce558288a8005970bb642a0569749178ce05c7f753f963411eddf47b4d81"
 const REED_API_KEY = "0d792c73-84b2-4f95-903e-ec4ceb3e8c11"
-
+const { extractSkillsNLP, detectLanguage, detectJobDomain } = require('../services/skillExtractorService');
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
@@ -998,8 +998,19 @@ async function searchJobs(filters) {
     const results = await Promise.all(apiPromises);
 
     // Combine results from all APIs
-    let allJobs = results.flat();
+    let allJobs = [];
+    for (const job of results.flat()) {
+      try {
+        // Only extract skills if description exists
+        const skills = job.description ? await extractSkillsNLP(job.description) : [];
+        allJobs.push({ ...job, skills });
+      } catch (error) {
+        console.error(`Error extracting skills for job ${job.id}:`, error);
+        allJobs.push({ ...job, skills: [] });
+      }
+    }
 
+    
     // Apply client-side filtering for additional filters
     if (filters.company) {
       allJobs = allJobs.filter((job) => job.company.toLowerCase().includes(filters.company.toLowerCase()));

@@ -1,6 +1,5 @@
 // src/pages/RecommendationsPage.jsx
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/auth-context";
 import { recommendationService } from "../services/recommendation-service";
 import { Button } from "../components/ui/button";
@@ -11,6 +10,7 @@ export default function RecommendationsPage() {
   const { user, isAuthenticated } = useAuth();
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -23,143 +23,193 @@ export default function RecommendationsPage() {
   const fetchRecommendations = async (userId) => {
     try {
       setLoading(true);
-      const response = await recommendationService.getJobRecommendations(userId, {
-        limit: itemsPerPage * 2 // Charger plus d'éléments pour la pagination côté client
-      });
+      setError(null);
       
-      if (response.data.success) {
-        setRecommendations(response.data.data.recommendations);
+      const response = await recommendationService.getJobRecommendations(userId);
+      console.log("API Response Data:", response.data);
+
+      // Correction clé - Vérification des deux structures possibles
+      const recommendationsData = response.data?.data?.recommendations || 
+                                 response.data?.recommendations || 
+                                 [];
+
+      if (recommendationsData.length > 0) {
+        setRecommendations(recommendationsData);
       } else {
-        setRecommendations([]);
+        throw new Error("Aucune recommandation disponible");
       }
     } catch (error) {
-      console.error("Failed to fetch recommendations:", error);
+      console.error("Fetch Error:", error);
+      setError(error.message || "Erreur lors du chargement des recommandations");
       setRecommendations([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const paginatedRecommendations = recommendations.slice(
+  const paginatedData = recommendations.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
   const totalPages = Math.ceil(recommendations.length / itemsPerPage);
 
-  // Fonction de formatage du score
   const formatScore = (score) => {
-    return typeof score === 'number' ? (score * 100).toFixed(1) : 'N/A';
+    return score?.toFixed?.(1) || 'N/A';
   };
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-pulse space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-32 bg-gray-100 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8 text-red-500">
+        <p>{error}</p>
+        <Button 
+          onClick={() => fetchRecommendations(user.id)}
+          className="mt-4"
+        >
+          Réessayer
+        </Button>
+      </div>
+    );
+  }
+
+  if (recommendations.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <p>Aucune recommandation disponible</p>
+        <p className="mt-2 text-sm">
+          Essayez de mettre à jour votre profil ou de modifier vos critères
+        </p>
+        <Button 
+          onClick={() => fetchRecommendations(user.id)}
+          className="mt-4"
+          variant="outline"
+        >
+          Actualiser
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-5xl mx-auto">
-        <div className="flex items-center gap-2 mb-2">
-          <h1 className="text-3xl font-bold">AI Job Recommendations</h1>
-          <Sparkles className="h-6 w-6 text-purple-700" />
+        <div className="flex items-center gap-2 mb-8">
+          <h1 className="text-3xl font-bold">Recommandations d'emplois</h1>
+          <Sparkles className="h-6 w-6 text-purple-600" />
         </div>
-        
-        {loading ? (
-          <div className="text-center py-8">Loading recommendations...</div>
-        ) : paginatedRecommendations.length > 0 ? (
-          <>
-            {paginatedRecommendations.map((job) => (
-              <div key={job.id} className="bg-white rounded-lg border p-6 mb-4 relative shadow-sm hover:shadow-md transition-shadow">
-                <div className="absolute right-6 top-6 flex items-center">
-                  <div className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full flex items-center mr-3">
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    {formatScore(job.score)}% Match
+
+        <div className="space-y-6">
+          {paginatedData.map((job) => (
+            <article 
+              key={`${job.id}-${job.source}`}
+              className="bg-white rounded-xl border p-6 shadow-sm hover:shadow-lg transition-shadow"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-xl font-semibold mb-2">{job.title}</h2>
+                  <div className="flex flex-wrap gap-3 text-sm text-gray-600 mb-4">
+                    <div className="flex items-center">
+                      <Briefcase className="h-4 w-4 mr-1.5" />
+                      {job.company || 'Entreprise non spécifiée'}
+                    </div>
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 mr-1.5" />
+                      {job.location || 'Localisation non spécifiée'}
+                    </div>
+                    {job.salary && (
+                      <div className="flex items-center">
+                        <DollarSign className="h-4 w-4 mr-1.5" />
+                        {job.salary}
+                      </div>
+                    )}
                   </div>
-                  <button className="text-gray-400 hover:text-purple-700">
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm flex items-center">
+                    <Sparkles className="h-4 w-4 mr-1.5" />
+                    {formatScore(job.score)}%
+                  </div>
+                  <button className="text-gray-400 hover:text-purple-600">
                     <Bookmark className="h-5 w-5" />
                   </button>
                 </div>
-
-                <h3 className="text-xl font-semibold mb-2">{job.title}</h3>
-                
-                <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 mb-4">
-                  <div className="flex items-center">
-                    <Briefcase className="h-4 w-4 mr-1" />
-                    {job.company || 'Company not specified'}
-                  </div>
-                  <div className="flex items-center">
-                    <MapPin className="h-4 w-4 mr-1" />
-                    {job.location || 'Location not specified'}
-                  </div>
-                  <div className="flex items-center">
-                    <Clock className="h-4 w-4 mr-1" />
-                    {job.jobType ? job.jobType.replace('_', ' ').toLowerCase() : 'Job type not specified'}
-                  </div>
-                  {job.salary && (
-                    <div className="flex items-center">
-                      <DollarSign className="h-4 w-4 mr-1" />
-                      {job.salary}
-                    </div>
-                  )}
-                </div>
-
-                {job.skills?.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {job.skills.map((skill, index) => (
-                      <Badge key={index} variant="secondary">
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex gap-3">
-                  <Button variant="outline" asChild>
-                    <Link 
-                      to={`/jobs/${job.id}`} // Lien vers la page de détail
-                      className="flex items-center gap-1"
-                    >
-                      View Details
-                      <ExternalLink className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button asChild className="bg-purple-700 hover:bg-purple-800">
-                    <a
-                      href={job.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1"
-                    >
-                      Apply Now
-                    </a>
-                  </Button>
-                </div>
               </div>
-            ))}
 
-            <div className="flex justify-center mt-8">
-              <nav className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                
-                <span className="px-4 py-2 text-gray-600">
-                  Page {currentPage} of {totalPages}
-                </span>
+              {job.skills?.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {job.skills.map((skill, index) => (
+                    <Badge 
+                      key={index} 
+                      variant="outline" 
+                      className="border-purple-200 text-purple-700"
+                    >
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
+              )}
 
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+              <p className="text-gray-600 mb-4">
+                {job.description?.substring(0, 200)}...
+              </p>
+
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="border-purple-300 text-purple-700 hover:bg-purple-50"
                 >
-                  Next
-                </button>
-              </nav>
-            </div>
-          </>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            No recommendations available. Try updating your profile for better matches.
+                  <a
+                    href={job.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5"
+                  >
+                    Postuler
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {totalPages > 1 && (
+          <div className="mt-8 flex justify-center">
+            <nav className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Précédent
+              </Button>
+              
+              <div className="flex items-center px-4">
+                Page {currentPage} sur {totalPages}
+              </div>
+
+              <Button
+                variant="outline"
+                onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Suivant
+              </Button>
+            </nav>
           </div>
         )}
       </div>

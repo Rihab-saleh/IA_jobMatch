@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const Language = require('../models/language_model');
 const User = require('../models/user_model');
 // Create upload directory if it doesn't exist
-const uploadDir = path.join(__dirname, '../public/uploads/profiles');
+const uploadDir = path.join(__dirname, '../assets/uploads/profiles');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }

@@ -29,7 +29,7 @@ export default function JobsPage() {
 
   const api = axios.create({
     baseURL: 'http://localhost:3001/api/jobs',
-    timeout: 15000,
+    timeout: 30000, // Increased timeout to 30 seconds
     headers: {
       'Content-Type': 'application/json'
     }
@@ -43,6 +43,7 @@ export default function JobsPage() {
       try {
         setLoading(true)
         setError('')
+        setJobs([])
         
         const requestBody = {
           ...filters,
@@ -51,18 +52,19 @@ export default function JobsPage() {
         }
 
         const response = await api.post('/search', requestBody, {
-          signal: controller.signal
+          signal: controller.signal,
+          timeout: 30000
         })
 
-        setJobs(prev => {
-          const newJobs = response.data.jobs
-          setHasMore(newJobs.length >= filters.limit)
-          return filters.limit > 20 ? [...prev, ...newJobs] : newJobs
-        })
+        setJobs(response.data.jobs || [])
+        setHasMore((response.data.jobs || []).length >= filters.limit)
       } catch (err) {
-        if (!axios.isCancel(err)) {
-          setError(err.response?.data?.error || err.message || 'Error searching jobs')
-          setJobs([])
+        if (axios.isCancel(err)) {
+          console.log('Request canceled:', err.message)
+        } else if (err.code === 'ECONNABORTED') {
+          setError('Request timed out. Please try again.')
+        } else {
+          setError(err.response?.data?.error || err.message || 'Failed to load jobs. Please try again later.')
         }
       } finally {
         setLoading(false)
@@ -71,10 +73,15 @@ export default function JobsPage() {
 
     const debounceFetch = () => {
       clearTimeout(debounceTimer)
-      debounceTimer = setTimeout(fetchJobs, 500)
+      debounceTimer = setTimeout(fetchJobs, 800)
     }
 
-    debounceFetch()
+    if (filters.query.trim() || filters.location.trim()) {
+      debounceFetch()
+    } else {
+      setJobs([])
+      setHasMore(false)
+    }
 
     return () => {
       controller.abort()
@@ -106,9 +113,9 @@ export default function JobsPage() {
   const formatDate = (dateString) => {
     try {
       const options = { year: 'numeric', month: 'short', day: 'numeric' }
-      return new Date(dateString).toLocaleDateString('fr-FR', options)
+      return new Date(dateString).toLocaleDateString('en-US', options)
     } catch {
-      return 'Date inconnue'
+      return 'Unknown date'
     }
   }
 
@@ -121,7 +128,7 @@ export default function JobsPage() {
             <Input
               value={filters.query}
               onChange={(e) => handleFilterChange('query', e.target.value)}
-              placeholder="Poste recherché"
+              placeholder="Job title"
               className="pl-10"
             />
           </div>
@@ -131,7 +138,7 @@ export default function JobsPage() {
             <Input
               value={filters.location}
               onChange={(e) => handleFilterChange('location', e.target.value)}
-              placeholder="Localisation"
+              placeholder="Location"
               className="pl-10"
             />
           </div>
@@ -144,9 +151,9 @@ export default function JobsPage() {
             {loading ? (
               <div className="flex items-center gap-2">
                 <Loader className="h-4 w-4 animate-spin" />
-                Recherche...
+                Searching...
               </div>
-            ) : 'Rechercher'}
+            ) : 'Search'}
           </Button>
         </div>
       </form>
@@ -154,9 +161,9 @@ export default function JobsPage() {
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="w-full lg:w-1/4 bg-white rounded-lg border p-6 space-y-4">
           <div className="border-b pb-4">
-            <h3 className="font-medium mb-3">Salaire minimum (€)</h3>
+            <h3 className="font-medium mb-3">Minimum Salary ($)</h3>
             <Input
-              placeholder="Salaire minimum"
+              placeholder="Minimum salary"
               value={filters.minSalary}
               onChange={(e) => handleFilterChange('minSalary', e.target.value)}
               type="number"
@@ -165,42 +172,51 @@ export default function JobsPage() {
           </div>
 
           <div className="border-b pb-4">
-            <h3 className="font-medium mb-3">Type de contrat</h3>
+            <h3 className="font-medium mb-3">Job Type</h3>
             <select
               value={filters.jobType}
               onChange={(e) => handleFilterChange('jobType', e.target.value)}
               className="w-full p-2 border rounded"
             >
-              {['any', 'full_time', 'part_time', 'contract', 'internship'].map((type) => (
-                <option key={type} value={type}>
-                  {type.replace(/_/g, ' ').toUpperCase()}
-                </option>
-              ))}
+              <option value="any">Any Type</option>
+              <option value="full_time">Full Time</option>
+              <option value="part_time">Part Time</option>
+              <option value="contract">Contract</option>
+              <option value="internship">Internship</option>
             </select>
           </div>
 
           <div className="border-b pb-4">
-            <h3 className="font-medium mb-3">Date de publication</h3>
+            <h3 className="font-medium mb-3">Date Posted</h3>
             <select
               value={filters.datePosted}
               onChange={(e) => handleFilterChange('datePosted', e.target.value)}
               className="w-full p-2 border rounded"
             >
-              {['any', 'today', 'week', 'month'].map((option) => (
-                <option key={option} value={option}>
-                  {option.charAt(0).toUpperCase() + option.slice(1)}
-                </option>
-              ))}
+              <option value="any">Any Time</option>
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
             </select>
           </div>
         </div>
 
         <div className="w-full lg:w-3/4">
-          {error && <div className="text-red-500 mb-4 p-3 bg-red-50 rounded">{error}</div>}
+          {error && (
+            <div className="text-red-500 mb-4 p-3 bg-red-50 rounded flex justify-between items-center">
+              <span>{error}</span>
+              <button 
+                onClick={() => setFilters(prev => ({ ...prev }))} // Retry by forcing refresh
+                className="text-purple-700 hover:underline"
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-semibold">
-              {jobs.length} offre{jobs.length !== 1 ? 's' : ''} trouvée{jobs.length !== 1 ? 's' : ''}
+              {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'} found
             </h2>
           </div>
 
@@ -217,7 +233,7 @@ export default function JobsPage() {
                     savedJobs.some(j => j.id === job.id) ? "text-purple-700" : "text-gray-400"
                   }`}
                 >
-                  <Bookmark className={`h-5 w-5 ${savedJobs.some(j => j.id === job.id) ? "fill-current" : ""}`} />
+                  <Bookmark className={'h-5 w-5 ${savedJobs.some(j => j.id === job.id) ? "fill-current" : ""}'}  />
                 </button>
 
                 <h3 className="text-lg font-semibold mb-1">{job.title}</h3>
@@ -242,8 +258,8 @@ export default function JobsPage() {
                     {job.company} • {job.location}
                   </p>
                   {job.salary && (
-                    <p className="text-sm font-medium text-purple-700">
-                      Salaire: {job.salary}
+                    <p className="text-sm font-medium text-black">
+                      Salary: ${job.salary}
                     </p>
                   )}
                 </div>
@@ -254,7 +270,7 @@ export default function JobsPage() {
                   rel="noopener noreferrer"
                   className="inline-block mt-4 px-4 py-2 bg-purple-700 text-white rounded text-sm font-medium hover:bg-purple-800 transition-colors"
                 >
-                  Voir l'offre ↗
+                  View Job ↗
                 </a>
               </div>
             ))}
@@ -269,16 +285,18 @@ export default function JobsPage() {
                   {loading ? (
                     <div className="flex items-center gap-2">
                       <Loader className="h-4 w-4 animate-spin" />
-                      Chargement...
+                      Loading...
                     </div>
-                  ) : 'Voir plus'}
+                  ) : 'Load More Jobs'}
                 </Button>
               </div>
             )}
 
-            {!loading && jobs.length === 0 && (
+            {!loading && jobs.length === 0 && !error && (
               <div className="text-center py-12 text-gray-500">
-                Aucune offre trouvée avec ces critères
+                {filters.query || filters.location 
+                  ? "No jobs found matching your criteria" 
+                  : "Enter search criteria to find jobs"}
               </div>
             )}
           </div>
