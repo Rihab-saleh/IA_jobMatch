@@ -1,4 +1,4 @@
-const recommendationService = require('../services/recommendationService2');
+const recommendationService = require('../services/recommendationService');
 
 /**
  * Get job recommendations for a user with pagination

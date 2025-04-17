@@ -15,7 +15,7 @@ async function getRecommendationsForUser(userId) {
   try {
     // 1. Fetch user profile and preferences
     const userProfile = await userService.getUserProfile(userId);
-  
+
     const jobData = await searchJobs({ query: userProfile.jobTitle }); // Fetch all jobs for simplicity, adjust as needed
     const jobs = jobData.jobs;
 
@@ -28,12 +28,24 @@ async function getRecommendationsForUser(userId) {
     Job Descriptions:\n`;
 
     jobs.forEach(job => {
-      prompt += `---\nJob ID: ${job.id}\n${job.description}\n`;
+      prompt += `---\nJob ID: ${job.id}\n${job.description}\n` +
+        `Title: ${job.title}\n` +
+        `Company: ${job.company}\n` +
+        `Location: ${job.location}\n` +
+        `Salary: ${job.salary}\n` +
+        `Experience Required: ${job.experience} years\n` +
+        `Job Type: ${job.type}\n`;
     });
 
     prompt += `\n\nBased on the above information, which 10 jobs are the best fit for the user?
-    Provide a match percentage (0-100) for each job.
-    Respond with a JSON array of objects, where each object has a "jobId" and a "matchPercentage". For example: [{"jobId": 123, "matchPercentage": 95}, {"jobId": 456, "matchPercentage": 88}, ...]`;
+Provide a match percentage (0-100) for each job along with the job details.
+Respond with a JSON array of objects, where each object has all job details plus a "matchPercentage". For example: [{
+  "jobId": 123, 
+  "title": "Software Engineer",
+  "company": "Tech Corp",
+  "location": "Remote",
+  "matchPercentage": 95
+}, ...]`;
 
     // 4. Send the prompt to Ollama API
     const response = await axios.post('http://localhost:11434/api/generate', {
