@@ -23,10 +23,12 @@ export default function RecommendationsPage() {
   const fetchRecommendations = async (userId) => {
     try {
       setLoading(true);
-      const { success, recommendations } = await recommendationService.getRecommendationsForUser(userId);
+      const response = await recommendationService.getJobRecommendations(userId, {
+        limit: itemsPerPage * 2 // Charger plus d'éléments pour la pagination côté client
+      });
       
-      if (success) {
-        setRecommendations(recommendations);
+      if (response.data.success) {
+        setRecommendations(response.data.data.recommendations);
       } else {
         setRecommendations([]);
       }
@@ -45,6 +47,11 @@ export default function RecommendationsPage() {
 
   const totalPages = Math.ceil(recommendations.length / itemsPerPage);
 
+  // Fonction de formatage du score
+  const formatScore = (score) => {
+    return typeof score === 'number' ? (score * 100).toFixed(1) : 'N/A';
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-5xl mx-auto">
@@ -62,7 +69,7 @@ export default function RecommendationsPage() {
                 <div className="absolute right-6 top-6 flex items-center">
                   <div className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full flex items-center mr-3">
                     <Sparkles className="h-3 w-3 mr-1" />
-                    {job.score}% Match
+                    {formatScore(job.score)}% Match
                   </div>
                   <button className="text-gray-400 hover:text-purple-700">
                     <Bookmark className="h-5 w-5" />
@@ -74,15 +81,15 @@ export default function RecommendationsPage() {
                 <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 mb-4">
                   <div className="flex items-center">
                     <Briefcase className="h-4 w-4 mr-1" />
-                    {job.company}
+                    {job.company || 'Company not specified'}
                   </div>
                   <div className="flex items-center">
                     <MapPin className="h-4 w-4 mr-1" />
-                    {job.location}
+                    {job.location || 'Location not specified'}
                   </div>
                   <div className="flex items-center">
                     <Clock className="h-4 w-4 mr-1" />
-                    {job.jobType.replace('_', ' ').toLowerCase()}
+                    {job.jobType ? job.jobType.replace('_', ' ').toLowerCase() : 'Job type not specified'}
                   </div>
                   {job.salary && (
                     <div className="flex items-center">
@@ -105,7 +112,7 @@ export default function RecommendationsPage() {
                 <div className="flex gap-3">
                   <Button variant="outline" asChild>
                     <Link 
-                      to={`/jobs/${job.id}`} 
+                      to={`/jobs/${job.id}`} // Lien vers la page de détail
                       className="flex items-center gap-1"
                     >
                       View Details
@@ -152,7 +159,7 @@ export default function RecommendationsPage() {
           </>
         ) : (
           <div className="text-center py-8 text-gray-500">
-            No recommendations available
+            No recommendations available. Try updating your profile for better matches.
           </div>
         )}
       </div>
