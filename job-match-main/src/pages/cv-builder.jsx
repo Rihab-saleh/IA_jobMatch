@@ -10,8 +10,6 @@ import {
   FileText,
   Edit,
   Trash2,
-  Upload,
-  Sparkles,
   Loader2,
   Save,
   CalendarIcon,
@@ -39,6 +37,8 @@ import { Label } from "../components/ui/label"
 import ResumeTemplate from "./resume-template"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
 import html2pdf from "html2pdf.js"
+import EnhanceAIButton from "./enhance-ai-button"
+import CVReviewAnalyzer from "./cv-review-analyzer"
 
 export default function CVBuilderPage() {
   const { user, loading: authLoading } = useAuth()
@@ -242,6 +242,29 @@ export default function CVBuilderPage() {
       ...personalInfo,
       [name]: value,
     })
+  }
+
+  // AI enhancement for summary
+  const handleEnhanceSummary = (enhancedContent) => {
+    setPersonalInfo({
+      ...personalInfo,
+      summary: enhancedContent,
+    })
+    toast.success("Professional summary enhanced with AI")
+  }
+
+  // AI enhancement for experience description
+  const handleEnhanceExperience = (experienceId, enhancedContent) => {
+    setWorkExperience(
+      workExperience.map((exp) => (exp.id === experienceId ? { ...exp, description: enhancedContent } : exp)),
+    )
+    toast.success("Experience description enhanced with AI")
+  }
+
+  // AI enhancement for education description
+  const handleEnhanceEducation = (educationId, enhancedContent) => {
+    setEducation(education.map((edu) => (edu.id === educationId ? { ...edu, description: enhancedContent } : edu)))
+    toast.success("Education description enhanced with AI")
   }
 
   const savePersonalInfo = async () => {
@@ -936,14 +959,23 @@ export default function CVBuilderPage() {
                     <label htmlFor="summary" className="block text-sm font-medium mb-1">
                       Professional Summary
                     </label>
-                    <Textarea
-                      id="summary"
-                      name="summary"
-                      rows={4}
-                      value={personalInfo.summary}
-                      onChange={handlePersonalInfoChange}
-                      placeholder="Summarize your professional background, key skills, and career goals..."
-                    />
+                    <div className="space-y-2">
+                      <Textarea
+                        id="summary"
+                        name="summary"
+                        rows={4}
+                        value={personalInfo.summary}
+                        onChange={handlePersonalInfoChange}
+                        placeholder="Summarize your professional background, key skills, and career goals..."
+                      />
+                      <div className="flex justify-end">
+                        <EnhanceAIButton
+                          contentType="summary"
+                          content={personalInfo.summary}
+                          onApplyEnhancement={handleEnhanceSummary}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1076,7 +1108,16 @@ export default function CVBuilderPage() {
 
                           <div className="mb-3">
                             <label className="block text-xs text-gray-500">Description</label>
-                            <p className="text-sm whitespace-pre-line text-gray-700">{experience.description}</p>
+                            <div className="space-y-2">
+                              <p className="text-sm whitespace-pre-line text-gray-700">{experience.description}</p>
+                              <div className="flex justify-end">
+                                <EnhanceAIButton
+                                  contentType="experience"
+                                  content={experience.description}
+                                  onApplyEnhancement={(enhanced) => handleEnhanceExperience(experience.id, enhanced)}
+                                />
+                              </div>
+                            </div>
                           </div>
 
                           {experience.skills && experience.skills.length > 0 && (
@@ -1233,7 +1274,16 @@ export default function CVBuilderPage() {
 
                           <div>
                             <label className="block text-xs text-gray-500">Description</label>
-                            <p className="text-sm text-gray-700">{edu.description}</p>
+                            <div className="space-y-2">
+                              <p className="text-sm text-gray-700">{edu.description}</p>
+                              <div className="flex justify-end">
+                                <EnhanceAIButton
+                                  contentType="education"
+                                  content={edu.description}
+                                  onApplyEnhancement={(enhanced) => handleEnhanceEducation(edu.id, enhanced)}
+                                />
+                              </div>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1704,54 +1754,14 @@ export default function CVBuilderPage() {
 
           {/* AI Optimizer Tab */}
           <TabsContent value="optimizer" className="space-y-6">
-            <div className="bg-white rounded-lg border p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-xl font-semibold">AI CV Optimizer</h2>
-                <Sparkles className="h-5 w-5 text-purple-700" />
-              </div>
-              <p className="text-gray-600 mb-6">
-                Our AI will analyze your CV and provide personalized suggestions to improve it and increase your chances
-                of getting noticed by recruiters.
-              </p>
-
-              <div className="mb-6">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                  <div className="flex flex-col items-center">
-                    <Upload className="h-10 w-10 text-gray-400 mb-4" />
-                    <h3 className="font-medium mb-2">Upload your existing CV</h3>
-                    <p className="text-sm text-gray-500 mb-4">Drag and drop your CV file here, or click to browse</p>
-                    <Button className="bg-purple-700 hover:bg-purple-800 text-white">Browse Files</Button>
-                    <p className="text-xs text-gray-500 mt-2">Supported formats: PDF, DOCX, TXT (Max 5MB)</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <h3 className="font-medium mb-3">Or analyze your current CV</h3>
-                <Button className="bg-purple-700 hover:bg-purple-800 text-white">
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Analyze Current CV
-                </Button>
-              </div>
-
-              <div className="border-t pt-6">
-                <h3 className="font-medium mb-4">AI Optimization Features</h3>
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <div className="bg-purple-100 p-2 rounded-full">
-                      <Sparkles className="h-5 w-5 text-purple-700" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">Keyword Optimization</h4>
-                      <p className="text-sm text-gray-600">
-                        Our AI analyzes job descriptions and suggests keywords to include in your CV to pass Applicant
-                        Tracking Systems (ATS).
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <CVReviewAnalyzer
+              personalInfo={personalInfo}
+              workExperience={workExperience}
+              education={education}
+              skills={skills}
+              languages={languages}
+              certifications={certifications}
+            />
           </TabsContent>
         </Tabs>
       </div>
