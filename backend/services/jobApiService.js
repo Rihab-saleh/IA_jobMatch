@@ -25,38 +25,182 @@ app.use(express.urlencoded({ extended: true }));
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Helper functions
+const salaryPatterns = [
+  // Formats with explicit currencies
+  /(£|\$|€|د.ك|دينار|dinars?|دج|DA)\s*([\d,\.]+)\s*(?:-|à|to)\s*(£|\$|€|د.ك|دينار|dinars?|دج|DA)?\s*([\d,\.]+)/i,
+  /(?:salary|salaire|راتب)\s*(?:is|de|:)?\s*(£|\$|€|د.ك|دينار|dinars?|دج|DA)?\s*([\d,\.]+)\s*(?:-|à|to)\s*(£|\$|€|د.ك|دينار|dinars?|دج|DA)?\s*([\d,\.]+)/i,
+
+  // Formats with "k" for thousands
+  /(£|\$|€|د.ك|دينار|dinars?|دج|DA)?\s*([\d,\.]+)k\s*(?:-|à|to)\s*(£|\$|€|د.ك|دينار|dinars?|دج|DA)?\s*([\d,\.]+)k/i,
+
+  // Range formats
+  /(?:up to|jusqu'à|à|max)\s*(£|\$|€|د.ك|دينار|dinars?|دج|DA)?\s*([\d,\.]+)/i,
+  /(?:from|à partir de|min)\s*(£|\$|€|د.ك|دينار|dinars?|دج|DA)?\s*([\d,\.]+)/i,
+
+  // Simple formats
+  /(£|\$|€|د.ك|دينار|dinars?|دج|DA)\s*([\d,\.]+)/i,
+  /([\d,\.]+)\s*(£|\$|€|د.ك|دينار|dinars?|دج|DA)/i,
+];
+
+const currencySymbols = {
+  '£': 'GBP',
+  '$': 'USD',
+  '€': 'EUR',
+  'د.ك': 'KWD',
+  'دينار': 'Dinar',
+  'dinar': 'Dinar',
+  'dinars': 'Dinar',
+  'دج': 'DZD',
+  'DA': 'DZD'
+};
+
+const experiencePatterns = [
+  /(\d+)\+?\s*(?:years?|yrs?|ans?)\s*(?:of|d['']?)?\s*experience/i,
+  /(?:minimum|min\.?)\s*(\d+)\s*(?:years?|yrs?|ans?)\s*experience/i,
+  /(\d+)\s*-\s*(\d+)\s*(?:years?|yrs?|ans?)\s*experience/i,
+  /at least\s*(\d+)\s*(?:years?|yrs?|ans?)/i,
+  /senior\s*level\s*\((\d+)\+?\s*(?:years?|yrs?|ans?)\)/i
+];
+
+function extractSalaryFromText(description) {
+  if (!description) return null;
+
+  for (const pattern of salaryPatterns) {
+    const match = description.match(pattern);
+    if (match) {
+      const cleanNumber = (num) => parseFloat(num.replace(/[^\d\.]/g, ''));
+
+      // Detect currency
+      let currency = '';
+      for (let i = 1; i < match.length; i++) {
+        if (match[i] && currencySymbols[match[i]]) {
+          currency = currencySymbols[match[i]];
+          break;
+        }
+      }
+
+      // Extract values
+      if (match[2] && match[4]) {
+        return {
+          min: cleanNumber(match[2]),
+          max: cleanNumber(match[4]),
+          currency: currency || '',
+          period: 'year'
+        };
+      } else if (match[2]) {
+        return {
+          min: cleanNumber(match[2]),
+          currency: currency || '',
+          period: 'year'
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractExperienceFromText(description) {
+  if (!description) return null;
+
+  for (const pattern of experiencePatterns) {
+    const match = description.match(pattern);
+    if (match) {
+      if (match[1] && match[2]) {
+        return {
+          min: parseInt(match[1], 10),
+          max: parseInt(match[2], 10)
+        };
+      } else if (match[1]) {
+        return {
+          min: parseInt(match[1], 10)
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function formatExtractedSalary(salaryInfo) {
+  if (!salaryInfo) return 'Indisponible';
+
+  const formatNumber = (num) => num.toLocaleString('fr-FR');
+
+  if (salaryInfo.min && salaryInfo.max) {
+    return `${salaryInfo.currency ? salaryInfo.currency + ' ' : ''}${formatNumber(salaryInfo.min)} - ${formatNumber(salaryInfo.max)}`;
+  } else if (salaryInfo.min) {
+    return `${salaryInfo.currency ? salaryInfo.currency + ' ' : ''}${formatNumber(salaryInfo.min)}+`;
+  }
+
+  return 'Indisponible';
+}
+
+function formatExperience(expInfo) {
+  if (!expInfo) return 'Non spécifié';
+
+  if (expInfo.min && expInfo.max) {
+    return `${expInfo.min}-${expInfo.max} ans`;
+  } else if (expInfo.min) {
+    return `${expInfo.min}+ ans`;
+  }
+
+  return 'Non spécifié';
+}
+
+// ==================== Existing Helper Functions ====================
 const formatSalaryAdzuna = (min, max) => {
-  if (!min && !max) {
-    return "Negotiable";
-  }
-
-  if (min && !max) {
-    return `${min}+`;
-  }
-
-  if (!min && max) {
-    return `Up to ${max}`;
-  }
-
+  if (!min && !max) return "Indisponible";
+  if (min && !max) return `${min}+`;
+  if (!min && max) return `Jusqu'à ${max}`;
   return `${min} - ${max}`;
 };
 
 function formatSalary(min, max) {
-  if (!min && !max) return undefined;
+  if (!min && !max) return 'Indisponible';
+  if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()}`;
+  if (min) return `${min.toLocaleString()}+`;
+  if (max) return `Jusqu'à ${max.toLocaleString()}`;
+  return 'Indisponible';
+}
 
-  if (min && max) {
-    return `£${min.toLocaleString()} - £${max.toLocaleString()}`;
+// ... [Keep all your existing helper functions like extractSalaryValue, getDateFromFilter, etc.]
+
+// ==================== Enhanced Job Processing ====================
+async function processJob(job) {
+  try {
+    // Salary extraction
+    let salary = job.salary;
+    if ((!salary || salary === 'Indisponible') && job.description) {
+      const extractedSalary = extractSalaryFromText(job.description);
+      salary = formatExtractedSalary(extractedSalary);
+    }
+
+    // Experience extraction
+    let experience = job.experience;
+    if ((!experience || experience === 'Non spécifié') && job.description) {
+      const extractedExp = extractExperienceFromText(job.description);
+      experience = formatExperience(extractedExp);
+    }
+
+    // Skills extraction
+    const skills = job.description ? await extractSkillsNLP(job.description) : [];
+
+    return {
+      ...job,
+      salary: salary || 'Indisponible',
+      experience: experience || 'Non spécifié',
+      skills
+    };
+  } catch (error) {
+    console.error(`Error processing job ${job.id}:`, error);
+    return {
+      ...job,
+      salary: job.salary || 'Indisponible',
+      experience: job.experience || 'Non spécifié',
+      skills: []
+    };
   }
-
-  if (min) {
-    return `£${min.toLocaleString()}+`;
-  }
-
-  if (max) {
-    return `Up to £${max.toLocaleString()}`;
-  }
-
-  return undefined;
 }
 
 function extractSalaryValue(salaryString) {
@@ -262,7 +406,7 @@ async function fetchAdzunaJobs(filters, limit) {
     if (filters.distance) {
       params.append("distance", filters.distance.toString());
     }
-    
+
     if (filters.jobType && filters.jobType !== "any") {
       params.append("contract_type", mapJobType(filters.jobType, "adzuna"));
     }
@@ -299,7 +443,7 @@ async function fetchAdzunaJobs(filters, limit) {
 async function fetchScrapedJobs(filters, limit) {
   // Array to store all scraped jobs
   const scrapedJobs = [];
-  
+
   // Try multiple job sites to increase chances of successful scraping
   const jobSites = [
     {
@@ -308,7 +452,7 @@ async function fetchScrapedJobs(filters, limit) {
       scraper: async (html, site) => {
         const $ = cheerio.load(html);
         const jobs = [];
-        
+
         $('.job-search-card').each((i, el) => {
           try {
             const title = $(el).find('.base-search-card__title').text().trim();
@@ -317,7 +461,7 @@ async function fetchScrapedJobs(filters, limit) {
             const link = $(el).find('a.base-card__full-link').attr('href');
             const dateEl = $(el).find('time.job-search-card__listdate');
             const datePosted = dateEl.attr('datetime') || new Date().toISOString();
-            
+
             jobs.push({
               title,
               company,
@@ -330,7 +474,7 @@ async function fetchScrapedJobs(filters, limit) {
             console.log(`Error parsing LinkedIn job: ${err.message}`);
           }
         });
-        
+
         return jobs;
       }
     },
@@ -340,19 +484,19 @@ async function fetchScrapedJobs(filters, limit) {
       scraper: async (html, site) => {
         const $ = cheerio.load(html);
         const jobs = [];
-        
+
         $('.jobsearch-ResultsList > .result, .job_seen_beacon').each((i, el) => {
           try {
-            const title = $(el).find('.jobTitle span').text().trim() || 
-                         $(el).find('h2.jobTitle').text().trim();
-            const company = $(el).find('.companyName').text().trim() || 
-                           $(el).find('.company_location .companyName').text().trim();
-            const location = $(el).find('.companyLocation').text().trim() || 
-                            $(el).find('.company_location .companyLocation').text().trim();
-            const link = $(el).find('a.jcs-JobTitle').attr('href') || 
-                        $(el).find('a.job_seen_beacon').attr('href');
+            const title = $(el).find('.jobTitle span').text().trim() ||
+              $(el).find('h2.jobTitle').text().trim();
+            const company = $(el).find('.companyName').text().trim() ||
+              $(el).find('.company_location .companyName').text().trim();
+            const location = $(el).find('.companyLocation').text().trim() ||
+              $(el).find('.company_location .companyLocation').text().trim();
+            const link = $(el).find('a.jcs-JobTitle').attr('href') ||
+              $(el).find('a.job_seen_beacon').attr('href');
             const url = link && (link.startsWith('http') ? link : `https://www.indeed.com${link}`);
-            
+
             if (title && company) {
               jobs.push({
                 title,
@@ -367,7 +511,7 @@ async function fetchScrapedJobs(filters, limit) {
             console.log(`Error parsing Indeed job: ${err.message}`);
           }
         });
-        
+
         return jobs;
       }
     },
@@ -377,7 +521,7 @@ async function fetchScrapedJobs(filters, limit) {
       scraper: async (html, site) => {
         const $ = cheerio.load(html);
         const jobs = [];
-        
+
         $('.react-job-listing').each((i, el) => {
           try {
             const title = $(el).find('.job-title').text().trim();
@@ -385,7 +529,7 @@ async function fetchScrapedJobs(filters, limit) {
             const location = $(el).find('.location').text().trim();
             const link = $(el).attr('href');
             const url = link && (link.startsWith('http') ? link : `https://www.glassdoor.com${link}`);
-            
+
             if (title && company) {
               jobs.push({
                 title,
@@ -400,7 +544,7 @@ async function fetchScrapedJobs(filters, limit) {
             console.log(`Error parsing Glassdoor job: ${err.message}`);
           }
         });
-        
+
         return jobs;
       }
     }
@@ -439,37 +583,37 @@ async function fetchScrapedJobs(filters, limit) {
   // Encode search parameters
   const query = filters.query ? encodeURIComponent(filters.query) : '';
   const location = filters.location ? encodeURIComponent(filters.location) : '';
-  
+
   // Try each job site until we get enough results or exhaust all options
   for (const site of jobSites) {
     if (scrapedJobs.length >= (limit || 10)) break;
-    
+
     try {
       console.log(`Attempting to scrape jobs from ${site.name}...`);
-      
+
       // Generate the URL for this site
       const url = site.url(query, location);
       console.log(`Scraping URL: ${url}`);
-      
+
       // Add a random delay between requests (1-3 seconds)
       const randomDelay = Math.floor(Math.random() * 2000) + 1000;
       await delay(randomDelay);
-      
+
       // Make the request with browser-like headers
-      const response = await axios.get(url, { 
+      const response = await axios.get(url, {
         headers,
         // proxy, // Uncomment if using a proxy
         timeout: 10000, // 10 second timeout
         maxRedirects: 5
       });
-      
+
       if (response.status === 200) {
         // Parse the HTML and extract jobs
         const siteJobs = await site.scraper(response.data, site);
-        
+
         if (siteJobs && siteJobs.length > 0) {
           console.log(`Successfully scraped ${siteJobs.length} jobs from ${site.name}`);
-          
+
           // Add unique IDs and normalize the job data
           const normalizedJobs = siteJobs.map((job, index) => ({
             id: `scraped-${site.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${index}`,
@@ -483,7 +627,7 @@ async function fetchScrapedJobs(filters, limit) {
             jobType: job.jobType || '',
             source: 'scraped'
           }));
-          
+
           // Add to our collection
           scrapedJobs.push(...normalizedJobs);
         } else {
@@ -497,18 +641,18 @@ async function fetchScrapedJobs(filters, limit) {
       // Continue to the next site on error
     }
   }
-  
+
   console.log(`Total scraped jobs: ${scrapedJobs.length}`);
-  
+
   // Apply any additional filters
   let filteredJobs = scrapedJobs;
-  
+
   if (filters.jobType && filters.jobType !== "any") {
-    filteredJobs = filteredJobs.filter(job => 
+    filteredJobs = filteredJobs.filter(job =>
       job.jobType && job.jobType.toLowerCase().includes(mapJobType(filters.jobType, "scraped").toLowerCase())
     );
   }
-  
+
   // Return the jobs, limited if specified
   return limit ? filteredJobs.slice(0, limit) : filteredJobs;
 }
@@ -819,246 +963,182 @@ async function fetchRemotiveJobs(filters, limit) {
     return [];
   }
 }
-app.post('/api/jobs/save', async (req, res) => {
-  try {
-    const { job, userId } = req.body;
-
-    if (!job || !userId) {
-      return res.status(400).json({ error: 'Job data and userId are required' });
-    }
-
-    // Vérifier si le job est déjà sauvegardé
-    const existingJob = await SavedJob.findOne({ jobId: job.id, userId });
-    if (existingJob) {
-      return res.status(409).json({ error: 'Job already saved' });
-    }
-
-    const savedJob = new SavedJob({
-      jobId: job.id,
-      title: job.title,
-      company: job.company,
-      location: job.location,
-      description: job.description,
-      salary: job.salary,
-      url: job.url,
-      datePosted: job.datePosted,
-      jobType: job.jobType,
-      source: job.source,
-      userId: userId
-    });
-
-    await savedJob.save();
-    res.status(201).json(savedJob);
-  } catch (error) {
-    console.error('Error saving job:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Récupérer les jobs sauvegardés d'un utilisateur
-app.get('/api/jobs/saved/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const savedJobs = await SavedJob.find({ userId }).sort({ savedAt: -1 });
-    res.json(savedJobs);
-  } catch (error) {
-    console.error('Error fetching saved jobs:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Supprimer un job sauvegardé
-app.delete('/api/jobs/saved/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ error: 'UserId is required' });
-    }
-
-    const deletedJob = await SavedJob.findOneAndDelete({ _id: id, userId });
-    if (!deletedJob) {
-      return res.status(404).json({ error: 'Job not found or not owned by user' });
-    }
-
-    res.json({ message: 'Job removed from saved', deletedJob });
-  } catch (error) {
-    console.error('Error deleting saved job:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 async function searchJobs(filters) {
   try {
-    // Default to all APIs if not specified
+    // 1. Configuration des sources
     const apiSources = filters.apiSources || ["adzuna", "reed", "apijobs", "jooble", "findwork", "remotive", "scraped"];
+    const apiJobCounts = {};
+    const countryCode = filters.country?.toLowerCase() || 'fr';
 
-    // Initialize apiJobCounts for all APIs
-    const apiJobCounts = {
-      adzuna: 0,
-      reed: 0,
-      apijobs: 0,
-      jooble: 0,
-      findwork: 0,
-      remotive: 0,
-      scraped: 0,
-    };
+    // 2. Préparation des promesses d'API
+    const apiPromises = apiSources.map(source => {
+      const fetchParams = { ...filters, country: countryCode };
+      
+      switch(source) {
+        case "adzuna":
+          return fetchAdzunaJobs(fetchParams, filters.limit)
+            .then(jobs => { apiJobCounts.adzuna = jobs.length; return jobs; })
+            .catch(() => []);
 
-    // Create an array of API fetch promises based on the selected sources
-    const apiPromises = apiSources.map((source) => {
-      switch (source) {
-      case "adzuna":
-        return fetchAdzunaJobs(filters, filters.limit)
-        .then((jobs) => {
-          apiJobCounts.adzuna = jobs.length;
-          return jobs;
-        })
-        .then((jobs) => {
-          apiJobCounts.adzuna = jobs.length;
-          return jobs;
-        })
-        .catch((error) => {
-          console.error("Error fetching from Adzuna:", error);
-          return [];
-        });
+        case "reed":
+          return fetchReedJobs(fetchParams, filters.limit)
+            .then(jobs => { apiJobCounts.reed = jobs.length; return jobs; })
+            .catch(() => []);
 
-      case "reed":
-        return fetchReedJobs(filters, filters.limit)
-        .then((jobs) => {
-          apiJobCounts.reed = jobs.length;
-          return jobs;
-        })
-        .catch((error) => {
-          console.error("Error fetching from Reed:", error);
-          return [];
-        });
+        case "apijobs":
+          return fetchApiJobsJobs(fetchParams, filters.limit)
+            .then(jobs => { apiJobCounts.apijobs = jobs.length; return jobs; })
+            .catch(() => []);
 
-      case "apijobs":
-        return fetchApiJobsJobs(filters, filters.limit)
-        .then((jobs) => {
-          apiJobCounts.apijobs = jobs.length;
-          return jobs;
-        })
-        .catch((error) => {
-          console.error("Error fetching from APIJobs:", error);
-          return [];
-        });
+        case "jooble":
+          return fetchJoobleJobs(fetchParams, filters.limit)
+            .then(jobs => { apiJobCounts.jooble = jobs.length; return jobs; })
+            .catch(() => []);
 
-      case "jooble":
-        return fetchJoobleJobs(filters, filters.limit)
-        .then((jobs) => {
-          apiJobCounts.jooble = jobs.length;
-          return jobs;
-        })
-        .catch((error) => {
-          console.error("Error fetching from Jooble:", error);
-          return [];
-        });
+        case "findwork":
+          return fetchFindworkJobs(fetchParams, filters.limit)
+            .then(jobs => { apiJobCounts.findwork = jobs.length; return jobs; })
+            .catch(() => []);
 
-      case "findwork":
-        return fetchFindworkJobs(filters, filters.limit)
-        .then((jobs) => {
-          apiJobCounts.findwork = jobs.length;
-          return jobs;
-        })
-        .catch((error) => {
-          console.error("Error fetching from Findwork:", error);
-          return [];
-        });
+        case "remotive":
+          return fetchRemotiveJobs(fetchParams, filters.limit)
+            .then(jobs => { apiJobCounts.remotive = jobs.length; return jobs; })
+            .catch(() => []);
 
-      case "remotive":
-        return fetchRemotiveJobs(filters, filters.limit)
-        .then((jobs) => {
-          apiJobCounts.remotive = jobs.length;
-          return jobs;
-        })
-        .catch((error) => {
-          console.error("Error fetching from Remotive:", error);
-          return [];
-        });
+        case "scraped":
+          return fetchScrapedJobs(fetchParams, filters.limit)
+            .then(jobs => { apiJobCounts.scraped = jobs.length; return jobs; })
+            .catch(() => []);
 
-      case "scraped":
-        return fetchScrapedJobs(filters, filters.limit)
-        .then((jobs) => {
-          apiJobCounts.scraped = jobs.length;
-          return jobs;
-        })
-        .catch((error) => {
-          console.error("Error fetching from Scraped:", error);
-          return [];
-        });
-
-      default:
-        return Promise.resolve([]);
+        default:
+          return Promise.resolve([]);
       }
     });
 
-    // Run all API requests in parallel
-    const results = await Promise.all(apiPromises);
+    // 3. Exécution parallèle des appels API
+    const apiResults = await Promise.all(apiPromises);
 
-    // Combine results from all APIs
-    let allJobs = [];
-    for (const job of results.flat()) {
-      try {
-        // Only extract skills if description exists
-        const skills = job.description ? await extractSkillsNLP(job.description) : [];
-        allJobs.push({ ...job, skills });
-      } catch (error) {
-        console.error(`Error extracting skills for job ${job.id}:`, error);
-        allJobs.push({ ...job, skills: [] });
+    // 4. Traitement parallèle des jobs
+    const allJobs = (await Promise.all(
+      apiResults.flat().map(async (job) => {
+        try {
+          // a. Traitement de base
+          const processed = await processJob(job);
+          
+          // b. Extraction des compétences
+          const skills = processed.description ? 
+            await extractSkillsNLP(processed.description) : [];
+          
+          // c. Détection de la langue
+          const language = processed.description ?
+            await detectLanguage(processed.description) : 'fr';
+
+          // d. Domaine du poste
+          const domain = processed.title ?
+            await detectJobDomain(processed.title) : 'Général';
+
+          return { 
+            ...processed, 
+            skills,
+            meta: { language, domain }
+          };
+        } catch (error) {
+          console.error(`Error processing job ${job.id}:`, error);
+          return { ...job, skills: [], meta: {} };
+        }
+      })
+    )).filter(Boolean); // Filtre les valeurs null/undefined
+
+    // 5. Déduplication des offres
+    const uniqueJobs = Array.from(new Map(
+      allJobs.map(job => [job.id, job])
+    ).values());
+
+    // 6. Filtrage client-side
+    let filteredJobs = uniqueJobs.filter(job => {
+      let isValid = true;
+      const query = filters.query?.toLowerCase();
+      const salaryValue = extractSalaryValue(job.salary);
+
+      // a. Filtre texte
+      if (query) {
+        const textSearch = [
+          job.title,
+          job.company,
+          job.location,
+          job.description
+        ].join(' ').toLowerCase();
+        isValid = isValid && textSearch.includes(query);
       }
-    }
 
-    
-    // Apply client-side filtering for additional filters
-    if (filters.company) {
-      allJobs = allJobs.filter((job) => job.company.toLowerCase().includes(filters.company.toLowerCase()));
-    }
-    if (filters.location) {
-      allJobs = allJobs.filter((job) => job.location && job.location.toLowerCase().includes(filters.location.toLowerCase()));
-    }
-    if (filters.minSalary) {
-      allJobs = allJobs.filter((job) => job.salary && extractSalaryValue(job.salary) >= filters.minSalary);
-    }
-    if (filters.maxSalary) {
-      allJobs = allJobs.filter((job) => job.salary && extractSalaryValue(job.salary) <= filters.maxSalary);
-    }
-    if (filters.jobType && filters.jobType !== "any") {
-      allJobs = allJobs.filter((job) => job.jobType && job.jobType.toLowerCase().includes(filters.jobType.toLowerCase()));
-    }
-    if (filters.remote) {
-      allJobs = allJobs.filter((job) => job.location && job.location.toLowerCase() === "remote");
-    }
-    if (filters.datePosted && filters.datePosted !== "any") {
-      const cutoffDate = getDateFromFilter(filters.datePosted);
-      if (cutoffDate) {
-        allJobs = allJobs.filter((job) => job.datePosted && new Date(job.datePosted) >= cutoffDate);
+      // b. Localisation
+      if (filters.location) {
+        const location = job.location?.toLowerCase();
+        isValid = isValid && location?.includes(filters.location.toLowerCase());
       }
-    }
-    
 
-    // Sort results based on the sortBy filter
-    const sortedJobs = sortJobs(allJobs, filters.sortBy || "relevance");
+      // c. Salaire
+      if (filters.minSalary) isValid = isValid && salaryValue >= filters.minSalary;
+      if (filters.maxSalary) isValid = isValid && salaryValue <= filters.maxSalary;
 
-    // Return the jobs along with the API job counts
-    return { jobs: sortedJobs, apiJobCounts };
+      // d. Type de contrat
+      if (filters.jobType && filters.jobType !== 'any') {
+        const type = job.jobType?.toLowerCase();
+        isValid = isValid && type?.includes(filters.jobType.toLowerCase());
+      }
+
+      // e. Date de publication
+      if (filters.datePosted && filters.datePosted !== 'any') {
+        const cutoffDate = getDateFromFilter(filters.datePosted);
+        isValid = isValid && new Date(job.datePosted) >= cutoffDate;
+      }
+
+      // f. Compétences spécifiques
+      if (filters.skills?.length > 0) {
+        isValid = isValid && filters.skills.every(skill =>
+          job.skills.some(jSkill => jSkill.toLowerCase() === skill.toLowerCase())
+        );
+      }
+
+      return isValid;
+    });
+
+    // 7. Tri des résultats
+    const sortedJobs = sortJobs(filteredJobs, filters.sortBy || 'relevance');
+
+    // 8. Limitation des résultats
+    const limitedJobs = filters.limit ? 
+      sortedJobs.slice(0, filters.limit) : sortedJobs;
+
+    return {
+      success: true,
+      count: limitedJobs.length,
+      total: sortedJobs.length,
+      jobs: limitedJobs,
+      apiJobCounts
+    };
+
   } catch (error) {
-    console.error("Error searching jobs:", error);
-    return { jobs: [], apiJobCounts: {} };
+    console.error('Search Error:', error);
+    return {
+      success: false,
+      error: 'Internal server error',
+      jobs: [],
+      apiJobCounts: {}
+    };
   }
 }
-
 // Add a route to handle job searches
 app.post('/api/jobs/search', async (req, res) => {
   try {
     const rawFilters = req.body;
-    
+
     // Normalisation des filtres
     const filters = {
       ...rawFilters,
-      location: rawFilters.location 
-        ? rawFilters.location.trim().toLowerCase() 
+      location: rawFilters.location
+        ? rawFilters.location.trim().toLowerCase()
         : null
     };
 
@@ -1081,20 +1161,20 @@ app.listen(PORT, () => {
 });
 
 module.exports = {
-  searchJobs, 
-  fetchAdzunaJobs, 
-  fetchReedJobs, 
-  fetchApiJobsJobs, 
-  fetchJoobleJobs, 
-  fetchFindworkJobs, 
-  fetchRemotiveJobs, 
-  fetchScrapedJobs, 
-  formatSalaryAdzuna, 
-  formatSalary, 
-  mapJobType, 
-  extractSalaryValue, 
-  getDateFromFilter, 
-  mapEmploymentType, 
-  formatApiJobsSalary, 
+  searchJobs,
+  fetchAdzunaJobs,
+  fetchReedJobs,
+  fetchApiJobsJobs,
+  fetchJoobleJobs,
+  fetchFindworkJobs,
+  fetchRemotiveJobs,
+  fetchScrapedJobs,
+  formatSalaryAdzuna,
+  formatSalary,
+  mapJobType,
+  extractSalaryValue,
+  getDateFromFilter,
+  mapEmploymentType,
+  formatApiJobsSalary,
   sortJobs
 };

@@ -5,8 +5,9 @@ import { recommendationService } from "../services/recommendation-service";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Bookmark, Sparkles, MapPin, Briefcase, Clock, DollarSign, ExternalLink } from 'lucide-react';
-
+import { useNavigate } from "react-router-dom";
 export default function RecommendationsPage() {
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,14 +25,14 @@ export default function RecommendationsPage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await recommendationService.getJobRecommendations(userId);
       console.log("API Response Data:", response.data);
 
       // Correction clé - Vérification des deux structures possibles
-      const recommendationsData = response.data?.data?.recommendations || 
-                                 response.data?.recommendations || 
-                                 [];
+      const recommendationsData = response.data?.data?.recommendations ||
+        response.data?.recommendations ||
+        [];
 
       if (recommendationsData.length > 0) {
         setRecommendations(recommendationsData);
@@ -74,7 +75,7 @@ export default function RecommendationsPage() {
     return (
       <div className="text-center py-8 text-red-500">
         <p>{error}</p>
-        <Button 
+        <Button
           onClick={() => fetchRecommendations(user.id)}
           className="mt-4"
         >
@@ -91,7 +92,7 @@ export default function RecommendationsPage() {
         <p className="mt-2 text-sm">
           Essayez de mettre à jour votre profil ou de modifier vos critères
         </p>
-        <Button 
+        <Button
           onClick={() => fetchRecommendations(user.id)}
           className="mt-4"
           variant="outline"
@@ -112,7 +113,7 @@ export default function RecommendationsPage() {
 
         <div className="space-y-6">
           {paginatedData.map((job) => (
-            <article 
+            <article
               key={`${job.id}-${job.source}`}
               className="bg-white rounded-xl border p-6 shadow-sm hover:shadow-lg transition-shadow"
             >
@@ -147,13 +148,15 @@ export default function RecommendationsPage() {
                   </button>
                 </div>
               </div>
-
+              <p className="text-black-600 mb-4">
+                {job.description?.substring(0, 265)}...
+              </p>
               {job.skills?.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
                   {job.skills.map((skill, index) => (
-                    <Badge 
-                      key={index} 
-                      variant="outline" 
+                    <Badge
+                      key={index}
+                      variant="outline"
                       className="border-purple-200 text-purple-700"
                     >
                       {skill}
@@ -162,11 +165,16 @@ export default function RecommendationsPage() {
                 </div>
               )}
 
-              <p className="text-gray-600 mb-4">
-                {job.description?.substring(0, 200)}...
-              </p>
 
-              <div className="flex flex-wrap gap-3">
+
+              <div className="flex flex-wrap gap-3 ">
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate('/job-details-view', { state: { job } })}
+                  className="text-purple-700 hover:bg-purple-50"
+                >
+                  View Details
+                </Button>
                 <Button
                   asChild
                   variant="outline"
@@ -197,7 +205,7 @@ export default function RecommendationsPage() {
               >
                 Précédent
               </Button>
-              
+
               <div className="flex items-center px-4">
                 Page {currentPage} sur {totalPages}
               </div>

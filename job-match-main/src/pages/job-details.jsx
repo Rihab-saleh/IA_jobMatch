@@ -8,7 +8,8 @@ import {
   Bookmark, 
   ArrowLeft
 } from 'lucide-react';
-import { Button, Badge } from "../components/ui";
+import { Button} from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
 
 export default function JobDetailsPage() {
   const { state } = useLocation();

@@ -10,7 +10,8 @@ import Register from "./pages/register";
 import ForgotPassword from './pages/forgot-password';
 import ResetPassword from './pages/reset-password';
 import Jobs from "./pages/jobs";
-import JobDetails from "./pages/job-details-view";
+import JobDetailsView from './pages/Job-details-view';
+import JobDetails from "./pages/job-details";
 import Dashboard from "./pages/dashboard";
 import Profile from "./pages/profile";
 import Settings from "./pages/settings";
@@ -54,7 +55,9 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/jobs" element={<Jobs />} />
-                <Route path="/jobs/:id" element={<JobDetails />} />
+                <Route path="/job-details-view" element={<JobDetailsView />} />
+
+                <Route path="/job-details" element={<JobDetails />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 
                 {/* Changed from path="/reset-password/:token" to path="/reset-password" */}

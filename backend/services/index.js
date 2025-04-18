@@ -148,7 +148,7 @@ router.get('/recommend/:userId', async (req, res) => {
           title: r.title,
           company: r.company,
           location: r.location, // Ajout de la localisation du job
-          description: r.description.substring(0, 200) + '...', // Extrait de description
+          description: r.description.substring(0, 20000) , // Extrait de description
           searchJobs: r.searchJobs,
           source: r.source,
           date: r.date,
