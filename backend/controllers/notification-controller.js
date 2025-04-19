@@ -1,136 +1,94 @@
-const emailService = require('../services/emailService.js');
-const Notification = require('../models/notification_model.js');
+const Notification = require('../models/notification_model');
+const User = require('../models/user_model');
 
-/**
- * Récupère les paramètres de notification
- */
- const getSettings = async (req, res) => {
-  try {
-    
-    
-    // Vérifier que l'utilisateur est authentifié
-    if (!req.user || !req.user._id) {
-      return res.status(401).json({ error: "Authentification requise" });
+const notificationController = {
+  getUnreadNotifications: async (req, res) => {
+    try {
+      const notifications = await Notification.find({
+        userId: req.user._id,
+        read: false
+      }).sort('-createdAt');
+
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        message: 'Failed to fetch notifications'
+      });
     }
-    
-    // Vérifier que l'utilisateur demande ses propres paramètres
-    // Ou est un administrateur (si vous avez cette logique)
-    if (req.params.userId !== req.user._id && !req.user.isAdmin) {
-      return res.status(403).json({ error: "Non autorisé à accéder à ces paramètres" });
+  },
+
+  markAsRead: async (req, res) => {
+    try {
+      const notification = await Notification.findOneAndUpdate(
+        { 
+          _id: req.params.id, 
+          userId: req.user._id 
+        },
+        { read: true },
+        { new: true }
+      );
+
+      if (!notification) {
+        return res.status(404).json({ 
+          success: false,
+          message: 'Notification not found'
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        message: 'Notification marked as read' 
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        message: 'Failed to update notification'
+      });
     }
-    
-    // Utiliser l'ID et l'email du token
-    const settings = await emailService.getNotificationSettings(
-      req.user._id,  // Utiliser l'ID du token plutôt que celui de l'URL
-      req.user.email,
-      req.user.fullName
-    );
-    
-    res.json(settings);
-  } catch (error) {
-    console.error("Error in getSettings:", error);
-    res.status(400).json({ error: error.message });
+  },
+
+  deleteNotification: async (req, res) => {
+    try {
+      const result = await Notification.deleteOne({
+        _id: req.params.id,
+        userId: req.user._id
+      });
+
+      if (result.deletedCount === 0) {
+        return res.status(404).json({ 
+          success: false,
+          message: 'Notification not found'
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        message: 'Notification deleted' 
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        message: 'Failed to delete notification'
+      });
+    }
+  },
+
+  getJobAlerts: async (req, res) => {
+    try {
+      const alerts = await Notification.find({
+        userId: req.user._id,
+        notificationType: 'jobAlert'
+      }).sort('-createdAt');
+
+      res.json(alerts);
+    } catch (error) {
+      res.status(500).json({ 
+        success: false,
+        message: 'Failed to fetch job alerts'
+      });
+    }
   }
 };
 
-
-/**
- * Met à jour les paramètres de notification
- */
- const updateSettings = async (req, res) => {
-  try {
-    const updatedSettings = await emailService.updateNotificationSettings(
-      req.params.userId,
-      req.body
-    );
-    res.json(updatedSettings);
-  } catch (error) {
-    console.error("Error in updateSettings:", error.message);
-    res.status(400).json({ error: error.message });
-  }
-};
-
-/**
- * Envoie un email d'alerte d'emploi
- */
- const sendJobAlertEmail = async (req, res) => {
-  try {
-    const { type, data } = req.body;
-
-    if (!type || !data) {
-      return res.status(400).json({ error: "Type and data are required" });
-    }
-
-    const result = await emailService.sendJobAlertEmail(type, data, req);
-
-    if (result.success) {
-      res.status(200).json({ message: "Email sent successfully", messageId: result.messageId });
-    } else {
-      res.status(500).json({ error: result.error });
-    }
-  } catch (error) {
-    console.error("Error in sendJobAlertEmail:", error.message);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-/**
- * Récupère les notifications de l'utilisateur
- */
- const getNotifications = async (req, res) => {
-  try {
-    if (!req.user || !req.user._id) {
-      return res.status(401).json({ error: "Utilisateur non authentifié" });
-    }
-
-    const userId = req.user._id;
-    const notifications = await Notification.find({ userId }).sort({ createdAt: -1 });
-
-    res.status(200).json({ success: true, notifications });
-  } catch (error) {
-    console.error("Error fetching notifications:", error.message);
-    res.status(500).json({ error: "Failed to fetch notifications" });
-  }
-};
-
-/**
- * Marque une notification comme lue
- */
- const markAsReadNotification = async (req, res) => {
-  try {
-    const { notificationId } = req.params;
-
-    const updatedNotification = await Notification.findByIdAndUpdate(
-      notificationId,
-      { read: true },
-      { new: true }
-    );
-
-    if (!updatedNotification) {
-      return res.status(404).json({ error: "Notification not found" });
-    }
-
-    res.status(200).json({ 
-      success: true, 
-      message: "Notification marked as read", 
-      notification: updatedNotification 
-    });
-  } catch (error) {
-    console.error("Error marking notification as read:", error.message);
-    res.status(500).json({ error: "Failed to mark notification as read" });
-  }
-};
-
-/**
- * Vérifie la configuration email
- */
- const checkEmailConfig = async (req, res) => {
-  try {
-    const result = await emailService.verifyEmailConfig();
-    res.json(result);
-  } catch (error) {
-    console.error("Error in checkEmailConfig:", error.message);
-    res.status(500).json({ error: error.message });
-  }
-};
-module.exports = { checkEmailConfig, getSettings, updateSettings, sendJobAlertEmail, getNotifications, markAsReadNotification };
+module.exports = notificationController;

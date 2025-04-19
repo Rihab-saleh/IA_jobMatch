@@ -1,32 +1,27 @@
 const mongoose = require('mongoose');
 
-const notificationSettingsSchema = new mongoose.Schema({
+const notificationSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    unique: true
+    required: true
   },
-  email: {
-    type: Boolean,
-    default: true
-  },
-  jobAlerts: {
-    type: Boolean,
-    default: true
-  },
-  applicationUpdates: {
-    type: Boolean,
-    default: true
-  },
-  frequency: {
+  notificationType: {
     type: String,
-    enum: ['immediately', 'daily', 'weekly'],
-    default: 'daily'
+    enum: ['jobAlert', 'systemUpdate'],
+    required: true
   },
   read: {
     type: Boolean,
-    default: false // Par défaut, les notifications ne sont pas lues
+    default: false
+  },
+  content: {
+    type: String,
+    required: true
+  },
+  notificationEnabled: {
+    type: Boolean,
+    default: true
   },
   lastUpdated: {
     type: Date,
@@ -35,8 +30,8 @@ const notificationSettingsSchema = new mongoose.Schema({
 }, {
   timestamps: true,
   toJSON: {
-    virtuals: true,
     transform: (doc, ret) => {
+      ret.id = ret._id;
       delete ret._id;
       delete ret.__v;
       return ret;
@@ -44,8 +39,6 @@ const notificationSettingsSchema = new mongoose.Schema({
   }
 });
 
-notificationSettingsSchema.index({ userId: 1 });
+notificationSchema.index({ userId: 1 });
 
-module.exports = mongoose.model('NotificationSettings', notificationSettingsSchema);
-
-
+module.exports = mongoose.model('Notification', notificationSchema);

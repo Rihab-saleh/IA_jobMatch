@@ -1,31 +1,20 @@
-const express = require("express");
-const notificationController = require("../controllers/notification-controller.js");
-const { authMiddleware, userMiddleware } = require("../middlewares/authMiddleware.js");
-
+const express = require('express');
 const router = express.Router();
+const notificationController = require('../controllers/notification-controller');
+const authMiddleware = require('../middlewares/authMiddleware');
 
-// Route to check if the user is authenticated
-router.get("/check-auth", authMiddleware, (req, res) => {
-  if (req.user) {
-    res.status(200).json({ authenticated: true });
-  } else {
-    res.status(401).json({ authenticated: false });
-  }
-});
-// Route to verify email configuration
-router.get("/verify-email-config", authMiddleware, notificationController.checkEmailConfig);
 
-// Route to get notification settings for a user
-router.get("/:userId", authMiddleware, userMiddleware, notificationController.getSettings);
 
-// Route to update notification settings for a user
-router.put("/:userId", authMiddleware, userMiddleware, notificationController.updateSettings);
+// Récupérer les notifications non lues
+router.get('/', notificationController.getUnreadNotifications);
 
-// Route to send job notifications to a user
-router.post("/:userId/job-alert", authMiddleware, userMiddleware, notificationController.sendJobAlertEmail);
+// Marquer une notification comme lue
+router.put('/:id/read', notificationController.markAsRead);
 
-router.get("/", authMiddleware, notificationController.getNotifications);
+// Supprimer une notification
+router.delete('/:id', notificationController.deleteNotification);
 
-router.put("/:notificationId/mark-as-read", authMiddleware, notificationController.markAsReadNotification);
+// Récupérer les alertes emploi spécifiques
+router.get('/job-alerts', notificationController.getJobAlerts);
 
 module.exports = router;

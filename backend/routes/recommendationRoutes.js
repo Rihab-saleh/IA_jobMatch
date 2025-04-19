@@ -1,7 +1,7 @@
 // routes/recommendationRoutes.js
 const express = require('express');
 const router = express.Router();
-const { getRecommendationsForUser, getRecommendationsFromText } = require('../controllers/recommendation_controller');
+const {getRecommendationsForUser, getRecommendationsFromText}= require('../controllers/recommendation_controller');
 
 // Get job recommendations for a user
 router.get('/user/:userId', async (req, res) => {

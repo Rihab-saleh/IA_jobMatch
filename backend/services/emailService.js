@@ -1,14 +1,12 @@
 const nodemailer = require('nodemailer');
-const mongoose = require('mongoose');
-const NotificationSettings = require('../models/notification_model.js');
+const { getRecommendationsForUser } = require('./recommendationService');
+const User = require('../models/user_model');
+const Notification = require('../models/notification_model');
 
-// Cache du transporteur SMTP
 let transporter = null;
 
-/**
- * Crée ou retourne le transporteur SMTP configuré
- */
- function getTransporter() {
+// Configuration du transporteur SMTP
+function getTransporter() {
   if (transporter) return transporter;
 
   if (!process.env.EMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
@@ -17,9 +15,6 @@ let transporter = null;
 
   transporter = nodemailer.createTransport({
     service: 'gmail',
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT) || 587,
-    secure: process.env.EMAIL_SECURE === 'true',
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.GMAIL_APP_PASSWORD
@@ -32,262 +27,181 @@ let transporter = null;
   return transporter;
 }
 
-/**
- * Récupère les notifications d'un utilisateur
- */
- async function getNotifications(userId) {
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    throw new Error("ID utilisateur invalide");
-  }
-
+// Envoi des recommandations par email
+async function sendJobRecommendationsEmail(userId) {
   try {
-    // Récupérer les notifications pour l'utilisateur
-    const notifications = await NotificationSettings.find({ userId }).sort({ createdAt: -1 });
+    // Récupération des données
+    const user = await User.findById(userId);
+    if (!user) throw new Error('Utilisateur introuvable');
+    
+    const recommendations = await getRecommendationsForUser(userId);
+    if (!recommendations.length) return { success: true, sent: false };
 
-    if (!notifications || notifications.length === 0) {
-      return { success: true, message: "Aucune notification trouvée", notifications: [] };
-    }
+    // Formatage des jobs
+    const jobs = recommendations
+      .slice(0, 5)
+      .map(job => ({
+        title: job.title,
+        company: job.company || 'Entreprise non spécifiée',
+        location: job.location || 'Localisation non précisée',
+        matchPercentage: job.matchPercentage,
+        skills: job.skillMatches?.slice(0, 3) || [],
+        url: job.applyUrl || `${process.env.BASE_URL}/jobs/${job.id}`
+      }));
 
-    return { success: true, notifications };
-  } catch (error) {
-    console.error("Erreur lors de la récupération des notifications :", error.message);
-    throw new Error("Impossible de récupérer les notifications");
-  }
-}
-
-/**
- * Marque une notification comme lue
- */
- async function markAsRead(notificationId) {
-  if (!mongoose.Types.ObjectId.isValid(notificationId)) {
-    throw new Error("ID notification invalide");
-  }
-
-  try {
-    // Recherche et mise à jour de la notification
-    const updatedNotification = await NotificationSettings.findByIdAndUpdate(
-      notificationId,
-      { read: true },
-      { new: true }
-    );
-
-    if (!updatedNotification) {
-      throw new Error("Notification introuvable");
-    }
-
-    return {
-      success: true,
-      message: "Notification marquée comme lue",
-      notification: updatedNotification,
+    // Construction du contenu
+    const greeting = user.fullName ? `Bonjour ${user.fullName},` : 'Bonjour,';
+    const emailContent = {
+      subject: `💼 ${jobs.length} nouvelles offres correspondent à votre profil`,
+      text: buildTextEmail(greeting, jobs),
+      html: buildHTMLEmail(greeting, jobs)
     };
-  } catch (error) {
-    console.error("Erreur lors de la mise à jour de la notification :", error.message);
-    throw new Error("Impossible de marquer la notification comme lue");
-  }
-}
 
-/**
- * Envoie un email
- */
- async function sendEmail({ to, subject, text, html }) {
-  try {
-    const transport = getTransporter();
-
-    const info = await transport.sendMail({
-      from: `"${process.env.EMAIL_FROM_NAME || 'Notification System'}" <${process.env.EMAIL_USER}>`,
-      to: Array.isArray(to) ? to.join(', ') : to,
-      subject,
-      text,
-      html: html || text
+    // Envoi de l'email
+    console.log('Email préparé:', emailContent.subject);
+    const result = await sendEmail({
+      to: user.email,
+      ...emailContent
+    });
+    console.log('Résultat envoi:', result);
+    // Journalisation
+    await Notification.create({
+      userId,
+      type: 'email_job_recommendations',
+      content: `Email envoyé avec ${jobs.length} recommandations`,
+      metadata: {
+        jobs: jobs.map(job => job.id),
+        emailStatus: result.success ? 'delivered' : 'failed'
+      }
     });
 
-    return { 
-      success: true, 
-      messageId: info.messageId 
-    };
+    return result;
+
   } catch (error) {
-    console.error('Email sending error:', error);
+    console.error(`Erreur recommandations email pour ${userId}:`, error.message);
     return { 
-      success: false, 
+      success: false,
       error: error.message 
     };
   }
 }
 
-/**
- * Récupère les paramètres de notification d'un utilisateur
- */
- async function getNotificationSettings(userId, userEmail, userName) {
-  try {
-    
-    
-    // Vérification de l'ID
-    if (!userId) {
-      throw new Error('ID utilisateur manquant');
-    }
-    
-    let settings = null;
-    
-    // Essayez de trouver les paramètres si l'ID est valide
-    if (mongoose.Types.ObjectId.isValid(userId)) {
-      try {
-        settings = await NotificationSettings.findOne({ userId });
-      } catch (dbError) {
-        console.error('Erreur lors de la recherche des paramètres:', dbError);
-      }
-    } else {
-      console.warn('ID utilisateur non valide pour MongoDB:', userId);
-    }
-
-    // Retournez les paramètres trouvés ou des valeurs par défaut
-    return {
-      email: settings?.email ?? true,
-      jobAlerts: settings?.jobAlerts ?? true,
-      applicationUpdates: settings?.applicationUpdates ?? true,
-      frequency: settings?.frequency ?? 'daily',
-      userEmail: userEmail, // Email du token
-      userName: userName    // Nom du token
-    };
-  } catch (error) {
-    console.error('Erreur dans getNotificationSettings:', error);
-    throw error;
-  }
-}
-
-/**
- * Met à jour les paramètres de notification
- */
- async function updateNotificationSettings(userId, { email, jobAlerts, applicationUpdates, frequency }) {
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    throw new Error('ID utilisateur invalide');
-  }
-
-  const updatedSettings = await NotificationSettings.findOneAndUpdate(
-    { userId },
-    { 
-      email,
-      jobAlerts,
-      applicationUpdates,
-      frequency: ['immediately', 'daily', 'weekly'].includes(frequency) 
-        ? frequency 
-        : 'daily',
-      lastUpdated: Date.now()
-    },
-    { new: true, upsert: true }
-  );
-
-  return {
-    email: updatedSettings.email,
-    jobAlerts: updatedSettings.jobAlerts,
-    applicationUpdates: updatedSettings.applicationUpdates,
-    frequency: updatedSettings.frequency
-  };
-}
-
-/**
- * Envoie un email d'alerte d'emploi ou de mise à jour de candidature
- */
- async function sendJobAlertEmail(type, data, req) {
-  const userName = req.user.fullName; // Get the user's full name from the token
-  const recipientEmail = req.user.email; // Get the user's email from the token
-  const greeting = userName ? `Bonjour ${userName},` : 'Bonjour,';
-
-  let emailContent;
-
-  switch (type) {
-    case 'job_alert':
-      emailContent = {
-        subject: `Nouvelle recommandation d'emploi: ${data.jobTitle}`,
-        text: `${greeting}\nNous avons trouvé un emploi qui correspond à votre profil:\n\n` +
-              `Poste: ${data.jobTitle}\nEntreprise: ${data.company}\nLieu: ${data.location}\n` +
-              `Salaire: ${data.salary}\nDescription: ${data.description}\nLien: ${data.url}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #4a00e0;">Nouvelle recommandation d'emploi</h2>
-            <p>${greeting}</p>
-            <p>Nous avons trouvé un emploi qui correspond à votre profil :</p>
-            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;">
-              <h3 style="margin-top: 0; color: #4a00e0;">${data.jobTitle}</h3>
-              <p><strong>Entreprise :</strong> ${data.company}</p>
-              <p><strong>Lieu :</strong> ${data.location}</p>
-              <p><strong>Salaire :</strong> ${data.salary}</p>
-              <p>${data.description}</p>
-              <a href="${data.url}" style="display: inline-block; background-color: #4a00e0; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; margin-top: 10px;">Voir l'offre complète</a>
-            </div>
-            <p>Cordialement,<br>L'équipe de recrutement</p>
-          </div>
-        `,
-      };
-      break;
-
-    case 'application_update':
-      emailContent = {
-        subject: `Mise à jour de candidature: ${data.status}`,
-        text: `${greeting}\nVotre candidature pour ${data.jobTitle} chez ${data.company}\n` +
-              `Statut : ${data.status}\nMessage : ${data.message}\nLien : ${data.url}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #4a00e0;">Mise à jour de candidature</h2>
-            <p>${greeting}</p>
-            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;">
-              <h3 style="margin-top: 0;">${data.jobTitle}</h3>
-              <p><strong>Entreprise :</strong> ${data.company}</p>
-              <p><strong>Statut :</strong> <span style="color: #4a00e0;">${data.status}</span></p>
-              <p>${data.message}</p>
-              <a href="${data.url}" style="display: inline-block; background-color: #4a00e0; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; margin-top: 10px;">Détails de la candidature</a>
-            </div>
-            <p>Cordialement,<br>L'équipe de recrutement</p>
-          </div>
-        `,
-      };
-      break;
-
-    default:
-      emailContent = {
-        subject: 'Notification système',
-        text: `${greeting}\nVous avez reçu une nouvelle notification.`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #4a00e0;">Notification système</h2>
-            <p>${greeting}</p>
-            <p>Vous avez reçu une nouvelle notification.</p>
-          </div>
-        `,
-      };
-      break;
-  }
-
-  // Send the email using the sendEmail function
-  return await sendEmail({
-    to: recipientEmail,
-    subject: emailContent.subject,
-    text: emailContent.text,
-    html: emailContent.html
+// Construction version texte
+function buildTextEmail(greeting, jobs) {
+  let content = `${greeting}\n\nVoici vos recommandations personnalisées :\n\n`;
+  
+  jobs.forEach((job, index) => {
+    content += `➤ ${job.title}\n`;
+    content += `   Entreprise : ${job.company}\n`;
+    content += `   Localisation : ${job.location}\n`;
+    content += `   Correspondance : ${job.matchPercentage}%\n`;
+    content += `   Compétences : ${job.skills.join(', ') || '-'}\n`;
+    content += `   Postuler : ${job.url}\n\n`;
   });
+
+  content += "\nCordialement,\nL'équipe CareerConnect";
+  return content;
 }
 
-/**
- * Vérifie la configuration email
- */
- async function verifyEmailConfig() {
+// Construction version HTML
+function buildHTMLEmail(greeting, jobs) {
+  return `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 20px;">
+      <div style="border-bottom: 2px solid #2563eb; padding-bottom: 15px; margin-bottom: 25px;">
+        <h1 style="color: #1e293b; margin: 0;">Nouvelles Opportunités</h1>
+        <p style="color: #64748b; margin: 5px 0 0;">${greeting}</p>
+      </div>
+
+      ${jobs.map(job => `
+        <div style="background: #f8fafc; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="color: #2563eb; margin: 0 0 10px 0;">${job.title}</h2>
+            <span style="background: ${getMatchColor(job.matchPercentage)};
+                        color: white;
+                        padding: 4px 12px;
+                        border-radius: 20px;
+                        font-size: 0.9em;">
+              ${job.matchPercentage}% match
+            </span>
+          </div>
+          
+          <div style="color: #475569;">
+            <p style="margin: 8px 0;">
+              <strong>🏢 Entreprise :</strong> 
+              ${job.company}
+            </p>
+            <p style="margin: 8px 0;">
+              <strong>📍 Localisation :</strong> 
+              ${job.location}
+            </p>
+            <p style="margin: 8px 0;">
+              <strong>🛠️ Compétences :</strong> 
+              ${job.skills.join(', ') || '-'}
+            </p>
+            <a href="${job.url}" 
+               style="display: inline-block;
+                      background: #2563eb;
+                      color: white;
+                      padding: 10px 20px;
+                      text-decoration: none;
+                      border-radius: 5px;
+                      margin-top: 10px;
+                      transition: background 0.3s;">
+              Voir l'offre →
+            </a>
+          </div>
+        </div>
+      `).join('')}
+
+      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+        <p style="color: #64748b; font-size: 0.9em;">
+          Ces recommandations sont générées automatiquement en fonction de votre profil.
+          <br>
+          <a href="${process.env.BASE_URL}/preferences" style="color: #2563eb;">Gérer vos préférences</a>
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+// Couleur selon le pourcentage
+function getMatchColor(percentage) {
+  if (percentage >= 90) return '#16a34a';   // Vert
+  if (percentage >= 75) return '#2563eb';   // Bleu
+  return '#ea580c';                        // Orange
+}
+
+// Fonction générique d'envoi d'email
+async function sendEmail({ to, subject, text, html }) {
+  try {
+    const transport = getTransporter();
+    const info = await transport.sendMail({
+      from: `"CareerConnect" <${process.env.EMAIL_USER}>`,
+      to: Array.isArray(to) ? to.join(', ') : to,
+      subject,
+      text,
+      html
+    });
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Erreur envoi email:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Vérification configuration SMTP
+async function verifyEmailConfig() {
   try {
     const transport = getTransporter();
     await transport.verify();
     return { valid: true };
   } catch (error) {
-    return { 
-      valid: false, 
-      error: error.message 
-    };
+    return { valid: false, error: error.message };
   }
 }
+
 module.exports = {
-  getTransporter,
-  getNotifications,
-  markAsRead,
-  sendEmail,
-  getNotificationSettings,
-  updateNotificationSettings,
-  sendJobAlertEmail,
-  verifyEmailConfig
+  sendJobRecommendationsEmail,
+  verifyEmailConfig,
+  sendEmail
 };
