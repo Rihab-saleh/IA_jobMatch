@@ -37,6 +37,10 @@ const userSchema = new mongoose.Schema({
       ref: 'Notification',
       default: []
     }],
+    savedJobs: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SavedJob'
+    }],
     UserPreferences: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'UserPreferences',

@@ -115,6 +115,7 @@ Only include jobs with matchPercentage > 65. Do not return any extra text or exp
         const job = jobs[rec.jobIndex];
         return {
           ...job,
+          recommended: true, 
           matchPercentage: rec.matchPercentage,
           matchReason: rec.matchReason,
           skillMatches: userSkills.filter(skill =>

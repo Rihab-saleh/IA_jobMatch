@@ -62,7 +62,7 @@ export default function EnhanceAIButton({
             </Button>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[600px]">
+                <DialogContent className="sm:max-w-[600px] bg-white">
                     <DialogHeader>
                         <DialogTitle className="text-xl text-purple-800 flex items-center gap-2">
                             <Sparkles className="h-5 w-5 text-purple-600" />

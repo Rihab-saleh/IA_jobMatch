@@ -1,12 +1,16 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-
+const authMiddleware = require('../middlewares/authMiddleware');
+const mongoose = require('mongoose'); 
 const axios = require('axios');
 const cheerio = require('cheerio');
+const SavedJob = require('../models/savedjob_model'); 
 require("dotenv").config();
 
+
 const app = express();
+app.use(express.json());
 const PORT = 3001; // Changé à 3001 pour éviter les conflits
 
 const ADZUNA_APP_ID = "5349e2d4"
@@ -15,7 +19,7 @@ const JOOBLE_API_KEY = "ed9a3c23-dcac-4de0-8145-71db66b6a169"
 const FINDWORK_API_KEY = "ed9a3c23-dcac-4de0-8145-71db66b6a169"
 const APIJOBS_API_KEY = "4e4fce558288a8005970bb642a0569749178ce05c7f753f963411eddf47b4d81"
 const REED_API_KEY = "0d792c73-84b2-4f95-903e-ec4ceb3e8c11"
-const { extractSkillsNLP, detectLanguage, detectJobDomain } = require('../services/skillExtractorService');
+const { extractSkillsNLP } = require('../services/skillExtractorService');
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
@@ -773,6 +777,7 @@ async function fetchFindworkJobs(filters, limit) {
   }
 }
 
+
 async function fetchRemotiveJobs(filters, limit) {
   try {
     // Remotive API doesn't require an API key for their public endpoint
@@ -819,75 +824,9 @@ async function fetchRemotiveJobs(filters, limit) {
     return [];
   }
 }
-app.post('/api/jobs/save', async (req, res) => {
-  try {
-    const { job, userId } = req.body;
 
-    if (!job || !userId) {
-      return res.status(400).json({ error: 'Job data and userId are required' });
-    }
 
-    // Vérifier si le job est déjà sauvegardé
-    const existingJob = await SavedJob.findOne({ jobId: job.id, userId });
-    if (existingJob) {
-      return res.status(409).json({ error: 'Job already saved' });
-    }
 
-    const savedJob = new SavedJob({
-      jobId: job.id,
-      title: job.title,
-      company: job.company,
-      location: job.location,
-      description: job.description,
-      salary: job.salary,
-      url: job.url,
-      datePosted: job.datePosted,
-      jobType: job.jobType,
-      source: job.source,
-      userId: userId
-    });
-
-    await savedJob.save();
-    res.status(201).json(savedJob);
-  } catch (error) {
-    console.error('Error saving job:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Récupérer les jobs sauvegardés d'un utilisateur
-app.get('/api/jobs/saved/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const savedJobs = await SavedJob.find({ userId }).sort({ savedAt: -1 });
-    res.json(savedJobs);
-  } catch (error) {
-    console.error('Error fetching saved jobs:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Supprimer un job sauvegardé
-app.delete('/api/jobs/saved/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ error: 'UserId is required' });
-    }
-
-    const deletedJob = await SavedJob.findOneAndDelete({ _id: id, userId });
-    if (!deletedJob) {
-      return res.status(404).json({ error: 'Job not found or not owned by user' });
-    }
-
-    res.json({ message: 'Job removed from saved', deletedJob });
-  } catch (error) {
-    console.error('Error deleting saved job:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 async function searchJobs(filters) {
   try {
@@ -1048,7 +987,123 @@ async function searchJobs(filters) {
     return { jobs: [], apiJobCounts: {} };
   }
 }
+app.post('/api/jobs/save', async (req, res) => {
+  try {
+    const { job, userId } = req.body;
 
+    // Validate userId
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID format' });
+    }
+
+    // Validate job fields
+    if (!job || !job.jobId || !job.title || !job.company) {
+      return res.status(400).json({ 
+        error: 'Missing required job fields',
+        required: ['jobId', 'title', 'company']
+      });
+    }
+
+    // Check if job already saved for this user (no index needed)
+    const existingJob = await SavedJob.findOne({
+      userId: userId,
+      jobId: job.jobId,
+      title: job.title,
+      company: job.company
+    });
+
+    if (existingJob) {
+      return res.status(200).json({
+        message: 'Job already saved',
+        job: existingJob,
+        exists: true
+      });
+    }
+
+    // Save new job
+    const savedJob = await SavedJob.create({
+      jobId: job.jobId,
+      title: job.title,
+      company: job.company,
+      location: job.location || null,
+      description: job.description || null,
+      salary: job.salary || null,
+      url: job.url || null,
+      datePosted: job.datePosted || new Date(),
+      jobType: job.jobType || null,
+      source: job.source || 'unknown',
+      userId: userId,
+      recommended: job.recommended || false,
+      savedAt: new Date()
+    });
+
+    return res.status(201).json({
+      message: 'Job saved successfully',
+      job: savedJob,
+      exists: false
+    });
+
+  } catch (error) {
+    console.error('Error saving job:', error);
+    return res.status(500).json({
+      error: 'Failed to save job',
+      details: error.message
+    });
+  }
+});
+app.get('/api/jobs/saved/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({
+        error: "ID utilisateur requis",
+        required: ["userId"]
+      });
+    }
+
+    const savedJobs = await SavedJob.find({ userId });
+
+    res.status(200).json(savedJobs);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des jobs enregistrés :', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+app.delete("/api/jobs/saved/:userId/:jobId", async (req, res) => {
+  try {
+    const { userId, jobId } = req.params
+
+    if (!userId || !jobId) {
+      return res.status(400).json({
+        error: "ID utilisateur et ID job requis",
+        required: ["userId", "jobId"],
+      })
+    }
+
+    // Find and delete the saved job
+    const result = await SavedJob.findOneAndDelete({
+      userId: userId,
+      _id: jobId,
+    })
+
+    if (!result) {
+      return res.status(404).json({
+        error: "Job enregistré non trouvé",
+        message: "Le job demandé n'existe pas ou a déjà été supprimé",
+      })
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Job supprimé avec succès",
+      deletedJob: result,
+    })
+  } catch (error) {
+    console.error("Erreur lors de la suppression du job enregistré:", error)
+    res.status(500).json({ error: error.message })
+  }
+})
 // Add a route to handle job searches
 app.post('/api/jobs/search', async (req, res) => {
   try {
@@ -1069,6 +1124,11 @@ app.post('/api/jobs/search', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+
+
+
+
 
 // Add a test route to verify the server is running
 app.get('/test', (req, res) => {
