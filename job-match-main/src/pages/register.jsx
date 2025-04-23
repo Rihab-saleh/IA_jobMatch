@@ -57,12 +57,15 @@ export default function Register() {
     }
 
     const age = parseInt(formData.age)
-    if (isNaN(age) || age < 18 || age > 100) {
+    if (isNaN(age)) {
+      newErrors.age = "Age required"
+    } else if (age < 18 || age > 100) {
       newErrors.age = "Age must be 18-100"
     }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
+  
   }
 
   const handleSubmit = async (e) => {
@@ -98,10 +101,31 @@ export default function Register() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Register</h1>
+      <div className="max-w-md mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-center">Register</h1>
 
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        {/* Error messages container at the top */}
+        {Object.keys(errors).length > 0 && (
+          <div className="mb-6 p-4 border border-red-300 rounded-lg bg-red-50">
+            <h3 className="text-red-700 font-medium mb-2 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Please fix these errors:
+            </h3>
+            <ul className="text-red-600 space-y-2">
+              {Object.entries(errors).map(([field, message]) => (
+                field !== 'form' && (
+                  <li key={field} className="flex items-center gap-2">
+                    <span className="capitalize">{field.replace(/([A-Z])/g, ' $1').toLowerCase()}:</span>
+                    <span>{message}</span>
+                  </li>
+                )
+              ))}
+              {errors.form && <li className="flex items-center gap-2">{errors.form}</li>}
+            </ul>
+          </div>
+        )}
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="block text-base font-medium mb-1">
               First Name
@@ -109,8 +133,7 @@ export default function Register() {
                 name="firstName"
                 value={formData.firstName}
                 onChange={handleChange}
-                className={`w-full mt-1 ${errors.firstName ? "border-red-500" : ""}`}
-                required
+                className="w-full mt-1"
               />
             </label>
           </div>
@@ -122,8 +145,7 @@ export default function Register() {
                 name="lastName"
                 value={formData.lastName}
                 onChange={handleChange}
-                className={`w-full mt-1 ${errors.lastName ? "border-red-500" : ""}`}
-                required
+                className="w-full mt-1"
               />
             </label>
           </div>
@@ -136,8 +158,7 @@ export default function Register() {
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`w-full mt-1 ${errors.email ? "border-red-500" : ""}`}
-                required
+                className="w-full mt-1"
               />
             </label>
           </div>
@@ -151,8 +172,7 @@ export default function Register() {
                   type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={handleChange}
-                  className={`w-full pr-12 ${errors.password ? "border-red-500" : ""}`}
-                  required
+                  className="w-full pr-12"
                 />
                 <button
                   type="button"
@@ -178,8 +198,7 @@ export default function Register() {
                 type="tel"
                 value={formData.phoneNumber}
                 onChange={handleChange}
-                className={`w-full mt-1 ${errors.phoneNumber ? "border-red-500" : ""}`}
-                required
+                className="w-full mt-1"
               />
             </label>
           </div>
@@ -194,19 +213,20 @@ export default function Register() {
                 onChange={handleChange}
                 min="18"
                 max="100"
-                className={`w-full mt-1 ${errors.age ? "border-red-500" : ""}`}
-                required
+                className="w-full mt-1"
               />
             </label>
           </div>
 
-          <Button 
-            type="submit" 
-            className="w-full py-6 text-lg bg-purple-700 hover:bg-purple-800"
-            disabled={loading}
-          >
-            {loading ? "Processing..." : "Register"}
-          </Button>
+          <div className="flex justify-center">
+            <Button 
+              type="submit" 
+              className="px-12 py-6 text-lg bg-purple-700 hover:bg-purple-800"
+              disabled={loading}
+            >
+              {loading ? "Processing..." : "Register"}
+            </Button>
+          </div>
 
           <div className="text-center">
             <p className="text-gray-600">
@@ -217,22 +237,6 @@ export default function Register() {
             </p>
           </div>
         </form>
-
-        {/* Error messages displayed below the form */}
-        {Object.keys(errors).length > 0 && (
-          <div className="mt-6 p-4 border border-red-300 rounded-lg bg-red-50">
-            <h3 className="text-red-700 font-medium mb-2">Please fix these errors:</h3>
-            <ul className="text-red-600 space-y-1">
-              {errors.firstName && <li className="flex items-center"><AlertCircle className="h-4 w-4 mr-1" /> First Name: {errors.firstName}</li>}
-              {errors.lastName && <li className="flex items-center"><AlertCircle className="h-4 w-4 mr-1" /> Last Name: {errors.lastName}</li>}
-              {errors.email && <li className="flex items-center"><AlertCircle className="h-4 w-4 mr-1" /> Email: {errors.email}</li>}
-              {errors.password && <li className="flex items-center"><AlertCircle className="h-4 w-4 mr-1" /> Password: {errors.password}</li>}
-              {errors.phoneNumber && <li className="flex items-center"><AlertCircle className="h-4 w-4 mr-1" /> Phone: {errors.phoneNumber}</li>}
-              {errors.age && <li className="flex items-center"><AlertCircle className="h-4 w-4 mr-1" /> Age: {errors.age}</li>}
-              {errors.form && <li className="flex items-center"><AlertCircle className="h-4 w-4 mr-1" /> {errors.form}</li>}
-            </ul>
-          </div>
-        )}
       </div>
     </div>
   )

@@ -1,41 +1,128 @@
-import { useState } from "react";
+"use client";
+
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent } from "../components/ui/card";
 import {
   Bookmark,
-  Share2,
   MapPin,
   Building,
   Clock,
   DollarSign,
   Calendar,
-  Users,
   Briefcase,
   CheckCircle,
   AlertCircle,
   ChevronLeft,
   ExternalLink,
 } from "lucide-react";
+import { useAuth } from "../contexts/auth-context";
+import { toast } from "sonner";
 
 export default function JobDetailsView() {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [saved, setSaved] = useState(false);
-  const [copied, setCopied] = useState(false);
-
+  const [saving, setSaving] = useState(false);
   const job = state?.job;
 
-  const toggleSaveJob = () => {
-    setSaved(!saved);
-    // API call to save job would go here
+  const isValidDate = (dateString) => {
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    return !isNaN(date.getTime());
   };
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const normalizeDate = (dateString) => {
+    if (!isValidDate(dateString)) return new Date().toISOString();
+    return new Date(dateString).toISOString();
+  };
+
+  useEffect(() => {
+    const checkSavedStatus = async () => {
+      if (!user?._id || !job?.id) return;
+
+      try {
+        const response = await fetch(`http://localhost:3001/api/jobs/saved/${user._id}`);
+        if (!response.ok) throw new Error("Failed to fetch saved jobs");
+        const savedJobs = await response.json();
+        const isSaved = savedJobs.some(savedJob => savedJob.jobId === job.id);
+        setSaved(isSaved);
+      } catch (error) {
+        console.error("Error checking saved status:", error);
+      }
+    };
+
+    checkSavedStatus();
+  }, [user, job?.id]);
+
+  const toggleSaveJob = async () => {
+    if (!user?._id) {
+      toast.error("Please log in to save jobs");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      if (saved) {
+        const response = await fetch(`http://localhost:3001/api/jobs/saved/${user._id}`);
+        if (!response.ok) throw new Error("Failed to fetch saved jobs");
+        const savedJobs = await response.json();
+        const savedJob = savedJobs.find(sj => sj.jobId === job.id);
+        
+        if (!savedJob) {
+          throw new Error("Saved job not found");
+        }
+
+        const deleteResponse = await fetch(
+          `http://localhost:3001/api/jobs/saved/${user._id}/${savedJob._id}`, 
+          { method: "DELETE" }
+        );
+
+        if (!deleteResponse.ok) throw new Error("Failed to remove job");
+        setSaved(false);
+        toast.success("Job removed from saved list");
+      } else {
+        const jobData = {
+          userId: user._id,
+          job: {
+            jobId: job.id,
+            title: job.title || "Untitled Position",
+            company: job.company || "Unknown Company",
+            location: job.location || "Remote",
+            description: job.description || "",
+            salary: job.salary || "",
+            url: job.url || "",
+            datePosted: normalizeDate(job.datePosted),
+            jobType: job.jobType || "",
+            source: job.source || "",
+            skills: job.skills || [],
+          },
+        };
+
+        const response = await fetch("http://localhost:3001/api/jobs/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(jobData),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to save job");
+        }
+
+        setSaved(true);
+        toast.success("Job saved successfully");
+      }
+    } catch (error) {
+      console.error("Error toggling job save:", error);
+      toast.error(error.message || "Failed to update job save status");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!job) {
@@ -46,10 +133,10 @@ export default function JobDetailsView() {
             <AlertCircle className="h-10 w-10 text-yellow-500" />
           </div>
           <h2 className="text-xl font-semibold text-gray-800 mb-2">
-            Aucune offre d'emploi à afficher
+            No job to display
           </h2>
           <p className="text-gray-600 mb-6">
-            Nous n'avons pas trouvé de détails pour cette offre.
+            We couldn't find details for this position.
           </p>
           <Button
             onClick={() => navigate(-1)}
@@ -57,7 +144,7 @@ export default function JobDetailsView() {
             className="gap-2"
           >
             <ChevronLeft className="h-4 w-4" />
-            Retour aux recommandations
+            Back to recommendations
           </Button>
         </div>
       </div>
@@ -68,7 +155,6 @@ export default function JobDetailsView() {
     <div className="bg-gray-50 min-h-screen py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          {/* Header with back button */}
           <div className="p-6 border-b border-gray-200">
             <Button
               variant="ghost"
@@ -76,13 +162,11 @@ export default function JobDetailsView() {
               className="gap-2 text-gray-600 hover:bg-gray-100"
             >
               <ChevronLeft className="h-5 w-5" />
-              <span>Retour aux offres</span>
+              <span>Back to jobs</span>
             </Button>
           </div>
 
-          {/* Main content */}
           <div className="p-6 md:p-8">
-            {/* Job header */}
             <div className="flex flex-col md:flex-row gap-6 mb-8">
               <div className="flex-shrink-0">
                 <div className="w-24 h-24 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shadow-sm">
@@ -107,11 +191,11 @@ export default function JobDetailsView() {
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                       <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1 text-sm font-medium text-gray-700">
                         <Building className="h-4 w-4 mr-1.5 text-purple-500" />
-                        {job.company || "Entreprise non spécifiée"}
+                        {job.company || "Company not specified"}
                       </span>
                       <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1 text-sm font-medium text-gray-700">
                         <MapPin className="h-4 w-4 mr-1.5 text-purple-500" />
-                        {job.location || "Localisation non spécifiée"}
+                        {job.location || "Location not specified"}
                       </span>
                     </div>
                   </div>
@@ -121,34 +205,26 @@ export default function JobDetailsView() {
                       variant={saved ? "default" : "outline"}
                       onClick={toggleSaveJob}
                       className="gap-2"
+                      disabled={saving}
                     >
                       <Bookmark
                         className={`h-4 w-4 ${saved ? "fill-white" : ""}`}
                       />
-                      {saved ? "Sauvegardé" : "Sauvegarder"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleShare}
-                      className="gap-2"
-                    >
-                      <Share2 className="h-4 w-4" />
-                      {copied ? "Copié!" : "Partager"}
+                      {saving ? "Saving..." : (saved ? "Saved" : "Save Job")}
                     </Button>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Job metadata */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <div className="flex items-center gap-3">
                   <Briefcase className="h-5 w-5 text-purple-600" />
                   <div>
-                    <p className="text-sm text-gray-500">Type de contrat</p>
+                    <p className="text-sm text-gray-500">Job Type</p>
                     <p className="font-medium text-gray-900">
-                      {job.type || "Non spécifié"}
+                      {job.type || "Not specified"}
                     </p>
                   </div>
                 </div>
@@ -158,9 +234,9 @@ export default function JobDetailsView() {
                 <div className="flex items-center gap-3">
                   <DollarSign className="h-5 w-5 text-purple-600" />
                   <div>
-                    <p className="text-sm text-gray-500">Salaire</p>
+                    <p className="text-sm text-gray-500">Salary</p>
                     <p className="font-medium text-gray-900">
-                      {job.salary || "Non spécifié"}
+                      {job.salary || "Not specified"}
                     </p>
                   </div>
                 </div>
@@ -170,9 +246,9 @@ export default function JobDetailsView() {
                 <div className="flex items-center gap-3">
                   <Clock className="h-5 w-5 text-purple-600" />
                   <div>
-                    <p className="text-sm text-gray-500">Expérience</p>
+                    <p className="text-sm text-gray-500">Experience</p>
                     <p className="font-medium text-gray-900">
-                      {job.experience || "Non spécifié"}
+                      {job.experience || "Not specified"}
                     </p>
                   </div>
                 </div>
@@ -182,20 +258,19 @@ export default function JobDetailsView() {
                 <div className="flex items-center gap-3">
                   <Calendar className="h-5 w-5 text-purple-600" />
                   <div>
-                    <p className="text-sm text-gray-500">Publié le</p>
+                    <p className="text-sm text-gray-500">Posted Date</p>
                     <p className="font-medium text-gray-900">
-                      {job.postedDate || "Date inconnue"}
+                      {new Date(job.datePosted).toLocaleDateString() || "Unknown date"}
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Skills */}
             {job.skills?.length > 0 && (
               <div className="mb-8">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  Compétences requises
+                  Required Skills
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {job.skills.map((skill, index) => (
@@ -210,11 +285,10 @@ export default function JobDetailsView() {
               </div>
             )}
 
-            {/* Job description */}
             <Card className="mb-8 border border-gray-200">
               <CardContent className="p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  Description du poste
+                  Job Description
                 </h2>
                 <div className="prose max-w-none text-gray-700">
                   {job.description ? (
@@ -223,18 +297,17 @@ export default function JobDetailsView() {
                       dangerouslySetInnerHTML={{ __html: job.description }}
                     />
                   ) : (
-                    <p className="text-gray-500">Aucune description fournie</p>
+                    <p className="text-gray-500">No description provided</p>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Benefits */}
             {job.benefits?.length > 0 && (
               <Card className="mb-8 border border-gray-200">
                 <CardContent className="p-6">
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                    Avantages
+                    Benefits
                   </h2>
                   <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {job.benefits.map((benefit, index) => (
@@ -251,7 +324,6 @@ export default function JobDetailsView() {
               </Card>
             )}
 
-            {/* Action buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
               <a
                 href={job.applyUrl || job.url}
@@ -259,15 +331,15 @@ export default function JobDetailsView() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-purple-600 text-white hover:bg-purple-700 h-10 px-4 py-2 flex-1 gap-2"
               >
-                Postuler maintenant
+                Apply Now
                 <ExternalLink className="h-4 w-4" />
               </a>
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => navigate(-1)}
+                onClick={() => navigate("/jobs")}
               >
-                Voir d'autres offres
+                View Other Jobs
               </Button>
             </div>
           </div>

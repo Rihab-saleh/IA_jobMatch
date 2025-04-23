@@ -1409,7 +1409,7 @@ function ProfilePage() {
                           <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
                             <SelectValue placeholder="Skill level" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent bg-white>
                             <SelectItem value="Beginner">Beginner</SelectItem>
                             <SelectItem value="Intermediate">Intermediate</SelectItem>
                             <SelectItem value="Advanced">Advanced</SelectItem>

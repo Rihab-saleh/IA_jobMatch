@@ -1,17 +1,19 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Search, MapPin, Bookmark, Loader } from "lucide-react"
-import axios from "axios"
-import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
-import { useAuth } from "../contexts/auth-context"
-import { toast } from "sonner"
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Search, MapPin, Bookmark, Loader } from "lucide-react";
+import axios from "axios";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { useAuth } from "../contexts/auth-context";
+import { toast } from "sonner";
 
 export default function JobsPage() {
-  const { user } = useAuth()
-  const [savedJobs, setSavedJobs] = useState([])
-  const [jobs, setJobs] = useState([])
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [savedJobs, setSavedJobs] = useState([]);
+  const [jobs, setJobs] = useState([]);
   const [filters, setFilters] = useState({
     query: "",
     location: "",
@@ -19,11 +21,11 @@ export default function JobsPage() {
     jobType: "any",
     datePosted: "any",
     limit: 20,
-  })
-  const [loading, setLoading] = useState(false)
-  const [savingJobs, setSavingJobs] = useState({})
-  const [error, setError] = useState("")
-  const [hasMore, setHasMore] = useState(true)
+  });
+  const [loading, setLoading] = useState(false);
+  const [savingJobs, setSavingJobs] = useState({});
+  const [error, setError] = useState("");
+  const [hasMore, setHasMore] = useState(true);
 
   const api = axios.create({
     baseURL: "http://localhost:3001/api/jobs",
@@ -31,169 +33,164 @@ export default function JobsPage() {
     headers: {
       "Content-Type": "application/json",
     },
-  })
+  });
 
-  // Improved date validation and formatting
   const isValidDate = (dateString) => {
-    if (!dateString) return false
-    const date = new Date(dateString)
-    return !isNaN(date.getTime())
-  }
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    return !isNaN(date.getTime());
+  };
 
   const formatDateDisplay = (dateString) => {
-    if (!isValidDate(dateString)) return "Unknown date"
-    const options = { year: "numeric", month: "short", day: "numeric" }
-    return new Date(dateString).toLocaleDateString("en-US", options)
-  }
+    if (!isValidDate(dateString)) return "Unknown date";
+    const options = { year: "numeric", month: "short", day: "numeric" };
+    return new Date(dateString).toLocaleDateString("en-US", options);
+  };
 
   const normalizeDate = (dateString) => {
-    if (!isValidDate(dateString)) return new Date().toISOString()
-    return new Date(dateString).toISOString()
-  }
+    if (!isValidDate(dateString)) return new Date().toISOString();
+    return new Date(dateString).toISOString();
+  };
 
-  // Fetch saved jobs from API
   const fetchSavedJobs = async () => {
-    if (!user?._id) return
+    if (!user?._id) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/api/jobs/saved/${user._id}`)
-      if (!response.ok) throw new Error("Failed to fetch saved jobs")
-      const data = await response.json()
-      setSavedJobs(data || [])
+      const response = await fetch(`http://localhost:3001/api/jobs/saved/${user._id}`);
+      if (!response.ok) throw new Error("Failed to fetch saved jobs");
+      const data = await response.json();
+      setSavedJobs(data || []);
       
       setJobs(prevJobs => 
         prevJobs.map(job => ({
           ...job,
           isSaved: data.some(savedJob => savedJob.jobId === job.id)
         }))
-      )
+      );
     } catch (error) {
-      console.error("Error fetching saved jobs:", error)
-      toast.error("Failed to load saved jobs")
+      console.error("Error fetching saved jobs:", error);
+      toast.error("Failed to load saved jobs");
     }
-  }
+  };
 
-  // Fetch jobs based on filters
   useEffect(() => {
-    const controller = new AbortController()
-    let debounceTimer
+    const controller = new AbortController();
+    let debounceTimer;
 
     const fetchJobs = async () => {
       try {
-        setLoading(true)
-        setError("")
+        setLoading(true);
+        setError("");
 
         const requestBody = {
           ...filters,
           minSalary: filters.minSalary ? Number(filters.minSalary) : null,
           jobType: filters.jobType === "any" ? "any" : filters.jobType.replace(" ", "_").toLowerCase(),
-        }
+        };
 
         const response = await api.post("/search", requestBody, {
           signal: controller.signal,
           timeout: 30000,
-        })
+        });
 
-        const jobsData = response.data.jobs || []
+        const jobsData = response.data.jobs || [];
         const markedJobs = jobsData.map(job => ({
           ...job,
           datePosted: normalizeDate(job.datePosted),
           isSaved: savedJobs.some(savedJob => savedJob.jobId === job.id)
-        }))
+        }));
 
-        setJobs(markedJobs)
-        setHasMore(jobsData.length >= filters.limit)
+        setJobs(markedJobs);
+        setHasMore(jobsData.length >= filters.limit);
       } catch (err) {
         if (axios.isCancel(err)) {
-          console.log("Request canceled:", err.message)
+          console.log("Request canceled:", err.message);
         } else if (err.code === "ECONNABORTED") {
-          setError("Request timed out. Please try again.")
+          setError("Request timed out. Please try again.");
         } else {
-          setError(err.response?.data?.error || err.message || "Failed to load jobs. Please try again later.")
+          setError(err.response?.data?.error || err.message || "Failed to load jobs. Please try again later.");
         }
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
     const debounceFetch = () => {
-      clearTimeout(debounceTimer)
-      debounceTimer = setTimeout(fetchJobs, 800)
-    }
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(fetchJobs, 800);
+    };
 
     if (filters.query.trim() || filters.location.trim()) {
-      debounceFetch()
+      debounceFetch();
     } else {
-      setJobs([])
-      setHasMore(false)
+      setJobs([]);
+      setHasMore(false);
     }
 
     return () => {
-      controller.abort()
-      clearTimeout(debounceTimer)
-    }
-  }, [filters, savedJobs])
+      controller.abort();
+      clearTimeout(debounceTimer);
+    };
+  }, [filters, savedJobs]);
 
-  // Fetch saved jobs when component mounts or user changes
   useEffect(() => {
     if (user?._id) {
-      fetchSavedJobs()
+      fetchSavedJobs();
     }
-  }, [user])
+  }, [user]);
 
   const handleSearchSubmit = (e) => {
-    e.preventDefault()
-    setFilters(prev => ({ ...prev, limit: 20 }))
-  }
+    e.preventDefault();
+    setFilters(prev => ({ ...prev, limit: 20 }));
+  };
 
   const handleFilterChange = (name, value) => {
     setFilters(prev => ({
       ...prev,
       [name]: value,
       ...(name !== "limit" && { limit: 20 }),
-    }))
-  }
+    }));
+  };
 
   const loadMoreJobs = () => {
-    setFilters(prev => ({ ...prev, limit: prev.limit + 20 }))
-  }
+    setFilters(prev => ({ ...prev, limit: prev.limit + 20 }));
+  };
 
-  // Fixed toggleSaveJob with proper date handling
   const toggleSaveJob = async (job) => {
     if (!user?._id) {
-      toast.error("Please log in to save jobs")
-      return
+      toast.error("Please log in to save jobs");
+      return;
     }
 
     if (!job.id) {
-      toast.error("Missing job ID")
-      return
+      toast.error("Missing job ID");
+      return;
     }
 
-    setSavingJobs(prev => ({ ...prev, [job.id]: true }))
+    setSavingJobs(prev => ({ ...prev, [job.id]: true }));
 
     try {
       if (job.isSaved) {
-        const savedJob = savedJobs.find(sj => sj.jobId === job.id)
+        const savedJob = savedJobs.find(sj => sj.jobId === job.id);
         
         if (!savedJob) {
-          console.error("Saved job not found:", job.id)
-          throw new Error("Saved job not found")
+          console.error("Saved job not found:", job.id);
+          throw new Error("Saved job not found");
         }
 
         const response = await fetch(
           `http://localhost:3001/api/jobs/saved/${user._id}/${savedJob._id}`, 
           { method: "DELETE" }
-        )
+        );
 
-        if (!response.ok) throw new Error("Failed to remove job")
+        if (!response.ok) throw new Error("Failed to remove job");
 
-        setSavedJobs(prev => prev.filter(j => j._id !== savedJob._id))
+        setSavedJobs(prev => prev.filter(j => j._id !== savedJob._id));
         setJobs(prev => prev.map(j => 
           j.id === job.id ? { ...j, isSaved: false } : j
-        ))
+        ));
 
-        toast.success("Job removed from saved list")
+        toast.success("Job removed from saved list");
       } else {
         const jobData = {
           userId: user._id,
@@ -210,34 +207,34 @@ export default function JobsPage() {
             source: job.source || "",
             skills: job.skills || [],
           },
-        }
+        };
 
         const response = await fetch("http://localhost:3001/api/jobs/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(jobData),
-        })
+        });
 
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || "Failed to save job")
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to save job");
         }
 
-        const data = await response.json()
-        setSavedJobs(prev => [...prev, data.job])
+        const data = await response.json();
+        setSavedJobs(prev => [...prev, data.job]);
         setJobs(prev => prev.map(j => 
           j.id === job.id ? { ...j, isSaved: true } : j
-        ))
+        ));
 
-        toast.success("Job saved successfully")
+        toast.success("Job saved successfully");
       }
     } catch (error) {
-      console.error("Error toggling job save:", error)
-      toast.error(error.message || "Failed to update job save status")
+      console.error("Error toggling job save:", error);
+      toast.error(error.message || "Failed to update job save status");
     } finally {
-      setSavingJobs(prev => ({ ...prev, [job.id]: false }))
+      setSavingJobs(prev => ({ ...prev, [job.id]: false }));
     }
-  }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -378,14 +375,22 @@ export default function JobsPage() {
                   {job.salary && <p className="text-sm font-medium text-black">Salary: {job.salary}</p>}
                 </div>
 
-                <a
-                  href={job.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block mt-4 px-4 py-2 bg-purple-700 text-white rounded text-sm font-medium hover:bg-purple-800 transition-colors"
-                >
-                  View Job ↗
-                </a>
+                <div className="flex gap-2 mt-4">
+                  <a
+                    href={job.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-purple-700 text-white rounded text-sm font-medium hover:bg-purple-800 transition-colors"
+                  >
+                    View Job ↗
+                  </a>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate('/job-details-view', { state: { job } })}
+                  >
+                    View Details
+                  </Button>
+                </div>
               </div>
             ))}
 
@@ -415,5 +420,5 @@ export default function JobsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
