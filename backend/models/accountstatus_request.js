@@ -8,7 +8,7 @@ const accountStatusRequestSchema = new mongoose.Schema({
   },
   requestType: {
     type: String,
-    enum: ["deactivate"], 
+    enum: ["deactivate","activate"], 
     required: true,
   },
   reason: {
@@ -20,6 +20,8 @@ const accountStatusRequestSchema = new mongoose.Schema({
     enum: ["pending", "approved", "rejected"],
     default: "pending",
   },
+  handledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  handledAt: Date
 }, {
   timestamps: true, 
 });

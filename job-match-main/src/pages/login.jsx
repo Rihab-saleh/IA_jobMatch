@@ -54,12 +54,12 @@ export default function Login() {
     let isValid = true
 
     if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
-      setError("Invalid email format")
+      setError("Format d'email invalide")
       isValid = false
     }
 
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters")
+      setError("Le mot de passe doit contenir au moins 6 caractères")
       isValid = false
     }
 
@@ -72,12 +72,12 @@ export default function Login() {
       await userService.requestAccountStatusChange({
         email: formData.email,
         requestType: "activate",
-        reason: "Reactivation request from login page"
+        reason: "Demande de réactivation depuis la page de connexion"
       })
       setError(null)
       setShowSuccessMessage(true)
     } catch (err) {
-      setError(err.message || "Failed to send request. Please try again later.")
+      setError(err.message || "Échec de l'envoi de la demande. Veuillez réessayer plus tard.")
     } finally {
       setReactivationLoading(false)
     }
@@ -96,14 +96,14 @@ export default function Login() {
         const redirectTo = result.role === "admin" ? "/admin" : from
         navigate(redirectTo)
       } else {
-        if (result?.error?.includes("deactivated")) {
-          setError("Your account is deactivated. Would you like to request reactivation?")
+        if (result?.error?.includes("désactivé")) {
+          setError("Votre compte est désactivé. Souhaitez-vous demander une réactivation ?")
         } else {
-          setError(result?.error || "Invalid credentials")
+          setError(result?.error || "Identifiants incorrects")
         }
       }
     } catch (err) {
-      setError("Server connection error")
+      setError("Erreur de connexion au serveur")
     } finally {
       setLoading(false)
     }
@@ -114,13 +114,13 @@ export default function Login() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white px-4 py-8 shadow sm:rounded-lg sm:px-10">
           <div className="text-center">
-            <h1 className="text-3xl font-bold">Login</h1>
+            <h1 className="text-3xl font-bold">Connexion</h1>
           </div>
 
           {showSuccessMessage && (
             <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-md flex items-center">
               <CheckCircle className="h-5 w-5 mr-2" />
-              Request sent! The administrator has been notified.
+              Demande envoyée ! L'administrateur a été notifié.
             </div>
           )}
 
@@ -130,14 +130,14 @@ export default function Login() {
                 <AlertCircle className="h-5 w-5 mr-2" />
                 <span>{error}</span>
               </div>
-              {error.includes("deactivated") && (
+              {error.includes("désactivé") && (
                 <Button
                   onClick={handleRequestReactivation}
                   disabled={reactivationLoading}
                   className="mt-2 ml-7 text-sm bg-transparent text-red-700 hover:bg-red-100"
                   variant="outline"
                 >
-                  {reactivationLoading ? "Sending..." : "Request Reactivation"}
+                  {reactivationLoading ? "Envoi en cours..." : "Demander la réactivation"}
                 </Button>
               )}
             </div>
@@ -153,7 +153,7 @@ export default function Login() {
                     type="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="example@email.com"
+                    placeholder="exemple@email.com"
                     className="w-full mt-1"
                     required
                   />
@@ -162,7 +162,7 @@ export default function Login() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Password
+                  Mot de passe
                   <div className="relative mt-1">
                     <Input
                       name="password"
@@ -191,7 +191,7 @@ export default function Login() {
               <div className="flex items-center justify-end">
                 <div className="text-sm">
                   <Link to="/forgot-password" className="text-purple-700 font-medium">
-                    Forgot password?
+                    Mot de passe oublié ?
                   </Link>
                 </div>
               </div>
@@ -203,16 +203,16 @@ export default function Login() {
                 className="w-full bg-purple-700 hover:bg-purple-800 py-6 text-lg text-white"
                 disabled={loading || reactivationLoading}
               >
-                {loading ? "Logging in..." : "Log In"}
+                {loading ? "Connexion..." : "Se connecter"}
               </Button>
             </div>
           </form>
 
           <div className="mt-6 text-center text-sm">
             <p className="text-gray-600">
-              Don't have an account?{" "}
+              Pas de compte ?{" "}
               <Link to="/register" className="text-purple-700 font-medium">
-                Sign Up
+                S'inscrire
               </Link>
             </p>
           </div>

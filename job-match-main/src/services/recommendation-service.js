@@ -2,22 +2,19 @@
 import { api } from "./api"
 
 export const recommendationService = {
+  // GET recommendations for a user
   getRecommendationsForUser(userId, limit = 10) {
     return api.get(`/recommendations/user/${userId}`, {
       params: { limit },
-      // Add a longer timeout since the LLM processing might take time
-      timeout: 600000000, // 60 seconds
+     
     })
   },
 
-  getRecommendationsFromText(profileText, limit = 10) {
-    return api.post(
-      "/recommendations/profile",
-      { profileText },
-      {
-        params: { limit },
-        timeout: 60000000, // 60 seconds
-      },
-    )
+  // GET saved job recommendations (ajouté si besoin)
+  getSavedJobRecommendations(userId) {
+    return api.get(`/recommendations/recommendations/${userId}/saved`, {
+ 
+    });
   },
+
 }

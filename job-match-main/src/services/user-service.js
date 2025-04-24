@@ -84,6 +84,9 @@ export const userService = {
   updateLocation(userId, locationData) {
     return api.put(`users/profile/${userId}/location`, locationData)
   },
+  requestAccountReactivation(reactivationData) {
+    return api.post(`users/account/reactivate-request`, reactivationData)
+  },
 
   requestAccountStatusChange(statusData) {
     return api.post(`users/account/status-request`, statusData)

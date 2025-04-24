@@ -11,9 +11,7 @@ export const adminService = {
     return api.get("/admin/account-requests")
   },
 
-  getUserAccountStatusRequests(userId) {
-    return api.get(`/admin/account-requests/${userId}`)
-  },
+  
 
   deleteUser(userId) {
     return api.delete(`/admin/user/delete/${userId}`)

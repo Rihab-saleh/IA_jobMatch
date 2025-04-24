@@ -331,7 +331,132 @@ class UserService {
     const { user } = await this.getUserAndPerson(userId);
     return await Recommendation.find({ user: userId }).populate("job");
   }
+// Dans userService.js
+async handlePublicReactivateRequest(identifier, reason) {
+  let cleanIdentifier;
+  
+  try {
+    // Validation de l'entrée
+    if (!identifier || typeof identifier !== 'string') {
+      throw new Error('Identifiant invalide');
+    }
 
+    // Normalisation de l'identifiant
+    cleanIdentifier = identifier.toLowerCase().trim();
+
+    console.log('🔍 Recherche commencée pour:', cleanIdentifier);
+
+    // Étape 1: Recherche dans la collection Person
+    const person = await Person.findOne({
+      $or: [
+        { email: cleanIdentifier },
+        { phoneNumber: cleanIdentifier }
+      ]
+    }).collation({ locale: 'en', strength: 2 }); // Recherche insensible à la casse
+
+    if (!person) {
+      console.log('❌ Aucune personne trouvée avec:', cleanIdentifier);
+      throw new Error('Aucun compte trouvé avec cet identifiant');
+    }
+
+    // Étape 2: Vérification de l'utilisateur associé
+    const user = await User.findOne({ person: person._id })
+      .populate('person')
+      .lean();
+
+    if (!user) {
+      console.log('⚠️ Personne trouvée mais utilisateur manquant:', person._id);
+      throw new Error('Problème de configuration du compte');
+    }
+
+    console.log('✅ Utilisateur trouvé:', user._id);
+
+    // Étape 3: Vérification du statut actif
+    if (user.person.isActive) {
+      console.log('ℹ️ Compte déjà actif:', user._id);
+      throw new Error('Le compte est déjà actif');
+    }
+
+    // Étape 4: Vérification des demandes existantes
+    const existingRequest = await AccountStatusRequest.findOne({
+      user: user._id,
+      status: 'pending',
+      requestType: 'activate'
+    });
+
+    if (existingRequest) {
+      console.log('⏳ Demande existante:', existingRequest._id);
+      throw new Error('Une demande de réactivation est déjà en cours');
+    }
+
+    // Étape 5: Création de la demande
+    const request = new AccountStatusRequest({
+      user: user._id,
+      requestType: 'activate',
+      reason: reason.substring(0, 500), // Limiter la longueur
+      previousStatus: 'inactive',
+      metadata: {
+        ip: '', // À remplir par le contrôleur
+        userAgent: ''
+      }
+    });
+
+    await request.save();
+
+    console.log('📝 Demande créée:', request._id);
+
+    return {
+      success: true,
+      requestId: request._id,
+      message: "Demande enregistrée avec succès",
+      nextSteps: "Un administrateur traitera votre demande sous 48h"
+    };
+
+  } catch (error) {
+    console.error('🔥 Erreur critique:', {
+      identifier: cleanIdentifier || identifier,
+      errorType: error.name,
+      errorMessage: error.message,
+      stack: error.stack
+    });
+
+    throw new Error(`Échec de la demande: ${error.message}`);
+  }
+}
+  async createStatusRequest(userId, requestType, reason, isActive = null) {
+    // Validation commune
+    const validTypes = ['activate', 'deactivate'];
+    if (!validTypes.includes(requestType)) {
+      throw new Error(`Type de demande invalide: ${validTypes.join(', ')}`);
+    }
+  
+    if (reason.trim().length < 10) {
+      throw new Error("La raison doit contenir au moins 10 caractères");
+    }
+  
+    // Vérifier les doublons
+    const existingRequest = await AccountStatusRequest.findOne({
+      user: userId,
+      requestType,
+      status: 'pending'
+    });
+  
+    if (existingRequest) {
+      throw new Error("Une demande similaire est déjà en attente");
+    }
+  
+    // Créer la demande
+    const statusRequest = new AccountStatusRequest({
+      user: userId,
+      requestType,
+      reason,
+      previousStatus: isActive !== null ? (isActive ? 'active' : 'inactive') : 'unknown',
+      status: 'pending'
+    });
+  
+    await statusRequest.save();
+    return { message: "Demande enregistrée", request: statusRequest };
+  }
   async requestAccountStatusChange(userId, requestType, reason) {
     // Validation des paramètres
     const validTypes = ['activate', 'deactivate'];

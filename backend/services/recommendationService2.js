@@ -1,4 +1,5 @@
 const axios = require('axios');
+const SavedJob = require('../models/savedjob_model');
 const userService = require('./userService');
 const { searchJobs } = require('./jobApiService');
 
@@ -12,19 +13,16 @@ function extractCompetencies(text) {
 
 async function getRecommendationsForUser(userId) {
   try {
-    // 1. Récupérer le profil utilisateur
     const userProfile = await userService.getUserProfile(userId);
     if (!userProfile) throw new Error("Utilisateur non trouvé");
 
     const jobTitle = userProfile.jobTitle || '';
     const location = userProfile.location || '';
     const skills = userProfile.skills?.map(s => s.name) || [];
-
     const experiencesText = userProfile.experiences?.[0]?.description || '';
     const experienceTerms = extractCompetencies(experiencesText);
     const competencies = [...skills, ...experienceTerms];
 
-    // 2. Construire la requête de recherche
     const query = [jobTitle, ...skills].filter(Boolean).join(" ");
 
     const jobData = await searchJobs({
@@ -34,9 +32,8 @@ async function getRecommendationsForUser(userId) {
       apiSources: ["adzuna", "reed", "apijobs", "jooble", "findwork", "remotive", "scraped"]
     });
 
-    const allJobs = jobData?.jobs || [];
+    const allJobs = jobData.jobs || [];
 
-    // 3. Filtrer par jobTitle ET localisation
     const filteredJobs = allJobs.filter(job => {
       const jobLocation = (job.location?.name || job.location || '').toLowerCase();
       return (
@@ -45,12 +42,8 @@ async function getRecommendationsForUser(userId) {
       );
     });
 
-    if (filteredJobs.length === 0) {
-      console.log('Aucune offre correspondante au titre de poste et à la localisation.');
-      return [];
-    }
+    if (filteredJobs.length === 0) return [];
 
-    // 4. Construire le prompt pour l’IA
     let prompt = `You are a career matching assistant. Analyze the following profile and job listings:
 
 User Profile:
@@ -84,24 +77,23 @@ Return ONLY a JSON array of recommended jobs like:
 ]
 Only include jobs with matchPercentage >= 65.`;
 
-    // 5. Appel à l’IA
     const response = await axios.post('http://localhost:11434/api/generate', {
       prompt,
       model: 'mistral:instruct',
       stream: false
     });
 
-    const content = response.data?.response?.trim();
+    const content = response.data.response.trim();
     const match = content.match(/\[.*\]/s);
     if (!match) throw new Error("Réponse IA invalide : aucun tableau JSON trouvé.");
 
     const recommendations = JSON.parse(match[0]);
 
-    // 6. Retourner les résultats enrichis
-    return recommendations
+    const validRecommendations = recommendations
       .filter(r => r.matchPercentage >= 65)
       .map(r => {
         const job = filteredJobs[r.jobIndex];
+        if (!job) return null;
         return {
           ...job,
           recommended: true,
@@ -112,15 +104,62 @@ Only include jobs with matchPercentage >= 65.`;
           )
         };
       })
+      .filter(Boolean)
       .sort((a, b) => b.matchPercentage - a.matchPercentage);
 
+    return validRecommendations;
+
   } catch (error) {
-    console.error('Erreur recommandation:', error.message);
+    console.error('[ERROR] getRecommendationsForUser:', error.message, error.stack);
+    throw error;
+  }
+}
+
+async function saveRecommendedJobs(userId, jobs) {
+  try {
+    for (const job of jobs) {
+      const jobId = job.id || job.url || `${job.title}-${job.company}`;
+      await SavedJob.findOneAndUpdate(
+        { jobId, userId },
+        {
+          jobId,
+          title: job.title,
+          company: job.company,
+          location: job.location?.name || job.location,
+          description: job.description,
+          salary: job.salary,
+          url: job.url,
+          datePosted: job.datePosted,
+          jobType: job.jobType,
+          source: job.source,
+          userId: userId,
+          recommended: true,
+          savedAt: new Date()
+        },
+        { upsert: true, new: true }
+      );
+    }
+  } catch (error) {
+    console.error('[ERROR] saveRecommendedJobs:', error.message, error.stack);
+    throw error;
+  }
+}
+
+async function getSavedJobRecommendations(userId) {
+  try {
+    return await SavedJob.find({
+      userId,
+      recommended: true
+    }).sort({ datePosted: -1 });
+  } catch (error) {
+    console.error('[ERROR] getSavedJobRecommendations:', error.message, error.stack);
     throw error;
   }
 }
 
 module.exports = {
   getRecommendationsForUser,
+  saveRecommendedJobs,
+  getSavedJobRecommendations,
   extractCompetencies
 };

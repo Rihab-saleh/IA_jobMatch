@@ -5,14 +5,16 @@ const { authMiddleware, userMiddleware } = require("../middlewares/authMiddlewar
 const multer = require("multer")
 const upload = multer({ storage: multer.memoryStorage() })
 
+
+router.post('/account/reactivate-request', userController.handlePublicReactivateRequest);
+
+router.use(authMiddleware)
 router.get("/profile/:userId", userController.getUserProfile)
 router.get("/skills/:userId", userController.getUserSkills)
 router.get("/jobs/:userId", userController.getUserJobs)
 router.get("/recommendations/:userId", userController.getUserRecommendations)
 router.get("/formations/:userId", userController.getFormations)
 router.get("/experiences/:userId", userController.getExperiences)
-
-router.use(authMiddleware)
 router.put("/skills/:userId/:skillId", userMiddleware, userController.updateUserSkill)
 router.put("/profile/:userId", userMiddleware, userController.updateUserProfile)
 router.delete("/profile/:userId", userMiddleware, userController.deleteUserProfile)

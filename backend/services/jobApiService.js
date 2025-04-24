@@ -989,68 +989,64 @@ async function searchJobs(filters) {
 }
 app.post('/api/jobs/save', async (req, res) => {
   try {
-    const { job, userId } = req.body;
+    const { userId, job } = req.body;
 
-    // Validate userId
-    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ error: 'Invalid user ID format' });
-    }
-
-    // Validate job fields
-    if (!job || !job.jobId || !job.title || !job.company) {
-      return res.status(400).json({ 
-        error: 'Missing required job fields',
-        required: ['jobId', 'title', 'company']
+    if (!userId || !job?.jobId || !job?.title || !job?.company) {
+      return res.status(400).json({
+        error: 'Champs manquants',
+        required: ['userId', 'job.jobId', 'job.title', 'job.company']
       });
     }
 
-    // Check if job already saved for this user (no index needed)
-    const existingJob = await SavedJob.findOne({
-      userId: userId,
+    // Vérifie si le job recommandé existe déjà
+    const existingRecommended = await SavedJob.findOne({
+      userId,
       jobId: job.jobId,
-      title: job.title,
-      company: job.company
+      recommended: true
     });
 
-    if (existingJob) {
-      return res.status(200).json({
-        message: 'Job already saved',
-        job: existingJob,
-        exists: true
-      });
+    if (existingRecommended) {
+      // Met à jour le champ favorited à true
+      existingRecommended.favorited = true;
+      await existingRecommended.save();
+      return res.status(200).json({ message: 'Job recommandé mis en favori', job: existingRecommended });
     }
 
-    // Save new job
-    const savedJob = await SavedJob.create({
+    // Sinon, on vérifie s'il est déjà favori (même si non recommandé)
+    const alreadySaved = await SavedJob.findOne({
+      userId,
+      jobId: job.jobId
+    });
+
+    if (alreadySaved) {
+      return res.status(409).json({ message: 'Job déjà sauvegardé' });
+    }
+
+    // Crée une nouvelle entrée si pas encore sauvegardée
+    const newSavedJob = await SavedJob.create({
+      userId,
       jobId: job.jobId,
       title: job.title,
       company: job.company,
-      location: job.location || null,
-      description: job.description || null,
-      salary: job.salary || null,
-      url: job.url || null,
-      datePosted: job.datePosted || new Date(),
-      jobType: job.jobType || null,
-      source: job.source || 'unknown',
-      userId: userId,
-      recommended: job.recommended || false,
-      savedAt: new Date()
+      location: job.location || '',
+      description: job.description || '',
+      salary: job.salary || '',
+      url: job.url || '',
+      datePosted: job.datePosted ? new Date(job.datePosted) : null,
+      jobType: job.jobType || '',
+      source: job.source || '',
+      favorited: true,
+      recommended: false // car c'est un nouveau job ajouté par l'utilisateur
     });
 
-    return res.status(201).json({
-      message: 'Job saved successfully',
-      job: savedJob,
-      exists: false
-    });
+    res.status(201).json(newSavedJob);
 
   } catch (error) {
-    console.error('Error saving job:', error);
-    return res.status(500).json({
-      error: 'Failed to save job',
-      details: error.message
-    });
+    console.error("Erreur lors de l'enregistrement du job :", error);
+    res.status(500).json({ error: 'Erreur interne du serveur', details: error.message });
   }
 });
+
 app.get('/api/jobs/saved/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -1062,14 +1058,24 @@ app.get('/api/jobs/saved/:userId', async (req, res) => {
       });
     }
 
-    const savedJobs = await SavedJob.find({ userId });
+    // Ne récupérer que les jobs où favorited = true
+    const savedJobs = await SavedJob.find({
+      userId,
+      favorited: true
+    });
+
+    if (!savedJobs || savedJobs.length === 0) {
+      return res.status(404).json({ message: "Aucun job favori trouvé pour cet utilisateur" });
+    }
 
     res.status(200).json(savedJobs);
   } catch (error) {
-    console.error('Erreur lors de la récupération des jobs enregistrés :', error);
-    res.status(500).json({ error: error.message });
+    console.error("Erreur lors de la récupération des jobs favoris :", error);
+    res.status(500).json({ error: 'Erreur interne du serveur', details: error.message });
   }
 });
+
+
 app.delete("/api/jobs/saved/:userId/:jobId", async (req, res) => {
   try {
     const { userId, jobId } = req.params

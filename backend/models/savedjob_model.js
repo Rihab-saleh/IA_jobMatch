@@ -12,6 +12,10 @@ const SavedJobSchema = new mongoose.Schema({
   datePosted: { type: Date },
   jobType: { type: String },
   source: { type: String },
+  favorited: {
+    type: Boolean,
+    default: false
+  },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   recommended: { type: Boolean, default: false }, // New field
   savedAt: { type: Date, default: Date.now }

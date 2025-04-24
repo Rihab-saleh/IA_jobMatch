@@ -343,7 +343,28 @@ const getUserRecommendations = async (req, res) => {
     res.status(200).json(recommendations);
   });
 };
+const handlePublicReactivateRequest = async (req, res) => {
+  try {
+    const { identifier, reason } = req.body; // Changé pour utiliser un identifiant générique
 
+    if (!identifier || !reason) {
+      return res.status(400).json({
+        success: false,
+        message: "Identifier and reason are required"
+      });
+    }
+
+    const result = await userService.handlePublicReactivateRequest(identifier, reason);
+    res.status(200).json(result);
+
+  } catch (error) {
+    console.error('Reactivation Error:', error);
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
 const requestAccountStatusChange = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -614,6 +635,7 @@ module.exports = {
   getUserJobs,
   getUserRecommendations,
   requestAccountStatusChange,
+  handlePublicReactivateRequest,
   uploadProfilePicture,
   getProfilePicture,
   deleteProfilePicture,

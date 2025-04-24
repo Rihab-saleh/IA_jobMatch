@@ -21,6 +21,10 @@ const publicRoutes = new Set([
   { path: /^\/api\/users\/recommendations\/[^/]+$/, method: "GET" },
   { path: /^\/api\/users\/formations\/[^/]+$/, method: "GET" },
   { path: /^\/api\/users\/experiences\/[^/]+$/, method: "GET" },
+  { 
+    path: /^\/api\/users\/account\/reactivate-request$/, 
+    method: "POST" 
+  }
 ]);
 
 /**
