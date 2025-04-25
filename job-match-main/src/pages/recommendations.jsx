@@ -37,10 +37,11 @@ export default function RecommendationsPage() {
 
       toast.info("Generating recommendations...", { duration: 3000 })
 
-      const response = recommendationType === 'saved' 
-        ? await recommendationService.getSavedJobRecommendations(userId)
-        : await recommendationService.getRecommendationsForUser(userId)
-
+      let response = await recommendationService.getSavedJobRecommendations(userId)
+      if (!response.savedJobs) {
+        console.log("savedJobs", response.savedJobs);
+        response = await recommendationService.getRecommendationsForUser(userId)
+      }
       let recommendationsData = []
       
       if (response?.data?.recommendations) {
@@ -52,7 +53,7 @@ export default function RecommendationsPage() {
       } else if (Array.isArray(response)) {
         recommendationsData = response
       }
-
+      console.log("recommendationsData", recommendationsData);
       if (recommendationsData.length > 0) {
         const markedJobs = recommendationsData.map(job => ({
           ...job,

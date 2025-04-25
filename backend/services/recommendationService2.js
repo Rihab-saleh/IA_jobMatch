@@ -1,8 +1,13 @@
 const axios = require('axios');
+const cron = require('node-cron');
 const SavedJob = require('../models/savedjob_model');
 const userService = require('./userService');
 const { searchJobs } = require('./jobApiService');
+const AdminConfig = require('../models/adminConfig_model');
 
+/**
+ * Extrait les compétences significatives à partir d'un texte.
+ */
 function extractCompetencies(text) {
   const stopWords = new Set(['the', 'and', 'with', 'using', 'for', 'this']);
   return [...new Set(
@@ -11,10 +16,17 @@ function extractCompetencies(text) {
   )];
 }
 
+/**
+ * Génère des recommandations d'emploi personnalisées pour un utilisateur.
+ */
 async function getRecommendationsForUser(userId) {
   try {
     const userProfile = await userService.getUserProfile(userId);
     if (!userProfile) throw new Error("Utilisateur non trouvé");
+
+    const config = await AdminConfig.findOne().sort({ updatedAt: -1 });
+    const llmModel = config?.llmModel || 'mistral';
+    const sources = config?.allowedApiSources ;
 
     const jobTitle = userProfile.jobTitle || '';
     const location = userProfile.location || '';
@@ -22,18 +34,10 @@ async function getRecommendationsForUser(userId) {
     const experiencesText = userProfile.experiences?.[0]?.description || '';
     const experienceTerms = extractCompetencies(experiencesText);
     const competencies = [...skills, ...experienceTerms];
-
     const query = [jobTitle, ...skills].filter(Boolean).join(" ");
 
-    const jobData = await searchJobs({
-      query,
-      location,
-      limit: 300,
-      apiSources: ["adzuna", "reed", "apijobs", "jooble", "findwork", "remotive", "scraped"]
-    });
-
+    const jobData = await searchJobs({ query, location, limit: 300, apiSources: sources });
     const allJobs = jobData.jobs || [];
-
     const filteredJobs = allJobs.filter(job => {
       const jobLocation = (job.location?.name || job.location || '').toLowerCase();
       return (
@@ -45,29 +49,18 @@ async function getRecommendationsForUser(userId) {
     if (filteredJobs.length === 0) return [];
 
     let prompt = `You are a career matching assistant. Analyze the following profile and job listings:
-
 User Profile:
 - Job Title: ${jobTitle}
 - Location: ${location}
 - Skills: ${skills.join(', ')}
 - Experience Summary: ${experiencesText.substring(0, 200)}
-
-Jobs:
-`;
+Jobs:`;
 
     filteredJobs.forEach((job, index) => {
-      prompt += `
----
-Job #${index}
-Title: ${job.title}
-Company: ${job.company || 'N/A'}
-Description: ${job.description?.substring(0, 300)?.replace(/\n/g, ' ') || 'No description'}
-Skills Required: ${job.skills?.join(', ') || 'Not specified'}
-`;
+      prompt += `\n---\nJob #${index}\nTitle: ${job.title}\nCompany: ${job.company || 'N/A'}\nDescription: ${job.description?.substring(0, 300)?.replace(/\n/g, ' ') || 'No description'}\nSkills Required: ${job.skills?.join(', ') || 'Not specified'}`;
     });
 
-    prompt += `
-Return ONLY a JSON array of recommended jobs like:
+    prompt += `\nReturn ONLY a JSON array of recommended jobs like:
 [
   {
     "jobIndex": 0,
@@ -79,7 +72,7 @@ Only include jobs with matchPercentage >= 65.`;
 
     const response = await axios.post('http://localhost:11434/api/generate', {
       prompt,
-      model: 'mistral:instruct',
+      model: llmModel,
       stream: false
     });
 
@@ -88,7 +81,6 @@ Only include jobs with matchPercentage >= 65.`;
     if (!match) throw new Error("Réponse IA invalide : aucun tableau JSON trouvé.");
 
     const recommendations = JSON.parse(match[0]);
-
     const validRecommendations = recommendations
       .filter(r => r.matchPercentage >= 65)
       .map(r => {
@@ -99,9 +91,7 @@ Only include jobs with matchPercentage >= 65.`;
           recommended: true,
           matchPercentage: r.matchPercentage,
           matchReason: r.matchReason,
-          skillMatches: skills.filter(skill =>
-            job.description?.toLowerCase().includes(skill.toLowerCase())
-          )
+          skillMatches: skills.filter(skill => job.description?.toLowerCase().includes(skill.toLowerCase()))
         };
       })
       .filter(Boolean)
@@ -110,56 +100,90 @@ Only include jobs with matchPercentage >= 65.`;
     return validRecommendations;
 
   } catch (error) {
-    console.error('[ERROR] getRecommendationsForUser:', error.message, error.stack);
+    console.error('[ERROR] getRecommendationsForUser:', error.message);
     throw error;
   }
 }
 
+/**
+ * Enregistre les emplois recommandés pour un utilisateur.
+ */
 async function saveRecommendedJobs(userId, jobs) {
-  try {
-    for (const job of jobs) {
-      const jobId = job.id || job.url || `${job.title}-${job.company}`;
-      await SavedJob.findOneAndUpdate(
-        { jobId, userId },
-        {
-          jobId,
-          title: job.title,
-          company: job.company,
-          location: job.location?.name || job.location,
-          description: job.description,
-          salary: job.salary,
-          url: job.url,
-          datePosted: job.datePosted,
-          jobType: job.jobType,
-          source: job.source,
-          userId: userId,
-          recommended: true,
-          savedAt: new Date()
-        },
-        { upsert: true, new: true }
-      );
+  for (const job of jobs) {
+    const jobId = job.id || job.url || `${job.title}-${job.company}`;
+    
+    // 🛠️ Corriger le format de la date
+    let datePosted = null;
+    if (job.datePosted) {
+      if (typeof job.datePosted === 'string') {
+        // Convertir la date du format "DD/MM/YYYY" vers un objet Date
+        const [day, month, year] = job.datePosted.split('/');
+        if (day && month && year) {
+          datePosted = new Date(`${year}-${month}-${day}`);
+        }
+      } else {
+        // Si c'est déjà une date JS valide
+        datePosted = new Date(job.datePosted);
+      }
     }
-  } catch (error) {
-    console.error('[ERROR] saveRecommendedJobs:', error.message, error.stack);
-    throw error;
+
+    await SavedJob.findOneAndUpdate(
+      { jobId, userId },
+      {
+        jobId,
+        title: job.title,
+        company: job.company,
+        location: job.location?.name || job.location,
+        description: job.description,
+        salary: job.salary,
+        url: job.url,
+        datePosted: datePosted,
+        jobType: job.jobType,
+        source: job.source,
+        userId,
+        matchPercentage: job.matchPercentage,
+        recommended: true,
+        savedAt: new Date()
+      },
+      { upsert: true, new: true }
+    );
   }
 }
 
+
+/**
+ * Récupère les emplois recommandés déjà enregistrés.
+ */
 async function getSavedJobRecommendations(userId) {
-  try {
-    return await SavedJob.find({
-      userId,
-      recommended: true
-    }).sort({ datePosted: -1 });
-  } catch (error) {
-    console.error('[ERROR] getSavedJobRecommendations:', error.message, error.stack);
-    throw error;
-  }
+  return await SavedJob.find({ userId, recommended: true }).sort({ savedAt: -1 });
+}
+
+/**
+ * Planifie une tâche CRON pour générer des recommandations automatiquement.
+ */
+async function scheduleRecommendations() {
+  const config = await AdminConfig.findOne().sort({ updatedAt: -1 });
+  const dailyTime = config?.dailyRunTime || '00:00';
+  const [hour, minute] = dailyTime.split(':').map(Number);
+  const cronExpr = `${minute} ${hour} * * *`;
+
+  cron.schedule(cronExpr, async () => {
+    console.log(`[CRON] Running recommendations for all users at ${dailyTime}`);
+    const users = await userService.getAllUsers();
+    for (const user of users) {
+      try {
+        const jobs = await getRecommendationsForUser(user._id);
+        await saveRecommendedJobs(user._id, jobs);
+      } catch (err) {
+        console.error(`[ERROR] Recommendation failed for user ${user._id}:`, err.message);
+      }
+    }
+  });
 }
 
 module.exports = {
   getRecommendationsForUser,
   saveRecommendedJobs,
   getSavedJobRecommendations,
-  extractCompetencies
+  scheduleRecommendations
 };

@@ -1035,6 +1035,8 @@ app.post('/api/jobs/save', async (req, res) => {
       datePosted: job.datePosted ? new Date(job.datePosted) : null,
       jobType: job.jobType || '',
       source: job.source || '',
+      matchPercentage: job.matchPercentage || 0,
+      skills: job.skills || [],
       favorited: true,
       recommended: false // car c'est un nouveau job ajouté par l'utilisateur
     });

@@ -9,13 +9,18 @@ const SavedJobSchema = new mongoose.Schema({
   description: { type: String },
   salary: { type: String },
   url: { type: String },
-  datePosted: { type: Date },
-  jobType: { type: String },
+  datePosted: {
+    type: Date,
+    required: false
+  },
+    jobType: { type: String },
   source: { type: String },
   favorited: {
     type: Boolean,
     default: false
   },
+  skills: { type: [String] },
+  matchPercentage: { type: Number, default: 0 },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   recommended: { type: Boolean, default: false }, // New field
   savedAt: { type: Date, default: Date.now }
