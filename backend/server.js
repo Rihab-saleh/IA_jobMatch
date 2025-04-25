@@ -10,7 +10,7 @@ const authRoutes = require("./routes/auth.routes");
 const { authMiddleware, adminMiddleware } = require("./middlewares/authMiddleware");
 const notificationRoutes = require("./routes/notificationRoutes");
 const recommendation = require("./services/index");
-
+const axios = require('axios');
 const bcrypt = require("bcryptjs");
 const Person = require("./models/person_model");
 const Admin = require("./models/admin_model");
@@ -117,9 +117,37 @@ app.use((req, res, next) => {
   res.status(404).json({ error: "Route not found" });
 });
 
+
+
+function keepOllamaModelAlive({ model, intervalMs = 60 * 1000 }) {
+  const ollamaUrl = 'http://127.0.0.1:11434/api/generate';
+
+
+  const pingModel = async () => {
+    try {
+      await axios.post(ollamaUrl, {
+        prompt: 'ping',
+        model,
+        stream: false,
+        options: { num_predict: 1 }
+      });
+      console.log(`[Ollama] Keep-alive ping successful for model "${model}"`);
+    } catch (error) {
+      console.warn(`[Ollama] Keep-alive ping failed: ${error.message}`);
+    }
+  };
+
+  // Initial ping
+  pingModel();
+
+  // Repeat at interval
+  setInterval(pingModel, intervalMs);
+}
+
 // Démarrer le serveur
 app.listen(config.app.port, () => {
   console.log(`Server is running on port ${config.app.port}`);
+  keepOllamaModelAlive({ model: 'mistral', intervalMs: 60_000 })
   if (!config.app.port) {
     console.error("Error: Application port is not defined in the configuration.");
     process.exit(1);
