@@ -1,5 +1,4 @@
 const axios = require('axios');
-const cron = require('node-cron');
 const SavedJob = require('../models/savedjob_model');
 const userService = require('./userService');
 const { searchJobs } = require('./jobApiService');
@@ -158,32 +157,10 @@ async function getSavedJobRecommendations(userId) {
   return await SavedJob.find({ userId, recommended: true }).sort({ savedAt: -1 });
 }
 
-/**
- * Planifie une tâche CRON pour générer des recommandations automatiquement.
- */
-async function scheduleRecommendations() {
-  const config = await AdminConfig.findOne().sort({ updatedAt: -1 });
-  const dailyTime = config?.dailyRunTime || '00:00';
-  const [hour, minute] = dailyTime.split(':').map(Number);
-  const cronExpr = `${minute} ${hour} * * *`;
 
-  cron.schedule(cronExpr, async () => {
-    console.log(`[CRON] Running recommendations for all users at ${dailyTime}`);
-    const users = await userService.getAllUsers();
-    for (const user of users) {
-      try {
-        const jobs = await getRecommendationsForUser(user._id);
-        await saveRecommendedJobs(user._id, jobs);
-      } catch (err) {
-        console.error(`[ERROR] Recommendation failed for user ${user._id}:`, err.message);
-      }
-    }
-  });
-}
 
 module.exports = {
   getRecommendationsForUser,
   saveRecommendedJobs,
-  getSavedJobRecommendations,
-  scheduleRecommendations
+  getSavedJobRecommendations
 };

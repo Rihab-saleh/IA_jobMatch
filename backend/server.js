@@ -4,12 +4,15 @@ const cors = require("cors");
 const config = require("./config/config");
 const userRoutes = require("./routes/userRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const { startScheduledRecommendations } = require('./services/recommendationScheduler'); 
 const recommendationRoutes = require("./routes/recommendationRoutes");
 const jobRoutes = require("./routes/jobRoutes");
 const authRoutes = require("./routes/auth.routes");
 const { authMiddleware, adminMiddleware } = require("./middlewares/authMiddleware");
 const notificationRoutes = require("./routes/notificationRoutes");
 const recommendation = require("./services/index");
+const AdminConfig = require("./models/adminConfig_model");
+
 const axios = require('axios');
 const bcrypt = require("bcryptjs");
 const Person = require("./models/person_model");
@@ -25,7 +28,7 @@ app.use(
     origin: ["http://localhost:5173", "http://localhost:3000", "http://192.168.1.100:5173"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With",'X-Ollama-Response-Time'],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With", 'X-Ollama-Response-Time'],
   })
 );
 
@@ -103,11 +106,10 @@ connectDB()
 app.use("/api/auth", authRoutes);
 app.use("/api/users", authMiddleware, userRoutes);
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
-app.use("/api/recommendations",authMiddleware,recommendationRoutes);
+app.use("/api/recommendations", authMiddleware, recommendationRoutes);
 app.use("/api/jobs", authMiddleware, jobRoutes);
 app.use("/api/notifications", authMiddleware, notificationRoutes);
 app.use("/api/recommendation", recommendation);
-
 
 // Servir les fichiers statiques (ex. : uploads)
 app.use("/uploads", express.static(path.join(__dirname, "../assets/uploads/profiles")));
@@ -116,23 +118,59 @@ app.use("/uploads", express.static(path.join(__dirname, "../assets/uploads/profi
 app.use((req, res, next) => {
   res.status(404).json({ error: "Route not found" });
 });
+startScheduledRecommendations();
+let modelName = 'llama2'; // Default model
+let recommendationRunTime = '00:00'; 
+// Fonction pour récupérer la configuration de l'admin
+async function fetchAdminConfig() {
+  try {
+    const configData = await AdminConfig.findOne();
+    if (configData) {
+      if (configData.llmModel) {
+        modelName = configData.llmModel;
+        console.log(`Model selected from AdminConfig: ${modelName}`);
+      } else {
+        modelName = 'defaultModel';
+        console.warn("No model found in AdminConfig, using default model");
+      }
 
+      if (configData.dailyRunTime) {
+        recommendationRunTime = configData.dailyRunTime;
+        console.log(`Recommendation scheduler time set to: ${recommendationRunTime}`);
+      } else {
+        recommendationRunTime = '00:00';
+        console.warn("No dailyRunTime found in AdminConfig, using default 00:00");
+      }
+    } else {
+      modelName = 'defaultModel';
+      recommendationRunTime = '00:00';
+      console.warn("No AdminConfig document found, using defaults");
+    }
+  } catch (error) {
+    console.error("Error fetching admin configuration:", error.message);
+    modelName = 'defaultModel';
+    recommendationRunTime = '00:00';
+  }
+}
 
-
+// Keep Ollama model alive
 function keepOllamaModelAlive({ model, intervalMs = 60 * 1000 }) {
   const ollamaUrl = 'http://127.0.0.1:11434/api/generate';
-
 
   const pingModel = async () => {
     try {
       await axios.post(ollamaUrl, {
         prompt: 'ping',
-        model,
+        model: modelName,
         stream: false,
         options: { num_predict: 1 }
       });
+      console.log(`Model being used: ${modelName}`);
+
       console.log(`[Ollama] Keep-alive ping successful for model "${model}"`);
     } catch (error) {
+      console.log(`Model being used: ${modelName}`);
+
       console.warn(`[Ollama] Keep-alive ping failed: ${error.message}`);
     }
   };
@@ -144,12 +182,19 @@ function keepOllamaModelAlive({ model, intervalMs = 60 * 1000 }) {
   setInterval(pingModel, intervalMs);
 }
 
-// Démarrer le serveur
-app.listen(config.app.port, () => {
+
+app.listen(config.app.port, async () => {
   console.log(`Server is running on port ${config.app.port}`);
-  keepOllamaModelAlive({ model: 'mistral', intervalMs: 60_000 })
+  if (!config.app.port) {
+    console.error("Error: Application port is not defined in the configuration.");
+    process.exit(1);
+  }
+  await fetchAdminConfig();
+  keepOllamaModelAlive({ model: modelName, intervalMs: 60_000 });
   if (!config.app.port) {
     console.error("Error: Application port is not defined in the configuration.");
     process.exit(1);
   }
 });
+
+

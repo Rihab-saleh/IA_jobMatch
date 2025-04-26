@@ -74,5 +74,12 @@ export const adminService = {
       params: { page, limit, search: encodedSearch },
     })
   },
+  getAdminConfig() {
+    return api.get("/admin/admin-config")
+  },
+
+  updateAdminConfig(configData) {
+    return api.put("/admin/admin-config", configData)
+  },
 }
 
