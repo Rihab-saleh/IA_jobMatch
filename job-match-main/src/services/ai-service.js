@@ -142,7 +142,7 @@ export async function enhanceContent(content, contentType) {
         },
         body: JSON.stringify({
             prompt: prompt,
-            model: "mistral:instruct",
+            model: "mistral",
             stream: false,
         }),
     });
@@ -156,8 +156,6 @@ export async function enhanceContent(content, contentType) {
     // Use the extractJsonFromResponse function to handle the response
     return extractJsonFromResponse(data.response);
 }
-
-
 export async function reviewCV(cvData) {
     if (!cvData) {
         throw new Error("CV data is required");
@@ -165,7 +163,7 @@ export async function reviewCV(cvData) {
 
     // Create a more concise prompt that still gets the job done
     const prompt = `
-As an expert CV reviewer with 15+ years experience, review this CV and provide feedback in JSON format ONLY:
+As an expert CV reviewer with 15+ years experience, review this CV and provide feedback. Be extremely severe, hard, and strict in your evaluation. Do not give easy scores. Respond in JSON format ONLY:
 
 CV DATA:
 Name: ${cvData.personalInfo.firstName} ${cvData.personalInfo.lastName}
@@ -219,13 +217,13 @@ Return ONLY a JSON object with these properties:
 DO NOT include any introductory text, explanations, or markdown formatting. Respond ONLY with the JSON object.
 `;
 
-    // Set up a timeout of 301000000 seconds
-    const TIMEOUT_MS = 30000000;
+    // Set up a timeout of 300000 milliseconds
+    const TIMEOUT_MS = 300000;
     
     // Create the fallback response
     const fallbackResponse = {
-        overallScore: 65,
-        atsScore: 70,
+        overallScore: 50,
+        atsScore: 55,
         atsIssues: [
             {
                 description: "Unable to complete detailed analysis within the time limit.",
@@ -233,13 +231,13 @@ DO NOT include any introductory text, explanations, or markdown formatting. Resp
             },
         ],
         sectionScores: [
-            { name: "Personal Information", score: 70 },
-            { name: "Professional Summary", score: 65 },
-            { name: "Work Experience", score: 60 },
-            { name: "Education", score: 70 },
-            { name: "Skills", score: 65 },
-            { name: "Languages", score: 75 },
-            { name: "Certifications", score: 60 },
+            { name: "Personal Information", score: 60 },
+            { name: "Professional Summary", score: 50 },
+            { name: "Work Experience", score: 45 },
+            { name: "Education", score: 55 },
+            { name: "Skills", score: 50 },
+            { name: "Languages", score: 60 },
+            { name: "Certifications", score: 45 },
         ],
         keyFindings: [
             {
@@ -251,8 +249,8 @@ DO NOT include any introductory text, explanations, or markdown formatting. Resp
         sectionAnalysis: [
             {
                 name: "Overall CV",
-                score: 65,
-                overview: "Your CV needs some improvements to be more competitive.",
+                score: 50,
+                overview: "Your CV needs significant improvements to be competitive.",
                 strengths: [],
                 issues: [
                     {
@@ -277,7 +275,7 @@ DO NOT include any introductory text, explanations, or markdown formatting. Resp
     try {
         // Create a timeout promise
         const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error("CV review timed out after ******* seconds")), TIMEOUT_MS);
+            setTimeout(() => reject(new Error("CV review timed out after 300000 milliseconds")), TIMEOUT_MS);
         });
         
         // Create the API call promise
@@ -289,9 +287,8 @@ DO NOT include any introductory text, explanations, or markdown formatting. Resp
                 },
                 body: JSON.stringify({
                     prompt: prompt,
-                    model: "mistral:instruct",
+                    model: "mistral",
                     stream: false,
-                    // Add additional parameters to improve response time
                     temperature: 0.3, // Lower temperature for more focused responses
                     max_tokens: 2048, // Limit the response length
                 }),
@@ -304,16 +301,13 @@ DO NOT include any introductory text, explanations, or markdown formatting. Resp
             const data = await response.json();
             const responseText = data.response;
             
-            // Better JSON extraction logic
+            // Extract JSON from the response
             let jsonString = responseText;
-            
-            // Check if the response is wrapped in markdown code blocks
             const jsonBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
             if (jsonBlockMatch) {
                 jsonString = jsonBlockMatch[1];
             }
             
-            // Remove any leading/trailing non-JSON text
             if (jsonString.indexOf('{') > 0) {
                 jsonString = jsonString.substring(jsonString.indexOf('{'));
             }
@@ -324,22 +318,25 @@ DO NOT include any introductory text, explanations, or markdown formatting. Resp
 
             const result = JSON.parse(jsonString);
             
-            // Basic validation of the result structure
             if (!result.overallScore || !Array.isArray(result.sectionScores)) {
                 throw new Error("Invalid response structure");
             }
             
+            // Calculate the overall score based on section scores
+            const totalScore = result.sectionScores.reduce((sum, section) => sum + section.score, 0);
+            const averageScore = Math.round(totalScore / result.sectionScores.length);
+            result.overallScore = averageScore;
+            
             return result;
         })();
         
-        // Race between the API call and the timeout
         return await Promise.race([apiCallPromise, timeoutPromise])
             .catch(error => {
                 console.error("CV review error:", error.message);
-                return error;
+                return fallbackResponse;
             });
     } catch (error) {
         console.error("Error processing CV review:", error);
-        return error;
+        return fallbackResponse;
     }
 }
