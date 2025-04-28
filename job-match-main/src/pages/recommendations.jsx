@@ -1,110 +1,113 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useAuth } from "../contexts/auth-context"
-import { recommendationService } from "../services/recommendation-service"
-import { Button } from "../components/ui/button"
-import { Badge } from "../components/ui/badge"
-import { Bookmark, Sparkles, MapPin, Briefcase, DollarSign, ExternalLink, Loader, AlertTriangle } from "lucide-react"
-import { useNavigate } from "react-router-dom"
-import { toast } from "sonner"
+import { useEffect, useState } from "react";
+import { useAuth } from "../contexts/auth-context";
+import { recommendationService } from "../services/recommendation-service";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Bookmark, Sparkles, MapPin, Briefcase, DollarSign, ExternalLink, Loader, AlertTriangle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function RecommendationsPage() {
-  const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuth()
-  const [recommendations, setRecommendations] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
-  const [savedJobs, setSavedJobs] = useState([])
-  const [savingJobs, setSavingJobs] = useState({})
-  const [recommendationType, setRecommendationType] = useState('saved')
+  const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
+  const [recommendations, setRecommendations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  const [savedJobs, setSavedJobs] = useState([]);
+  const [savingJobs, setSavingJobs] = useState({});
+  const [recommendationType, setRecommendationType] = useState("saved");
 
   useEffect(() => {
     if (isAuthenticated && user?._id) {
-      fetchRecommendations(user._id)
-      fetchSavedJobs(user._id)
+      fetchSavedJobs(user._id).then(() => {
+        fetchRecommendations(user._id);
+      });
     }
-  }, [isAuthenticated, user, recommendationType])
+  }, [isAuthenticated, user, recommendationType]);
 
   const fetchRecommendations = async (userId) => {
     try {
-      setLoading(true)
-      setError(null)
-      setRecommendations([])
-      setCurrentPage(1)
+      setLoading(true);
+      setError(null);
+      setRecommendations([]);
+      setCurrentPage(1);
 
-      toast.info("Generating recommendations...", { duration: 3000 })
+      toast.info("Generating recommendations...", { duration: 3000 });
 
-      let response = await recommendationService.getSavedJobRecommendations(userId)
-      if (!response.savedJobs) {
-        console.log("savedJobs", response.savedJobs);
-        response = await recommendationService.getRecommendationsForUser(userId)
-      }
-      let recommendationsData = []
-      
-      if (response?.data?.recommendations) {
-        recommendationsData = response.data.recommendations
-      } else if (response?.recommendations) {
-        recommendationsData = response.recommendations
-      } else if (response?.savedJobs) {
-        recommendationsData = response.savedJobs
-      } else if (Array.isArray(response)) {
-        recommendationsData = response
+      let response;
+      if (recommendationType === "saved") {
+        response = await recommendationService.getSavedJobRecommendations(userId);
+      } else {
+        response = await recommendationService.getRecommendationsForUser(userId);
       }
-      console.log("recommendationsData", recommendationsData);
+
+      let recommendationsData = [];
+      if (response?.data?.recommendations) {
+        recommendationsData = response.data.recommendations;
+      } else if (response?.recommendations) {
+        recommendationsData = response.recommendations;
+      } else if (response?.savedJobs) {
+        recommendationsData = response.savedJobs;
+      } else if (Array.isArray(response)) {
+        recommendationsData = response;
+      }
+
       if (recommendationsData.length > 0) {
-        const markedJobs = recommendationsData.map(job => ({
+        const markedJobs = recommendationsData.map((job) => ({
           ...job,
           id: job.jobId || job.id || job._id,
-          isSaved: savedJobs.some(savedJob => 
-            savedJob.jobId === (job.jobId || job.id) ||
-            savedJob._id === (job.jobId || job.id))
-        }))
+          isSaved: savedJobs.some(
+            (savedJob) =>
+              savedJob.jobId === (job.jobId || job.id) || savedJob._id === (job.jobId || job.id)
+          ),
+        }));
 
-        setRecommendations(markedJobs)
+        setRecommendations(markedJobs);
       } else {
-        throw new Error("No recommendations found")
+        throw new Error("No recommendations found");
       }
     } catch (error) {
-      console.error("Fetch error:", error)
-      setError(error.message)
-      toast.error("Loading error")
+      console.error("Fetch error:", error);
+      setError(error.message);
+      toast.error("Loading error");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchSavedJobs = async (userId) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/jobs/saved/${userId}`)
-      if (!response.ok) throw new Error("Server error")
-      const data = await response.json()
-      setSavedJobs(data?.savedJobs || data || [])
+      const response = await fetch(`http://localhost:3001/api/jobs/saved/${userId}`);
+      if (!response.ok) throw new Error("Server error");
+      const data = await response.json();
+      setSavedJobs(data?.savedJobs || data || []);
     } catch (error) {
-      console.error("Fetch saved error:", error)
-      toast.error("Error loading saved jobs")
+      console.error("Fetch saved error:", error);
+      toast.error("Error loading saved jobs");
     }
-  }
+  };
 
   const handleToggleSaveJob = async (job) => {
-    if (!user?._id) return toast.error("Please login")
-    if (!job.id) return toast.error("Missing ID")
+    if (!user?._id) return toast.error("Please login");
+    if (!job.id) return toast.error("Missing ID");
 
-    setSavingJobs(prev => ({ ...prev, [job.id]: true }))
+    setSavingJobs((prev) => ({ ...prev, [job.id]: true }));
 
     try {
       if (job.isSaved) {
-        const savedJob = savedJobs.find(sj => sj.jobId === job.id)
+        const savedJob = savedJobs.find((sj) => sj.jobId === job.id);
         await fetch(`http://localhost:3001/api/jobs/saved/${user._id}/${savedJob._id}`, {
-          method: "DELETE"
-        })
-        setSavedJobs(prev => prev.filter(j => j._id !== savedJob._id))
-        setRecommendations(prev => prev.map(j => 
-          j.id === job.id ? { ...j, isSaved: false } : j
-        ))
-        toast.success("Removed from saved jobs")
+          method: "DELETE",
+        });
+        setSavedJobs((prev) => prev.filter((j) => j._id !== savedJob._id));
+        setRecommendations((prev) =>
+          prev.map((j) => (j.id === job.id ? { ...j, isSaved: false } : j))
+        );
+        toast.success("Removed from saved jobs");
       } else {
         const jobData = {
           userId: user._id,
@@ -120,35 +123,40 @@ export default function RecommendationsPage() {
             jobType: job.jobType,
             source: job.source,
             skills: job.skills,
-          }
-        }
+          },
+        };
 
         const response = await fetch("http://localhost:3001/api/jobs/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(jobData)
-        })
+          body: JSON.stringify(jobData),
+        });
 
-        const data = await response.json()
-        setSavedJobs(prev => [...prev, data.job || data])
-        setRecommendations(prev => prev.map(j => 
-          j.id === job.id ? { ...j, isSaved: true } : j
-        ))
-        toast.success("Successfully saved")
+        const data = await response.json();
+        setSavedJobs((prev) => [...prev, data.job || data]);
+        setRecommendations((prev) =>
+          prev.map((j) => (j.id === job.id ? { ...j, isSaved: true } : j))
+        );
+        toast.success("Successfully saved");
       }
     } catch (error) {
-      console.error("Save error:", error)
-      toast.error(error.message || "Error")
+      console.error("Save error:", error);
+      toast.error(error.message || "Error");
     } finally {
-      setSavingJobs(prev => ({ ...prev, [job.id]: false }))
+      setSavingJobs((prev) => ({ ...prev, [job.id]: false }));
     }
-  }
+  };
+
+  const handleViewNewRecommendations = async () => {
+    setRecommendationType("general");
+    await fetchRecommendations(user._id);
+  };
 
   const paginatedData = recommendations.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
-  )
-  const totalPages = Math.ceil(recommendations.length / itemsPerPage)
+  );
+  const totalPages = Math.ceil(recommendations.length / itemsPerPage);
 
   if (loading) {
     return (
@@ -158,7 +166,7 @@ export default function RecommendationsPage() {
           <p className="text-gray-600">Finding the best opportunities...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -171,7 +179,7 @@ export default function RecommendationsPage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -185,14 +193,10 @@ export default function RecommendationsPage() {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => setRecommendationType(prev => 
-                prev === 'saved' ? 'general' : 'saved'
-              )}
+              onClick={handleViewNewRecommendations}
               className="border-purple-200 text-purple-700"
             >
-              {recommendationType === 'saved' 
-                ? "View general recommendations" 
-                : "View saved jobs"}
+              View New Recommendations
             </Button>
           </div>
         </div>
@@ -205,7 +209,7 @@ export default function RecommendationsPage() {
         ) : (
           <>
             <div className="space-y-6">
-              {paginatedData.map(job => (
+              {paginatedData.map((job) => (
                 <article
                   key={job.id}
                   className="bg-white rounded-xl border p-6 shadow-sm hover:shadow-lg transition-shadow"
@@ -258,18 +262,17 @@ export default function RecommendationsPage() {
                     </div>
                   )}
 
-                  <div className="text-gray-700 mb-4" dangerouslySetInnerHTML={{ 
-                    __html: job.description?.substring(0, 265) + (job.description?.length > 265 ? "..." : "")
-                  }} />
+                  <div
+                    className="text-gray-700 mb-4"
+                    dangerouslySetInnerHTML={{
+                      __html: job.description?.substring(0, 265) + (job.description?.length > 265 ? "..." : ""),
+                    }}
+                  />
 
                   {job.skills?.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-4">
                       {job.skills.map((skill, index) => (
-                        <Badge 
-                          key={index} 
-                          variant="outline" 
-                          className="border-purple-200 text-purple-700"
-                        >
+                        <Badge key={index} variant="outline" className="border-purple-200 text-purple-700">
                           {skill}
                         </Badge>
                       ))}
@@ -279,15 +282,18 @@ export default function RecommendationsPage() {
                   <div className="flex flex-wrap gap-3">
                     <Button
                       variant="ghost"
-                      onClick={() => navigate("/job-details-view", { state: { job }}
-                      )}
+                      onClick={() =>
+                        navigate("/job-details-view", {
+                          state: { job },
+                        })
+                      }
                       className="text-purple-700 hover:bg-purple-50"
                     >
                       View details
                     </Button>
-                    <Button 
-                      asChild 
-                      variant="outline" 
+                    <Button
+                      asChild
+                      variant="outline"
                       className="border-purple-300 text-purple-700 hover:bg-purple-50"
                     >
                       <a
@@ -310,7 +316,7 @@ export default function RecommendationsPage() {
                 <nav className="flex gap-2 items-center">
                   <Button
                     variant="outline"
-                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                     disabled={currentPage === 1}
                   >
                     Previous
@@ -320,7 +326,7 @@ export default function RecommendationsPage() {
                   </span>
                   <Button
                     variant="outline"
-                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                    onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                     disabled={currentPage === totalPages}
                   >
                     Next
@@ -332,5 +338,5 @@ export default function RecommendationsPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

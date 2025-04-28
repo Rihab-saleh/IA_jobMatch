@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "../components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
-import { Input } from "../components/ui/input"
+import { useState, useEffect } from "react";
+import { Button } from "../components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Input } from "../components/ui/input";
 import {
   Briefcase,
   Search,
@@ -25,23 +25,19 @@ import {
   Save,
   Check,
   Ban,
-} from "lucide-react"
-import { adminService } from "../services/admin-service"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../components/ui/tooltip"
-import { Alert, AlertTitle, AlertDescription } from "../components/ui/alert"
+} from "lucide-react";
+import { adminService } from "../services/admin-service";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../components/ui/tooltip";
+import { Alert, AlertTitle, AlertDescription } from "../components/ui/alert";
 
-
-
-// Update the Modal component to make it more visually clear
 function Modal({ isOpen, onClose, children }) {
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div
       className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-200"
       onClick={(e) => {
-        // Close when clicking the backdrop, but not when clicking the modal content
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
@@ -57,23 +53,454 @@ function Modal({ isOpen, onClose, children }) {
         {children}
       </div>
     </div>
-  )
+  );
 }
 
 function useDebounce(value, delay) {
-  const [debouncedValue, setDebouncedValue] = useState(value)
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
+      setDebouncedValue(value);
+    }, delay);
 
     return () => {
-      clearTimeout(handler)
-    }
-  }, [value, delay])
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
 
-  return debouncedValue
+  return debouncedValue;
+}
+
+function LoadingSpinner() {
+  return (
+    <div className="flex justify-center items-center h-64">
+      <RefreshCw className="h-12 w-12 animate-spin" />
+    </div>
+  );
+}
+
+function StatCard({ title, value, icon }) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        {icon}
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatsOverview({ jobsCount, usersCount, adminsCount, aiModel }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <StatCard title="Total Jobs" value={jobsCount} icon={<Briefcase className="h-4 w-4" />} />
+      <StatCard title="Total Users" value={usersCount} icon={<User className="h-4 w-4" />} />
+      <StatCard title="Total Admins" value={adminsCount} icon={<User className="h-4 w-4" />} />
+      <StatCard title="AI Model" value={aiModel || "Not configured"} icon={<Sparkles className="h-4 w-4" />} />
+    </div>
+  );
+}
+
+function DashboardSection({ title, children, searchValue, onSearch, pagination, actionButton }) {
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+        <h2 className="text-xl font-semibold">{title}</h2>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {onSearch && (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search..."
+                className="pl-9 w-full md:w-[300px]"
+                value={searchValue}
+                onChange={onSearch}
+              />
+            </div>
+          )}
+          {actionButton}
+        </div>
+      </div>
+
+      {children}
+
+      {pagination && (
+        <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="text-sm text-gray-500">
+            Page {pagination.current} of {pagination.total}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={pagination.onPrev} disabled={pagination.current === 1}>
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={pagination.onNext}
+              disabled={pagination.current === pagination.total}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function JobsTable({ jobs, onDelete }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salary</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Posted</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {jobs.length > 0 ? (
+            jobs.map((job) => (
+              <tr key={job.id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <div className="text-sm font-medium text-gray-900">{job.title}</div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{job.company}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{job.location}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">
+                    {job.salary
+                      ? new Intl.NumberFormat("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                      }).format(job.salary)
+                      : "Not specified"}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">
+                    {job.created ? new Date(job.created).toLocaleDateString() : "Unknown"}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span
+                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${job.source === "Adzuna" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
+                      }`}
+                  >
+                    {job.source}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onDelete(job.id)}
+                          className="text-red-600 hover:text-red-900 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Delete job</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                No jobs found
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function UsersTable({ users, onAction }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {users.length > 0 ? (
+            users.map((user) => (
+              <tr key={user._id}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <div className="text-sm font-medium text-gray-900">
+                      {user.firstName} {user.lastName}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{user.email}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span
+                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                      }`}
+                  >
+                    {user.isActive ? "Active" : "Inactive"}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex space-x-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onAction("toggle", user._id)}
+                            className={`${user.isActive
+                              ? "text-amber-600 hover:text-amber-900 hover:bg-amber-50"
+                              : "text-green-600 hover:text-green-900 hover:bg-green-50"
+                              }`}
+                          >
+                            {user.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{user.isActive ? "Deactivate user" : "Activate user"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onAction("delete", user._id)}
+                            className="text-red-600 hover:text-red-900 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Delete user</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                No users found
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function AdminsTable({ admins, onEdit, onDelete }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {admins && admins.length > 0 ? (
+            admins.map((admin) => {
+              if (!admin) return null;
+
+              return (
+                <tr key={admin._id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {admin.firstName || ""} {admin.lastName || ""}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{admin.email || ""}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{admin.age || "Not specified"}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex space-x-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onEdit(admin)}
+                              className="text-blue-600 hover:text-blue-900 hover:bg-blue-50"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Edit admin</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onDelete(admin)}
+                              className="text-red-600 hover:text-red-900 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Delete admin</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })
+          ) : (
+            <tr>
+              <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                No admins found
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function AIConfigForm({ config, onChange, onSubmit, isSaving }) {
+  const handleSourceToggle = (source) => {
+    const newSources = config.allowedApiSources.includes(source)
+      ? config.allowedApiSources.filter(s => s !== source)
+      : [...config.allowedApiSources, source];
+
+    onChange({
+      target: {
+        name: "allowedApiSources",
+        value: newSources
+      }
+    });
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">LLM Model</label>
+          <select
+            name="llmModel"
+            value={config.llmModel}
+            onChange={onChange}
+            className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="mistral">Mistral</option>
+            <option value="llama2">Llama 2</option>
+            <option value="mistral:instruct">Mistral Instruct</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Daily Run Time</label>
+          <input
+            type="time"
+            name="dailyRunTime"
+            value={config.dailyRunTime}
+            onChange={onChange}
+            className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-4">Allowed Job Sources</label>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {['adzuna', 'reed', 'apijobs', 'jooble', 'findwork', 'remotive', 'scraped'].map((source) => (
+            <div key={source} className="flex items-center">
+              <input
+                type="checkbox"
+                id={`source-${source}`}
+                checked={config.allowedApiSources.includes(source)}
+                onChange={() => handleSourceToggle(source)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor={`source-${source}`} className="ml-2 block text-sm text-gray-700 capitalize">
+                {source}
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-4">
+        <Button
+          type="submit"
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Save Configuration
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
+  );
 }
 
 export default function AdminPage() {
@@ -100,6 +527,7 @@ export default function AdminPage() {
     adminsSearchQuery: "",
     loading: true,
     error: null,
+    success: null,
     activeTab: "jobs",
     deleteConfirmOpen: false,
     userToDelete: null,
@@ -116,31 +544,10 @@ export default function AdminPage() {
     },
     statusChangeModalOpen: false,
     userToToggleStatus: null,
-  })
+  });
 
-  useEffect(() => {
-    const fetchAdminConfig = async () => {
-      try {
-        const response = await adminService.getAdminConfig();
-        setState(prev => ({
-          ...prev,
-          adminConfig: response.data || prev.adminConfig
-        }));
-      } catch (err) {
-        console.error("Error fetching admin config:", err);
-      }
-    };
+  const [isSaving, setIsSaving] = useState(false);
 
-    if (state.activeTab === "ia") {
-      fetchAdminConfig();
-    }
-  }, [state.activeTab]);
-
-  const debouncedUsersSearch = useDebounce(state.usersSearchQuery, 500)
-  const debouncedJobsSearch = useDebounce(state.jobsSearchQuery, 500)
-  const debouncedAdminsSearch = useDebounce(state.adminsSearchQuery, 500)
-
-  // Normalisation des données Adzuna
   const normalizeAdzunaJob = (job) => ({
     id: job.id,
     title: job.title,
@@ -153,9 +560,8 @@ export default function AdminPage() {
     sourceUrl: job.redirect_url,
     source: "Adzuna",
     isExternal: true,
-  })
+  });
 
-  // Normalisation des données LinkedIn
   const normalizeLinkedInJob = (job) => ({
     id: job.sourceId || `linkedin-${Math.random().toString(36).substr(2, 9)}`,
     title: job.title,
@@ -168,45 +574,73 @@ export default function AdminPage() {
     sourceUrl: job.sourceUrl,
     source: "LinkedIn",
     isExternal: true,
-  })
+  });
 
-  // Fetch all totals on initial load
+  useEffect(() => {
+    const fetchAdminConfig = async () => {
+      try {
+        const response = await adminService.getAdminConfig();
+        if (response) {
+          setState(prev => ({
+            ...prev,
+            adminConfig: {
+              llmModel: response.llmModel || 'llama2',
+              allowedApiSources: response.allowedApiSources || ['adzuna', 'reed', 'apijobs', 'jooble', 'findwork', 'remotive', 'scraped'],
+              dailyRunTime: response.dailyRunTime || '00:00'
+            }
+          }));
+        }
+      } catch (err) {
+        console.error("Error fetching admin config:", err);
+        setState(prev => ({
+          ...prev,
+          error: "Failed to load AI configuration"
+        }));
+      }
+    };
+
+    if (state.activeTab === "ia") {
+      fetchAdminConfig();
+    }
+  }, [state.activeTab]);
+
+  const debouncedUsersSearch = useDebounce(state.usersSearchQuery, 500);
+  const debouncedJobsSearch = useDebounce(state.jobsSearchQuery, 500);
+  const debouncedAdminsSearch = useDebounce(state.adminsSearchQuery, 500);
+
   useEffect(() => {
     const fetchAllTotals = async () => {
-      setState((prev) => ({ ...prev, loading: true }))
+      setState((prev) => ({ ...prev, loading: true }));
 
       try {
-        // Fetch jobs count
         const [scrapedResponse, externalResponse] = await Promise.all([
           adminService.getAllScrapedJobs({ page: 1, limit: 1 }).catch((err) => {
-            console.error("Error fetching scraped jobs count:", err)
-            return { count: 0 }
+            console.error("Error fetching scraped jobs count:", err);
+            return { count: 0 };
           }),
           adminService.getAllExternalJobs({ page: 1, limit: 1 }).catch((err) => {
-            console.error("Error fetching external jobs count:", err)
-            return { count: 0 }
+            console.error("Error fetching external jobs count:", err);
+            return { count: 0 };
           }),
-        ])
+        ]);
 
-        const totalScrapedJobs = scrapedResponse.count || scrapedResponse.data?.count || 0
-        const totalExternalJobs = externalResponse.count || externalResponse.data?.count || 0
-        const totalJobs = totalScrapedJobs + totalExternalJobs
+        const totalScrapedJobs = scrapedResponse.count || scrapedResponse.data?.count || 0;
+        const totalExternalJobs = externalResponse.count || externalResponse.data?.count || 0;
+        const totalJobs = totalScrapedJobs + totalExternalJobs;
 
-        // Fetch users count
         const usersResponse = await adminService.getAllUsers({ page: 1, limit: 1 }).catch((err) => {
-          console.error("Error fetching users count:", err)
-          return { data: { pagination: { total: 0 } } }
-        })
+          console.error("Error fetching users count:", err);
+          return { data: { pagination: { total: 0 } } };
+        });
 
-        const totalUsers = usersResponse.data?.pagination?.total || 0
+        const totalUsers = usersResponse.data?.pagination?.total || 0;
 
-        // Fetch admins count
         const adminsResponse = await adminService.getAllAdmins().catch((err) => {
-          console.error("Error fetching admins count:", err)
-          return { pagination: { total: 0 }, admins: [] }
-        })
+          console.error("Error fetching admins count:", err);
+          return { pagination: { total: 0 }, admins: [] };
+        });
 
-        const totalAdmins = adminsResponse.pagination?.total || adminsResponse.admins?.length || 0
+        const totalAdmins = adminsResponse.pagination?.total || adminsResponse.admins?.length || 0;
 
         setState((prev) => ({
           ...prev,
@@ -214,29 +648,21 @@ export default function AdminPage() {
           totalUsersCount: totalUsers,
           totalAdminsCount: totalAdmins,
           loading: false,
-        }))
+        }));
       } catch (err) {
-        console.error("Error fetching totals:", err)
-        setState((prev) => ({ ...prev, error: err.message, loading: false }))
+        console.error("Error fetching totals:", err);
+        setState((prev) => ({ ...prev, error: err.message, loading: false }));
       }
-    }
+    };
 
-    fetchAllTotals()
-  }, []) // Empty dependency array means this runs once on mount
+    fetchAllTotals();
+  }, []);
 
-  // Update the useEffect for fetching data to better handle search
   useEffect(() => {
     const fetchData = async () => {
       try {
         if (state.activeTab === "jobs") {
-          setState((prev) => ({ ...prev, loading: true, error: null }))
-
-          // Log the API calls for debugging
-          console.log("Fetching jobs with params:", {
-            page: state.currentJobsPage,
-            limit: 10,
-            search: debouncedJobsSearch,
-          })
+          setState((prev) => ({ ...prev, loading: true, error: null }));
 
           const [scrapedResponse, externalResponse] = await Promise.all([
             adminService
@@ -246,8 +672,8 @@ export default function AdminPage() {
                 search: debouncedJobsSearch,
               })
               .catch((err) => {
-                console.error("Error fetching scraped jobs:", err)
-                return { data: { results: [] } }
+                console.error("Error fetching scraped jobs:", err);
+                return { data: { results: [] } };
               }),
             adminService
               .getAllExternalJobs({
@@ -256,46 +682,38 @@ export default function AdminPage() {
                 search: debouncedJobsSearch,
               })
               .catch((err) => {
-                console.error("Error fetching external jobs:", err)
-                return { data: { results: [] } }
+                console.error("Error fetching external jobs:", err);
+                return { data: { results: [] } };
               }),
-          ])
+          ]);
 
-          // Log the responses for debugging
-          console.log("Scraped jobs response:", scrapedResponse)
-          console.log("External jobs response:", externalResponse)
-
-          // Fix: Adjust to match the actual API response structure
           const scrapedJobs =
             scrapedResponse.results?.map(normalizeAdzunaJob) ||
             scrapedResponse.data?.results?.map(normalizeAdzunaJob) ||
-            []
+            [];
 
           const externalJobs =
             externalResponse.results?.map(normalizeLinkedInJob) ||
             externalResponse.data?.results?.map(normalizeLinkedInJob) ||
-            []
+            [];
 
-          const combinedJobs = [...scrapedJobs, ...externalJobs]
-          console.log("Combined jobs:", combinedJobs)
+          const combinedJobs = [...scrapedJobs, ...externalJobs];
 
-          // Get total counts from the API responses
-          const totalScrapedJobs = scrapedResponse.count || scrapedResponse.data?.count || 0
-          const totalExternalJobs = externalResponse.count || externalResponse.data?.count || 0
-          const totalJobs = totalScrapedJobs + totalExternalJobs
+          const totalScrapedJobs = scrapedResponse.count || scrapedResponse.data?.count || 0;
+          const totalExternalJobs = externalResponse.count || externalResponse.data?.count || 0;
+          const totalJobs = totalScrapedJobs + totalExternalJobs;
 
-          // Fix: Get pagination info from the correct properties
           const totalScrapedPages =
             scrapedResponse.totalPages ||
             scrapedResponse.data?.totalPages ||
             Math.ceil((scrapedResponse.count || 0) / 10) ||
-            1
+            1;
 
           const totalExternalPages =
             externalResponse.totalPages ||
             externalResponse.data?.totalPages ||
             Math.ceil((externalResponse.count || 0) / 10) ||
-            1
+            1;
 
           setState((prev) => ({
             ...prev,
@@ -303,20 +721,17 @@ export default function AdminPage() {
             totalJobsCount: totalJobs,
             totalJobsPages: Math.max(totalScrapedPages, totalExternalPages),
             loading: false,
-          }))
+          }));
         }
 
         if (state.activeTab === "users") {
-          setState((prev) => ({ ...prev, loading: true, error: null }))
+          setState((prev) => ({ ...prev, loading: true, error: null }));
 
-          console.log("Fetching users with search query:", debouncedUsersSearch)
           const usersResponse = await adminService.getAllUsers({
             page: state.currentUsersPage,
             limit: 10,
             search: debouncedUsersSearch,
-          })
-
-          console.log("Users response:", usersResponse)
+          });
 
           setState((prev) => ({
             ...prev,
@@ -324,55 +739,49 @@ export default function AdminPage() {
             totalUsersCount: usersResponse.data.pagination?.total || 0,
             totalUsersPages: usersResponse.data.pagination?.pages || 1,
             loading: false,
-          }))
+          }));
         }
 
         if (state.activeTab === "admins") {
-          setState((prev) => ({ ...prev, loading: true, error: null }))
+          setState((prev) => ({ ...prev, loading: true, error: null }));
 
           try {
             const adminsResponse = await adminService.getAllAdmins({
               page: state.currentAdminsPage,
               limit: 10,
               search: debouncedAdminsSearch,
-            })
-            console.log("Admins API response:", adminsResponse) // Debug log
+            });
+            
+            const adminsList = adminsResponse.admins || [];
+            const totalAdmins = adminsResponse.pagination?.total || adminsList.length || 0;
 
-            // Extract admins directly from the response
-            const adminsList = adminsResponse.admins || []
-            const totalAdmins = adminsResponse.pagination?.total || adminsList.length || 0
-
-            setState((prev) => ({
+            setState(prev => ({
               ...prev,
               admins: adminsList,
               totalAdminsCount: totalAdmins,
-              totalAdminsPages: Math.ceil(adminsList.length / 10) || 1,
+              totalAdminsPages: Math.ceil(totalAdmins / 10) || 1,
               loading: false,
-            }))
+            }));
           } catch (err) {
-            console.error("Error fetching admins:", err)
-            setState((prev) => ({
+            console.error("Error fetching admins:", err);
+            setState(prev => ({
               ...prev,
               error: err.message,
               loading: false,
-            }))
+            }));
           }
         }
-
-        if (state.activeTab === "api" || state.activeTab === "ia") {
-          setState((prev) => ({ ...prev, loading: false }))
-        }
       } catch (err) {
-        console.error("Error fetching data:", err)
-        setState((prev) => ({
+        console.error("Error fetching data:", err);
+        setState(prev => ({
           ...prev,
           error: err.message,
           loading: false,
-        }))
+        }));
       }
-    }
+    };
 
-    fetchData()
+    fetchData();
   }, [
     state.activeTab,
     state.currentUsersPage,
@@ -381,53 +790,49 @@ export default function AdminPage() {
     debouncedUsersSearch,
     debouncedJobsSearch,
     debouncedAdminsSearch,
-  ])
+  ]);
 
-  // Job Management Functions
   const handleJobDeletion = async (jobId) => {
     try {
-      await adminService.deleteJob(jobId)
+      await adminService.deleteJob(jobId);
       setState((prev) => ({
         ...prev,
         jobs: prev.jobs.filter((job) => job.id !== jobId),
-        totalJobsCount: Math.max(0, prev.totalJobsCount - 1), // Decrement total count
-      }))
+        totalJobsCount: Math.max(0, prev.totalJobsCount - 1),
+      }));
     } catch (err) {
-      setState((prev) => ({ ...prev, error: err.message }))
+      setState((prev) => ({ ...prev, error: err.message }));
     }
-  }
+  };
 
-  // User Management Functions
   const handleUserAction = async (action, userId) => {
     try {
       if (action === "delete") {
-        // Find the user to delete for the confirmation dialog
-        const userToDelete = state.users.find((user) => user._id === userId)
+        const userToDelete = state.users.find((user) => user._id === userId);
         setState((prev) => ({
           ...prev,
           deleteConfirmOpen: true,
           userToDelete: userToDelete,
-        }))
+        }));
       }
       if (action === "toggle") {
-        // Find the user to toggle status for the confirmation dialog
-        const userToToggle = state.users.find((user) => user._id === userId)
+        const userToToggle = state.users.find((user) => user._id === userId);
         setState((prev) => ({
           ...prev,
           statusChangeModalOpen: true,
           userToToggleStatus: userToToggle,
-        }))
+        }));
       }
     } catch (err) {
-      setState((prev) => ({ ...prev, error: err.message }))
+      setState((prev) => ({ ...prev, error: err.message }));
     }
-  }
+  };
 
   const confirmUserStatusChange = async () => {
     try {
-      if (!state.userToToggleStatus) return
+      if (!state.userToToggleStatus) return;
 
-      await adminService.toggleUserStatus(state.userToToggleStatus._id)
+      await adminService.toggleUserStatus(state.userToToggleStatus._id);
       setState((prev) => ({
         ...prev,
         users: prev.users.map((user) =>
@@ -435,66 +840,65 @@ export default function AdminPage() {
         ),
         statusChangeModalOpen: false,
         userToToggleStatus: null,
-      }))
+      }));
     } catch (err) {
       setState((prev) => ({
         ...prev,
         error: err.message,
         statusChangeModalOpen: false,
         userToToggleStatus: null,
-      }))
+      }));
     }
-  }
+  };
 
   const cancelUserStatusChange = () => {
     setState((prev) => ({
       ...prev,
       statusChangeModalOpen: false,
       userToToggleStatus: null,
-    }))
-  }
+    }));
+  };
 
   const confirmUserDeletion = async () => {
     try {
-      if (!state.userToDelete) return
+      if (!state.userToDelete) return;
 
-      await adminService.deleteUser(state.userToDelete._id)
+      await adminService.deleteUser(state.userToDelete._id);
       setState((prev) => ({
         ...prev,
         users: prev.users.filter((user) => user._id !== prev.userToDelete._id),
-        totalUsersCount: Math.max(0, prev.totalUsersCount - 1), // Decrement total count
+        totalUsersCount: Math.max(0, prev.totalUsersCount - 1),
         deleteConfirmOpen: false,
         userToDelete: null,
-      }))
+      }));
     } catch (err) {
       setState((prev) => ({
         ...prev,
         error: err.message,
         deleteConfirmOpen: false,
         userToDelete: null,
-      }))
+      }));
     }
-  }
+  };
 
   const cancelUserDeletion = () => {
     setState((prev) => ({
       ...prev,
       deleteConfirmOpen: false,
       userToDelete: null,
-    }))
-  }
+    }));
+  };
 
-  // Admin Management Functions
   const handleAdminInputChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setState((prev) => ({
       ...prev,
       adminFormData: {
         ...prev.adminFormData,
         [name]: value,
       },
-    }))
-  }
+    }));
+  };
 
   const handleCreateAdmin = () => {
     setState((prev) => ({
@@ -509,8 +913,8 @@ export default function AdminPage() {
       },
       adminFormMode: "create",
       isAdminModalOpen: true,
-    }))
-  }
+    }));
+  };
 
   const handleEditAdmin = (admin) => {
     setState((prev) => ({
@@ -520,118 +924,91 @@ export default function AdminPage() {
         firstName: admin.firstName || "",
         lastName: admin.lastName || "",
         email: admin.email || "",
-        password: "", // Don't populate password for security
+        password: "",
         age: admin.age || "",
         role: admin.role || "admin",
       },
       adminFormMode: "edit",
       isAdminModalOpen: true,
-    }))
-  }
+    }));
+  };
 
   const handleDeleteAdmin = (admin) => {
     setState((prev) => ({
       ...prev,
       adminToDelete: admin,
       deleteConfirmOpen: true,
-    }))
-  }
+    }));
+  };
 
   const confirmAdminDeletion = async () => {
     try {
-      await adminService.deleteAdmin(state.adminToDelete._id)
+      await adminService.deleteAdmin(state.adminToDelete._id);
       setState((prev) => ({
         ...prev,
         admins: prev.admins.filter((admin) => admin._id !== prev.adminToDelete._id),
-        totalAdminsCount: Math.max(0, prev.totalAdminsCount - 1), // Decrement total count
+        totalAdminsCount: Math.max(0, prev.totalAdminsCount - 1),
         deleteConfirmOpen: false,
         adminToDelete: null,
-      }))
+      }));
     } catch (err) {
       setState((prev) => ({
         ...prev,
         error: err.message,
         deleteConfirmOpen: false,
         adminToDelete: null,
-      }))
+      }));
     }
-  }
+  };
 
   const handleAdminSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
     try {
       if (state.adminFormMode === "create") {
-        const response = await adminService.createAdmin(state.adminFormData)
+        const response = await adminService.createAdmin(state.adminFormData);
         setState((prev) => ({
           ...prev,
           admins: [...prev.admins, response.data],
-          totalAdminsCount: prev.totalAdminsCount + 1, // Increment total count
+          totalAdminsCount: prev.totalAdminsCount + 1,
           isAdminModalOpen: false,
-        }))
+        }));
       } else {
-        const { _id, ...updateData } = state.adminFormData
-        // Only include password if it was changed
+        const { _id, ...updateData } = state.adminFormData;
         if (!updateData.password) {
-          delete updateData.password
+          delete updateData.password;
         }
-        await adminService.updateAdmin(_id, updateData)
+        await adminService.updateAdmin(_id, updateData);
         setState((prev) => ({
           ...prev,
           admins: prev.admins.map((admin) => (admin._id === _id ? { ...admin, ...updateData } : admin)),
           isAdminModalOpen: false,
-        }))
+        }));
       }
     } catch (err) {
-      setState((prev) => ({ ...prev, error: err.message }))
+      setState((prev) => ({ ...prev, error: err.message }));
     }
-  }
+  };
 
-  // Fix the jobs search functionality
   const handleJobsSearch = (e) => {
     setState((prev) => ({
       ...prev,
       jobsSearchQuery: e.target.value,
-    }))
-  }
-
-  const handleJobsSearchSubmit = (e) => {
-    e.preventDefault()
-    console.log("Submitting jobs search with query:", state.jobsSearchQuery)
-    setState((prev) => ({
-      ...prev,
-      currentJobsPage: 1, // Reset to page 1 when submitting search
-    }))
-  }
+    }));
+  };
 
   const handleUsersSearch = (e) => {
     setState((prev) => ({
       ...prev,
       usersSearchQuery: e.target.value,
-    }))
-  }
+    }));
+  };
 
   const handleAdminsSearch = (e) => {
     setState((prev) => ({
       ...prev,
       adminsSearchQuery: e.target.value,
-    }))
-  }
-
-  const handleUsersSearchSubmit = (e) => {
-    e.preventDefault()
-    setState((prev) => ({
-      ...prev,
-      currentUsersPage: 1, // Reset to page 1 when submitting search
-    }))
-  }
-
-  const handleAdminsSearchSubmit = (e) => {
-    e.preventDefault()
-    setState((prev) => ({
-      ...prev,
-      currentAdminsPage: 1, // Reset to page 1 when submitting search
-    }))
-  }
+    }));
+  };
 
   const handleTabChange = (tab) => {
     setState((prev) => ({
@@ -643,46 +1020,111 @@ export default function AdminPage() {
       usersSearchQuery: "",
       jobsSearchQuery: "",
       adminsSearchQuery: "",
-    }))
-  }
+      error: null,
+      success: null,
+    }));
+  };
 
   const formatDate = (dateString) => {
-    if (!dateString) return "Date not specified"
+    if (!dateString) return "Date not specified";
     try {
-      const date = new Date(dateString)
+      const date = new Date(dateString);
       return date.toLocaleDateString("fr-FR", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
-      })
+      });
     } catch {
-      return "Invalid date"
+      return "Invalid date";
     }
-  }
+  };
 
   const formatSalary = (salary) => {
-    if (!salary || isNaN(salary)) return "Salary not specified"
+    if (!salary || isNaN(salary)) return "Salary not specified";
     return new Intl.NumberFormat("fr-FR", {
       style: "currency",
       currency: "USD",
-    }).format(salary)
-  }
+    }).format(salary);
+  };
 
-  if (state.loading && !state.totalJobsCount && !state.totalUsersCount && !state.totalAdminsCount)
-    return <LoadingSpinner />
-  if (state.error) return <ErrorDisplay message={state.error} />
+  const handleAIConfigSubmit = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const response = await adminService.updateAdminConfig(state.adminConfig);
+      if (response) {
+        setState(prev => ({
+          ...prev,
+          adminConfig: response,
+          error: null,
+          success: "AI configuration saved successfully!"
+        }));
+      }
+    } catch (err) {
+      setState(prev => ({
+        ...prev,
+        error: err.response?.data?.message || "Failed to save AI configuration"
+      }));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAIConfigChange = (e) => {
+    const { name, value } = e.target;
+    setState(prev => ({
+      ...prev,
+      adminConfig: {
+        ...prev.adminConfig,
+        [name]: value
+      }
+    }));
+  };
+
+  const handleSourceToggle = (source) => {
+    setState(prev => {
+      const currentSources = prev.adminConfig.allowedApiSources;
+      const newSources = currentSources.includes(source)
+        ? currentSources.filter(s => s !== source)
+        : [...currentSources, source];
+      
+      return {
+        ...prev,
+        adminConfig: {
+          ...prev.adminConfig,
+          allowedApiSources: newSources
+        }
+      };
+    });
+  };
+
+  if (state.loading && !state.totalJobsCount && !state.totalUsersCount && !state.totalAdminsCount) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
 
+        {state.error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{state.error}</AlertDescription>
+          </Alert>
+        )}
+
+        {state.success && (
+          <Alert className="mb-6">
+            <Check className="h-4 w-4" />
+            <AlertDescription>{state.success}</AlertDescription>
+          </Alert>
+        )}
+
         <StatsOverview
           jobsCount={state.totalJobsCount}
           usersCount={state.totalUsersCount}
           adminsCount={state.totalAdminsCount}
-         
-
           aiModel={state.adminConfig?.llmModel}
         />
 
@@ -691,7 +1133,6 @@ export default function AdminPage() {
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="admins">Admins</TabsTrigger>
-
             <TabsTrigger value="ia">AI</TabsTrigger>
           </TabsList>
 
@@ -700,7 +1141,6 @@ export default function AdminPage() {
               title="Job Management"
               searchValue={state.jobsSearchQuery}
               onSearch={handleJobsSearch}
-              onSearchSubmit={handleJobsSearchSubmit}
               pagination={{
                 current: state.currentJobsPage,
                 total: state.totalJobsPages,
@@ -708,13 +1148,13 @@ export default function AdminPage() {
                   setState((prev) => ({
                     ...prev,
                     currentJobsPage: Math.max(1, prev.currentJobsPage - 1),
-                  }))
+                  }));
                 },
                 onNext: () => {
                   setState((prev) => ({
                     ...prev,
                     currentJobsPage: Math.min(prev.totalJobsPages, prev.currentJobsPage + 1),
-                  }))
+                  }));
                 },
               }}
             >
@@ -742,7 +1182,6 @@ export default function AdminPage() {
               title="User Management"
               searchValue={state.usersSearchQuery}
               onSearch={handleUsersSearch}
-              onSearchSubmit={handleUsersSearchSubmit}
               pagination={{
                 current: state.currentUsersPage,
                 total: state.totalUsersPages,
@@ -773,7 +1212,6 @@ export default function AdminPage() {
               }
               searchValue={state.adminsSearchQuery}
               onSearch={handleAdminsSearch}
-              onSearchSubmit={handleAdminsSearchSubmit}
               pagination={{
                 current: state.currentAdminsPage,
                 total: state.totalAdminsPages,
@@ -793,49 +1231,18 @@ export default function AdminPage() {
             </DashboardSection>
           </TabsContent>
 
-          
           <TabsContent value="ia">
             <DashboardSection title="AI Configuration">
               <AIConfigForm
                 config={state.adminConfig}
-                onChange={(e) => {
-                  if (e.target.name === "allowedApiSources") {
-                    setState(prev => ({
-                      ...prev,
-                      adminConfig: {
-                        ...prev.adminConfig,
-                        allowedApiSources: e.target.value
-                      }
-                    }));
-                  } else {
-                    setState(prev => ({
-                      ...prev,
-                      adminConfig: {
-                        ...prev.adminConfig,
-                        [e.target.name]: e.target.value
-                      }
-                    }));
-                  }
-                }}
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  try {
-                    await adminService.updateAdminConfig(state.adminConfig);
-                    alert("AI configuration saved successfully!");
-                  } catch (err) {
-                    console.error("Error saving AI config:", err);
-                    setState(prev => ({
-                      ...prev,
-                      error: "Failed to save AI configuration"
-                    }));
-                  }
-                }}
+                onChange={handleAIConfigChange}
+                onSubmit={handleAIConfigSubmit}
+                isSaving={isSaving}
               />
             </DashboardSection>
           </TabsContent>
         </Tabs>
 
-        {/* User Status Change Confirmation Modal */}
         <Modal isOpen={state.statusChangeModalOpen && state.userToToggleStatus} onClose={cancelUserStatusChange}>
           <div className="space-y-4">
             <Alert variant={state.userToToggleStatus?.isActive ? "destructive" : "default"}>
@@ -874,7 +1281,6 @@ export default function AdminPage() {
           </div>
         </Modal>
 
-        {/* Custom Delete User Confirmation Modal */}
         <Modal isOpen={state.deleteConfirmOpen && state.userToDelete} onClose={cancelUserDeletion}>
           <div className="space-y-4">
             <Alert variant="destructive">
@@ -904,7 +1310,6 @@ export default function AdminPage() {
           </div>
         </Modal>
 
-        {/* Custom Delete Admin Confirmation Modal */}
         <Modal
           isOpen={state.deleteConfirmOpen && state.adminToDelete}
           onClose={() => setState((prev) => ({ ...prev, deleteConfirmOpen: false, adminToDelete: null }))}
@@ -939,7 +1344,6 @@ export default function AdminPage() {
           </div>
         </Modal>
 
-        {/* Admin Form Modal */}
         <Modal
           isOpen={state.isAdminModalOpen}
           onClose={() => setState((prev) => ({ ...prev, isAdminModalOpen: false }))}
@@ -1045,418 +1449,5 @@ export default function AdminPage() {
         </Modal>
       </div>
     </div>
-  )
-}
-
-function LoadingSpinner() {
-  return (
-    <div className="flex justify-center items-center h-64">
-      <RefreshCw className="h-12 w-12 animate-spin" />
-    </div>
-  )
-}
-
-function ErrorDisplay({ message }) {
-  return (
-    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-      <strong className="font-bold">Error: </strong>
-      <span className="block sm:inline">{message}</span>
-    </div>
-  )
-}
-
-function StatsOverview({ jobsCount, usersCount, adminsCount, activeApis, totalApis, aiModel }) {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-      <StatCard title="Total Jobs" value={jobsCount} icon={<Briefcase />} />
-      <StatCard title="Total Users" value={usersCount} icon={<User />} />
-      <StatCard title="Total Admins" value={adminsCount} icon={<User />} />
-   
-      <StatCard
-        title="AI Model"
-        value={aiModel || "Not configured"}
-        icon={<Sparkles />}
-      />
-    </div>
-  );
-}
-
-function StatCard({ title, value, icon }) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        {icon}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-      </CardContent>
-    </Card>
-  )
-}
-
-// Update the DashboardSection component to include a search button
-function DashboardSection({ title, children, searchValue, onSearch, onSearchSubmit, pagination, actionButton }) {
-  return (
-    <div className="bg-white rounded-lg shadow p-6">
-      {children}
-
-      {pagination && (
-        <div className="mt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="text-sm text-gray-500">
-            Page {pagination.current} of {pagination.total}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={pagination.onPrev} disabled={pagination.current === 1}>
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={pagination.onNext}
-              disabled={pagination.current === pagination.total}
-            >
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-function JobsTable({ jobs, onDelete }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salary</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Posted</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {jobs.length > 0 ? (
-            jobs.map((job) => (
-              <tr key={job.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="text-sm font-medium text-gray-900">{job.title}</div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{job.company}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{job.location}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {job.salary
-                      ? new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                      }).format(job.salary)
-                      : "Not specified"}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {job.created ? new Date(job.created).toLocaleDateString() : "Unknown"}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${job.source === "Adzuna" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
-                      }`}
-                  >
-                    {job.source}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onDelete(job.id)}
-                          className="text-red-600 hover:text-red-900 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Delete job</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                No jobs found
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function UsersTable({ users, onAction }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {users.length > 0 ? (
-            users.map((user) => (
-              <tr key={user._id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="text-sm font-medium text-gray-900">
-                      {user.firstName} {user.lastName}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{user.email}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                      }`}
-                  >
-                    {user.isActive ? "Active" : "Inactive"}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex space-x-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onAction("toggle", user._id)}
-                            className={`${user.isActive
-                              ? "text-amber-600 hover:text-amber-900 hover:bg-amber-50"
-                              : "text-green-600 hover:text-green-900 hover:bg-green-50"
-                              }`}
-                          >
-                            {user.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{user.isActive ? "Deactivate user" : "Activate user"}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onAction("delete", user._id)}
-                            className="text-red-600 hover:text-red-900 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Delete user</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
-                No users found
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function AdminsTable({ admins, onEdit, onDelete }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {admins && admins.length > 0 ? (
-            admins.map((admin) => {
-              // Skip rendering if admin is undefined
-              if (!admin) return null
-
-              return (
-                <tr key={admin._id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {admin.firstName || ""} {admin.lastName || ""}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{admin.email || ""}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{admin.age || "Not specified"}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onEdit(admin)}
-                              className="text-blue-600 hover:text-blue-900 hover:bg-blue-50"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Edit admin</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onDelete(admin)}
-                              className="text-red-600 hover:text-red-900 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Delete admin</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })
-          ) : (
-            <tr>
-              <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
-                No admins found
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-
-
-function AIConfigForm({ config, onChange, onSubmit }) {
-  const handleCheckboxChange = (source) => {
-    const newSources = config.allowedApiSources.includes(source)
-      ? config.allowedApiSources.filter(s => s !== source)
-      : [...config.allowedApiSources, source];
-
-    onChange({
-      target: {
-        name: "allowedApiSources",
-        value: newSources
-      }
-    });
-  };
-
-  return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">LLM Model</label>
-        <select
-          name="llmModel"
-          value={config.llmModel}
-          onChange={onChange}
-          className="w-full border rounded-md p-2"
-        >
-          <option value="mistral">Mistral</option>
-          <option value="llama2">Llama 2</option>
-          <option value="mistral:instruct">Mistral Instruct</option>
-        </select>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Daily Run Time</label>
-        <input
-          type="time"
-          name="dailyRunTime"
-          value={config.dailyRunTime}
-          onChange={onChange}
-          className="w-full border rounded-md p-2"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Allowed Job Sources</label>
-        <div className="grid grid-cols-2 gap-2">
-          {['adzuna', 'reed', 'apijobs', 'jooble', 'findwork', 'remotive', 'scraped'].map((source) => (
-            <div key={source} className="flex items-center">
-              <input
-                type="checkbox"
-                id={`source-${source}`}
-                checked={config.allowedApiSources.includes(source)}
-                onChange={() => handleCheckboxChange(source)}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-              <label htmlFor={`source-${source}`} className="ml-2 block text-sm text-gray-700 capitalize">
-                {source}
-              </label>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <Button type="submit" className="mt-4">
-        <Save className="h-4 w-4 mr-2" />
-        Save Configuration
-      </Button>
-    </form>
   );
 }

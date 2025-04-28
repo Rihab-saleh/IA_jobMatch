@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, MapPin, Bookmark, Loader } from "lucide-react";
 import axios from "axios";
 import { Button } from "../components/ui/button";
@@ -12,20 +12,24 @@ import { toast } from "sonner";
 export default function JobsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [savedJobs, setSavedJobs] = useState([]);
+  const [searchParams] = useSearchParams();
+  
+  // State initialization
   const [jobs, setJobs] = useState([]);
+  const [savedJobs, setSavedJobs] = useState([]);
   const [filters, setFilters] = useState({
-    query: "",
-    location: "",
+    query: searchParams.get("query") || "",
+    location: searchParams.get("location") || "",
     minSalary: "",
     jobType: "any",
     datePosted: "any",
     limit: 20,
   });
   const [loading, setLoading] = useState(false);
-  const [savingJobs, setSavingJobs] = useState({});
-  const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(true);
+  const [error, setError] = useState("");
+  const [savingJobs, setSavingJobs] = useState({});
+  const [initialSearchDone, setInitialSearchDone] = useState(false);
 
   const api = axios.create({
     baseURL: "http://localhost:3001/api/jobs",
@@ -35,6 +39,7 @@ export default function JobsPage() {
     },
   });
 
+  // Helper functions
   const isValidDate = (dateString) => {
     if (!dateString) return false;
     const date = new Date(dateString);
@@ -52,6 +57,7 @@ export default function JobsPage() {
     return new Date(dateString).toISOString();
   };
 
+  // Fetch saved jobs for the current user
   const fetchSavedJobs = async () => {
     if (!user?._id) return;
 
@@ -61,6 +67,7 @@ export default function JobsPage() {
       const data = await response.json();
       setSavedJobs(data || []);
       
+      // Update jobs with saved status
       setJobs(prevJobs => 
         prevJobs.map(job => ({
           ...job,
@@ -73,89 +80,101 @@ export default function JobsPage() {
     }
   };
 
+  // Main jobs fetching function
+  const fetchJobs = async (signal) => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const requestBody = {
+        ...filters,
+        minSalary: filters.minSalary ? Number(filters.minSalary) : null,
+        jobType: filters.jobType === "any" ? "any" : filters.jobType.replace(" ", "_").toLowerCase(),
+      };
+
+      const response = await api.post("/search", requestBody, {
+        signal,
+        timeout: 30000,
+      });
+
+      const jobsData = response.data.jobs || [];
+      const markedJobs = jobsData.map(job => ({
+        ...job,
+        datePosted: normalizeDate(job.datePosted),
+        isSaved: savedJobs.some(savedJob => savedJob.jobId === job.id)
+      }));
+
+      setJobs(markedJobs);
+      setHasMore(jobsData.length >= filters.limit);
+    } catch (err) {
+      if (axios.isCancel(err)) {
+        console.log("Request canceled:", err.message);
+      } else if (err.code === "ECONNABORTED") {
+        setError("Request timed out. Please try again.");
+      } else {
+        setError(err.response?.data?.error || err.message || "Failed to load jobs. Please try again later.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Effect for fetching jobs with debounce
   useEffect(() => {
     const controller = new AbortController();
     let debounceTimer;
 
-    const fetchJobs = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const requestBody = {
-          ...filters,
-          minSalary: filters.minSalary ? Number(filters.minSalary) : null,
-          jobType: filters.jobType === "any" ? "any" : filters.jobType.replace(" ", "_").toLowerCase(),
-        };
-
-        const response = await api.post("/search", requestBody, {
-          signal: controller.signal,
-          timeout: 30000,
-        });
-
-        const jobsData = response.data.jobs || [];
-        const markedJobs = jobsData.map(job => ({
-          ...job,
-          datePosted: normalizeDate(job.datePosted),
-          isSaved: savedJobs.some(savedJob => savedJob.jobId === job.id)
-        }));
-
-        setJobs(markedJobs);
-        setHasMore(jobsData.length >= filters.limit);
-      } catch (err) {
-        if (axios.isCancel(err)) {
-          console.log("Request canceled:", err.message);
-        } else if (err.code === "ECONNABORTED") {
-          setError("Request timed out. Please try again.");
-        } else {
-          setError(err.response?.data?.error || err.message || "Failed to load jobs. Please try again later.");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
     const debounceFetch = () => {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(fetchJobs, 800);
+      debounceTimer = setTimeout(() => fetchJobs(controller.signal), 800);
     };
 
-    if (filters.query.trim() || filters.location.trim()) {
+    if ((filters.query.trim() || filters.location.trim()) && initialSearchDone) {
       debounceFetch();
-    } else {
-      setJobs([]);
-      setHasMore(false);
+    } else if (!initialSearchDone && (filters.query.trim() || filters.location.trim())) {
+      // Initial search with URL params
+      fetchJobs(controller.signal);
+      setInitialSearchDone(true);
     }
 
     return () => {
       controller.abort();
       clearTimeout(debounceTimer);
     };
-  }, [filters, savedJobs]);
+  }, [filters, savedJobs, initialSearchDone]);
 
+  // Initialize from URL params and fetch saved jobs
   useEffect(() => {
     if (user?._id) {
       fetchSavedJobs();
     }
   }, [user]);
 
+  // Form submission handler
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     setFilters(prev => ({ ...prev, limit: 20 }));
+    setInitialSearchDone(true);
   };
 
+  // Filter change handler
   const handleFilterChange = (name, value) => {
     setFilters(prev => ({
       ...prev,
       [name]: value,
       ...(name !== "limit" && { limit: 20 }),
     }));
+    if (name === "query" || name === "location") {
+      setInitialSearchDone(true);
+    }
   };
 
+  // Load more jobs handler
   const loadMoreJobs = () => {
     setFilters(prev => ({ ...prev, limit: prev.limit + 20 }));
   };
 
+  // Save/unsave job handler
   const toggleSaveJob = async (job) => {
     if (!user?._id) {
       toast.error("Please log in to save jobs");
@@ -274,6 +293,7 @@ export default function JobsPage() {
       </form>
 
       <div className="flex flex-col lg:flex-row gap-6">
+        {/* Filters sidebar */}
         <div className="w-full lg:w-1/4 bg-white rounded-lg border p-6 space-y-4">
           <div className="border-b pb-4">
             <h3 className="font-medium mb-3">Minimum Salary ($)</h3>
@@ -316,12 +336,13 @@ export default function JobsPage() {
           </div>
         </div>
 
+        {/* Jobs list */}
         <div className="w-full lg:w-3/4">
           {error && (
             <div className="text-red-500 mb-4 p-3 bg-red-50 rounded flex justify-between items-center">
               <span>{error}</span>
               <button
-                onClick={() => setFilters(prev => ({ ...prev }))}
+                onClick={() => setError("")}
                 className="text-purple-700 hover:underline"
               >
                 Retry
@@ -386,7 +407,12 @@ export default function JobsPage() {
                   </a>
                   <Button
                     variant="outline"
-                    onClick={() => navigate('/job-details-view', { state: { job } })}
+                    onClick={() => navigate('/job-details-view', { 
+                      state: { 
+                        job,
+                        fromJobsPage: true 
+                      } 
+                    })}
                   >
                     View Details
                   </Button>

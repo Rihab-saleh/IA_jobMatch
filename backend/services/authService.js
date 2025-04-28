@@ -180,8 +180,8 @@ const forgotPassword = async (email) => {
   person.resetToken = resetToken;
   person.resetTokenExpires = Date.now() + 3600000; // 1 hour from now
   await person.save();
-
-  const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/reset-password/${resetToken}`;
+  // Ensure the reset URL is correctly formatted
+  const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/reset-password/${encodeURIComponent(resetToken)}`;
   console.log("Password reset link:", resetUrl);
 
   try {

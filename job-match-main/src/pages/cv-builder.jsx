@@ -1475,7 +1475,7 @@ export default function CVBuilderPage() {
                             <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
                               <SelectValue placeholder="Select skill level" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-white z-20">
                               <SelectItem value="Beginner">Beginner</SelectItem>
                               <SelectItem value="Intermediate">Intermediate</SelectItem>
                               <SelectItem value="Advanced">Advanced</SelectItem>
@@ -1529,9 +1529,9 @@ export default function CVBuilderPage() {
                       {skills.map((skill) => (
                         <div
                           key={skill._id}
-                          className="border rounded-lg p-3 flex justify-between items-center bg-gradient-to-r from-purple-50 to-white hover:shadow-sm transition-shadow"
+                          className="border rounded-lg p-3 flex justify-between items-center bg-gradient-to-r from-purple-50 "
                         >
-                          <div>
+                          <div className="flex flex-col">
                             <span className="font-medium text-purple-800">{skill.name}</span>
                             <span className="ml-2 text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full">
                               {skill.level}
@@ -2420,7 +2420,7 @@ function LanguageForm({ language, onSubmit, onCancel }) {
           <Label htmlFor="level" className="text-sm font-medium text-gray-700">
             Proficiency Level *
           </Label>
-          <select
+          <select 
             id="level"
             name="level"
             value={formData.level}

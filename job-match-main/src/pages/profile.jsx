@@ -227,7 +227,7 @@ function ProfilePage() {
     // Case 5: Default fallback - just append to API base URL
     const formattedUrl = `${apiBaseUrl}${url.startsWith("/") ? url : `/${url}`}`
     console.log("Case 5 fallback. Formatted URL:", formattedUrl)
-    state.savedProfileData.profilePicture=url
+    state.savedProfileData.profilePicture = url
     return formattedUrl
   }
 
@@ -735,6 +735,8 @@ function ProfilePage() {
     const startDate = formData.get("startDate")
     const schoolName = formData.get("institution")
     const degreeName = formData.get("degree")
+    const location = formData.get("location")
+    const fieldOfStudy = formData.get("fieldOfStudy")
 
     // Always require an end date, even for current positions
     let endDate = formData.get("endDate")
@@ -765,6 +767,7 @@ function ProfilePage() {
       school: schoolName,
       degree: degreeName,
       fieldOfStudy: formData.get("fieldOfStudy"),
+      location: location,
       startDate: startDate,
       endDate: endDate, // Always provide an end date
       description: formData.get("description"),
@@ -1004,9 +1007,9 @@ function ProfilePage() {
             <div className="h-16 bg-gradient-to-r from-purple-600 to-indigo-600"></div>
             <CardContent className="pt-0 -mt-8 flex items-center gap-4">
               <div className="relative">
-                {state.savedProfileData.profilePicture? (
+                {state.savedProfileData.profilePicture ? (
                   <img
-                    src={"../assets/"+ state.savedProfileData.profilePicture|| "/placeholder.svg"}
+                    src={"../assets/" + state.savedProfileData.profilePicture || "/placeholder.svg"}
                     alt="Profile"
                     className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
                   />
@@ -1037,13 +1040,12 @@ function ProfilePage() {
                   <span className="text-xs font-medium text-gray-700 mr-2">Profile: {completionPercentage}%</span>
                   <div className="h-1.5 w-24 bg-gray-100 rounded-full overflow-hidden">
                     <div
-                      className={`h-full ${
-                        completionPercentage < 30
-                          ? "bg-red-500"
-                          : completionPercentage < 70
-                            ? "bg-yellow-500"
-                            : "bg-green-500"
-                      }`}
+                      className={`h-full ${completionPercentage < 30
+                        ? "bg-red-500"
+                        : completionPercentage < 70
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                        }`}
                       style={{ width: `${completionPercentage}%` }}
                     ></div>
                   </div>
@@ -1070,7 +1072,7 @@ function ProfilePage() {
                   <div className="relative mb-4">
                     {state.savedProfileData.profilePicture ? (
                       <img
-                        src={"../assets/"+state.savedProfileData.profilePicture|| "/placeholder.svg"}
+                        src={"../assets/" + state.savedProfileData.profilePicture || "/placeholder.svg"}
                         alt="Profile"
                         className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md"
                       />
@@ -1127,13 +1129,12 @@ function ProfilePage() {
                   </div>
                   <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                     <div
-                      className={`h-full ${
-                        completionPercentage < 30
-                          ? "bg-red-500"
-                          : completionPercentage < 70
-                            ? "bg-yellow-500"
-                            : "bg-green-500"
-                      }`}
+                      className={`h-full ${completionPercentage < 30
+                        ? "bg-red-500"
+                        : completionPercentage < 70
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                        }`}
                       style={{ width: `${completionPercentage}%` }}
                     ></div>
                   </div>
@@ -1409,7 +1410,7 @@ function ProfilePage() {
                           <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
                             <SelectValue placeholder="Skill level" />
                           </SelectTrigger>
-                          <SelectContent bg-white>
+                          <SelectContent className="bg-white z-20">
                             <SelectItem value="Beginner">Beginner</SelectItem>
                             <SelectItem value="Intermediate">Intermediate</SelectItem>
                             <SelectItem value="Advanced">Advanced</SelectItem>
@@ -1651,6 +1652,7 @@ function ProfilePage() {
                             <div className="flex flex-col sm:flex-row justify-between">
                               <div>
                                 <h3 className="font-semibold text-lg text-gray-900">{edu.degree}</h3>
+
                                 <p className="text-purple-700 font-medium">{edu.school}</p>
                                 {edu.fieldOfStudy && (
                                   <div className="flex items-center text-sm text-gray-500 mt-2">
@@ -1659,6 +1661,14 @@ function ProfilePage() {
                                     </span>
                                   </div>
                                 )}
+                                {edu.location && (
+                                  <div className="flex items-center text-sm text-gray-500 mt-2">
+                                    <MapPin className="h-3 w-3 mr-1" />
+                                    <span>{edu.location}</span>
+                                  </div>
+                                )}
+
+
                                 <div className="flex items-center text-sm text-gray-500 mt-1">
                                   <Calendar className="h-3 w-3 mr-1" />
                                   <span>
@@ -2119,6 +2129,18 @@ function ProfilePage() {
                     className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location" className="text-gray-700">
+                    Location
+                  </Label>
+                  <Input
+                    id="location"
+                    name="location"
+                    defaultValue={state.currentItem?.location || ""}
+                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    placeholder="City, Country"
+                  />
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="startDate" className="text-gray-700">
@@ -2405,7 +2427,7 @@ function ProfilePage() {
                     <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
                       <SelectValue placeholder="Select proficiency level" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white" >
                       <SelectItem value="Native">Native</SelectItem>
                       <SelectItem value="Fluent">Fluent</SelectItem>
                       <SelectItem value="Advanced">Advanced</SelectItem>
