@@ -8,8 +8,8 @@ const notificationSchema = new mongoose.Schema({
   },
   notificationType: {
     type: String,
-    enum: ['jobAlert', 'systemUpdate'],
-    required: true
+    enum: ['jobAlert', 'systemUpdate',"email_job_recommendation"],
+    required: false
   },
   read: {
     type: Boolean,
@@ -17,7 +17,7 @@ const notificationSchema = new mongoose.Schema({
   },
   content: {
     type: String,
-    required: true
+    required: false
   },
   notificationEnabled: {
     type: Boolean,

@@ -38,6 +38,7 @@ router.get('/admin-config', async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+router.get("/stats", authMiddleware, adminMiddleware, adminController.getStats);
 
 router.get("/:id", authMiddleware, adminMiddleware, adminController.getAdminById)
 router.put('/admin-config', authMiddleware, adminMiddleware, async (req, res) => {
@@ -59,10 +60,7 @@ router.put('/admin-config', authMiddleware, adminMiddleware, async (req, res) =>
     res.status(500).json({ error: err.message });
   }
 });
-
 router.put("/:id", authMiddleware, adminMiddleware, adminController.updateAdmin)
 
 router.delete("/:id", authMiddleware, adminMiddleware, adminController.deleteAdmin)
-
-
 module.exports = router

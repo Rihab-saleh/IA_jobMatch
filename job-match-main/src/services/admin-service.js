@@ -81,5 +81,8 @@ export const adminService = {
   updateAdminConfig(configData) {
     return api.put("/admin/admin-config", configData)
   },
+  getStats() {
+    return api.get("/admin/stats")
+  },
 }
 

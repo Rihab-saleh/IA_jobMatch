@@ -526,7 +526,35 @@ async getAllAdmins(page = 1, limit = 10, search = "") {
       throw new Error(`Échec du traitement: ${err.message}`);
     }
   }
+  async getStats() {
+    try {
+      // Exécute les quatre requêtes en parallèle avec Promise.all
+      const [activeUsers, inactiveUsers, totalAdmins] = await Promise.all([
+        User.countDocuments({ isActive: true }),
+        User.countDocuments({ isActive: false }),
+
+        Admin.countDocuments()
+      ]);
+  
+      // Retourne les statistiques formatées
+      return {
+        users: {
+          total: activeUsers + inactiveUsers,
+          active: activeUsers,
+          inactive: inactiveUsers
+        },
+        admins: {
+          total: totalAdmins
+        }
+      };
+    } catch (err) {
+      console.error("Error in getStats:", err);
+      throw new Error("Failed to fetch statistics");
+    }
+  }
+  
 }
+
 
 module.exports = new AdminService();
 

@@ -1,5 +1,7 @@
 const AdminService = require("../services/adminService");
-
+const User = require("../models/user_model");
+const Job = require("../models/job_model");
+const Admin = require("../models/admin_model");
 // Fonction utilitaire pour gérer les erreurs
 const handleError = (res, error, defaultMessage) => {
   console.error(error);
@@ -294,6 +296,64 @@ const getAccountStatusRequests = async (req, res) => {
     });
   }
 };
+const getStats = async (req, res) => {
+  try {
+    const pipeline = [
+      {
+        $lookup: {
+          from: "people", // le nom exact de la collection de Person (souvent au pluriel)
+          localField: "person",
+          foreignField: "_id",
+          as: "personData"
+        }
+      },
+      {
+        $unwind: "$personData"
+      },
+      {
+        $group: {
+          _id: "$personData.isActive",
+          count: { $sum: 1 }
+        }
+      }
+    ];
+
+    const userStats = await User.aggregate(pipeline);
+
+    let active = 0;
+    let inactive = 0;
+    let undefinedStatus = 0;
+
+    userStats.forEach(stat => {
+      if (stat._id === true) active = stat.count;
+      else if (stat._id === false) inactive = stat.count;
+      else undefinedStatus += stat.count;
+    });
+
+    const totalUsers = active + inactive ;
+
+    const totalAdmins = await Admin.countDocuments();
+
+    const stats = {
+      users: {
+        total: totalUsers,
+        active,
+        inactive,
+       
+      },
+      admins: {
+        total: totalAdmins
+      }
+    };
+
+    return res.status(200).json({ success: true, data: stats });
+
+  } catch (error) {
+    console.error("Error fetching stats:", error);
+    return res.status(500).json({ success: false, message: "Error fetching statistics" });
+  }
+};
+
 module.exports = {
   createAdmin,
   getAllAdmins,
@@ -307,5 +367,5 @@ module.exports = {
   getAccountStatusRequests,
   processAccountStatusRequest,
   getUserAccountStatusRequest,
-  
+  getStats
 };

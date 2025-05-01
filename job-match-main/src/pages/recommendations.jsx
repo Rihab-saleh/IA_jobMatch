@@ -94,11 +94,12 @@ export default function RecommendationsPage() {
   const handleToggleSaveJob = async (job) => {
     if (!user?._id) return toast.error("Please login");
     if (!job.id) return toast.error("Missing ID");
-
+  
     setSavingJobs((prev) => ({ ...prev, [job.id]: true }));
-
+  
     try {
       if (job.isSaved) {
+        // Remove job from saved jobs
         const savedJob = savedJobs.find((sj) => sj.jobId === job.id);
         await fetch(`http://localhost:3001/api/jobs/saved/${user._id}/${savedJob._id}`, {
           method: "DELETE",
@@ -109,6 +110,7 @@ export default function RecommendationsPage() {
         );
         toast.success("Removed from saved jobs");
       } else {
+        // Save job
         const jobData = {
           userId: user._id,
           job: {
@@ -125,13 +127,13 @@ export default function RecommendationsPage() {
             skills: job.skills,
           },
         };
-
+  
         const response = await fetch("http://localhost:3001/api/jobs/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(jobData),
         });
-
+  
         const data = await response.json();
         setSavedJobs((prev) => [...prev, data.job || data]);
         setRecommendations((prev) =>
@@ -146,7 +148,6 @@ export default function RecommendationsPage() {
       setSavingJobs((prev) => ({ ...prev, [job.id]: false }));
     }
   };
-
   const handleViewNewRecommendations = async () => {
     setRecommendationType("general");
     await fetchRecommendations(user._id);
