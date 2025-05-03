@@ -1,7 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
 import { Search, MapPin, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -13,6 +13,18 @@ export default function HomePage() {
     location: "",
   });
 
+  // Log du visiteur au chargement de la page
+  useEffect(() => {
+    // Log the visitor when the page is loaded
+    fetch("http://localhost:5000/api/log-visit", {
+      method: "GET",
+      credentials: "include", // If you need cookies/authentication
+    }).catch((err) => {
+      console.error("Erreur lors du log de visite :", err);
+    });
+  }, []);
+  
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFilters((prev) => ({
@@ -23,7 +35,11 @@ export default function HomePage() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    navigate(`/jobs?query=${encodeURIComponent(filters.query)}&location=${encodeURIComponent(filters.location)}`);
+    navigate(
+      `/jobs?query=${encodeURIComponent(filters.query)}&location=${encodeURIComponent(
+        filters.location
+      )}`
+    );
   };
 
   return (
@@ -43,10 +59,7 @@ export default function HomePage() {
                 Des milliers d'emplois dans tous les secteurs leaders vous attendent.
               </p>
 
-              <form
-                onSubmit={handleSearch}
-                className="bg-white p-6 rounded-lg shadow-md"
-              >
+              <form onSubmit={handleSearch} className="bg-white p-6 rounded-lg shadow-md">
                 <div className="flex flex-col md:flex-row gap-4">
                   <div className="relative flex-grow">
                     <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />

@@ -25,10 +25,105 @@ import {
   Save,
   Check,
   Ban,
+  Users,
+  Eye,
+  Activity
 } from "lucide-react";
 import { adminService } from "../services/admin-service";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../components/ui/tooltip";
 import { Alert, AlertTitle, AlertDescription } from "../components/ui/alert";
+import { Chart as ChartJS, ArcElement, Tooltip as ChartTooltip, Legend } from 'chart.js';
+import { Pie } from 'react-chartjs-2';
+
+// Enregistrement des composants ChartJS nécessaires
+ChartJS.register(ArcElement, ChartTooltip, Legend);
+
+function DetailedStats({ stats }) {
+  if (!stats) return null;
+
+  const userStatusData = {
+    labels: ['Active', 'Inactive'],
+    datasets: [
+      {
+        data: [stats.users.active, stats.users.inactive],
+        backgroundColor: ['#10B981', '#EF4444'],
+        borderWidth: 0,
+      },
+    ],
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium">User Statistics</CardTitle>
+          <Users className="h-4 w-4" />
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center">
+            <span className="text-sm text-gray-500 mr-2">Active Users:</span>
+            <span className="text-sm font-medium">{stats.users.active}</span>
+          </div>
+          <div className="flex items-center">
+            <span className="text-sm text-gray-500 mr-2">Inactive Users:</span>
+            <span className="text-sm font-medium">{stats.users.inactive}</span>
+          </div>
+          <div className="flex items-center">
+            <span className="text-sm text-gray-500 mr-2">New This Week:</span>
+            <span className="text-sm font-medium">{stats.users.thisWeek}</span>
+          </div>
+          <div className="flex items-center">
+            <span className="text-sm text-gray-500 mr-2">New This Month:</span>
+            <span className="text-sm font-medium">{stats.users.thisMonth}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium">Visitor Statistics</CardTitle>
+          <Eye className="h-4 w-4" />
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center">
+            <span className="text-sm text-gray-500 mr-2">Today:</span>
+            <span className="text-sm font-medium">{stats.visitors.today}</span>
+          </div>
+          <div className="flex items-center">
+            <span className="text-sm text-gray-500 mr-2">This Week:</span>
+            <span className="text-sm font-medium">{stats.visitors.thisWeek}</span>
+          </div>
+          <div className="flex items-center">
+            <span className="text-sm text-gray-500 mr-2">This Month:</span>
+            <span className="text-sm font-medium">{stats.visitors.thisMonth}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium">User Status</CardTitle>
+          <Activity className="h-4 w-4" />
+        </CardHeader>
+        <CardContent>
+          <div className="h-[180px]">
+            <Pie 
+              data={userStatusData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                  },
+                },
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 function Modal({ isOpen, onClose, children }) {
   if (!isOpen) return null;
@@ -155,6 +250,28 @@ function DashboardSection({ title, children, searchValue, onSearch, pagination, 
 }
 
 function JobsTable({ jobs, onDelete }) {
+  const formatDate = (dateString) => {
+    if (!dateString) return "Date not specified";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch {
+      return "Invalid date";
+    }
+  };
+
+  const formatSalary = (salary) => {
+    if (!salary || isNaN(salary)) return "Salary not specified";
+    return new Intl.NumberFormat("fr-FR", {
+      style: "currency",
+      currency: "USD",
+    }).format(salary);
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
@@ -172,7 +289,7 @@ function JobsTable({ jobs, onDelete }) {
         <tbody className="bg-white divide-y divide-gray-200">
           {jobs.length > 0 ? (
             jobs.map((job) => (
-              <tr key={job.id}>
+              <tr key={job.id || job._id || `job-${Math.random().toString(36).substr(2, 9)}`}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <div className="text-sm font-medium text-gray-900">{job.title}</div>
@@ -185,19 +302,10 @@ function JobsTable({ jobs, onDelete }) {
                   <div className="text-sm text-gray-900">{job.location}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {job.salary
-                      ? new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                      }).format(job.salary)
-                      : "Not specified"}
-                  </div>
+                  <div className="text-sm text-gray-900">{formatSalary(job.salary)}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {job.created ? new Date(job.created).toLocaleDateString() : "Unknown"}
-                  </div>
+                  <div className="text-sm text-gray-900">{formatDate(job.created)}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
@@ -208,23 +316,15 @@ function JobsTable({ jobs, onDelete }) {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onDelete(job.id)}
-                          className="text-red-600 hover:text-red-900 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Delete job</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onDelete(job.id)}
+                    className="text-red-600 hover:text-red-900 hover:bg-red-50"
+                    aria-label="Delete job"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </td>
               </tr>
             ))
@@ -277,44 +377,28 @@ function UsersTable({ users, onAction }) {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onAction("toggle", user._id)}
-                            className={`${user.isActive
-                              ? "text-amber-600 hover:text-amber-900 hover:bg-amber-50"
-                              : "text-green-600 hover:text-green-900 hover:bg-green-50"
-                              }`}
-                          >
-                            {user.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{user.isActive ? "Deactivate user" : "Activate user"}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onAction("toggle", user._id)}
+                      className={`${user.isActive
+                        ? "text-amber-600 hover:text-amber-900 hover:bg-amber-50"
+                        : "text-green-600 hover:text-green-900 hover:bg-green-50"
+                        }`}
+                      aria-label={user.isActive ? "Deactivate user" : "Activate user"}
+                    >
+                      {user.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                    </Button>
 
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onAction("delete", user._id)}
-                            className="text-red-600 hover:text-red-900 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Delete user</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onAction("delete", user._id)}
+                      className="text-red-600 hover:text-red-900 hover:bg-red-50"
+                      aria-label="Delete user"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -364,41 +448,25 @@ function AdminsTable({ admins, onEdit, onDelete }) {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onEdit(admin)}
-                              className="text-blue-600 hover:text-blue-900 hover:bg-blue-50"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Edit admin</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEdit(admin)}
+                        className="text-blue-600 hover:text-blue-900 hover:bg-blue-50"
+                        aria-label="Edit admin"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
 
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onDelete(admin)}
-                              className="text-red-600 hover:text-red-900 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Delete admin</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDelete(admin)}
+                        className="text-red-600 hover:text-red-900 hover:bg-red-50"
+                        aria-label="Delete admin"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -544,6 +612,19 @@ export default function AdminPage() {
     },
     statusChangeModalOpen: false,
     userToToggleStatus: null,
+    stats: {
+      users: {
+        active: 34,
+        inactive: 14,
+        thisWeek: 2,
+        thisMonth: 1
+      },
+      visitors: {
+        today: 30,
+        thisWeek: 47,
+        thisMonth: 47
+      }
+    }
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -1025,28 +1106,6 @@ export default function AdminPage() {
     }));
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "Date not specified";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("fr-FR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch {
-      return "Invalid date";
-    }
-  };
-
-  const formatSalary = (salary) => {
-    if (!salary || isNaN(salary)) return "Salary not specified";
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "USD",
-    }).format(salary);
-  };
-
   const handleAIConfigSubmit = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -1128,8 +1187,10 @@ export default function AdminPage() {
           aiModel={state.adminConfig?.llmModel}
         />
 
+        <DetailedStats stats={state.stats} />
+
         <Tabs value={state.activeTab} onValueChange={handleTabChange}>
-          <TabsList className="grid grid-cols-5 mb-8">
+          <TabsList className="grid grid-cols-4 mb-8">
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="admins">Admins</TabsTrigger>
@@ -1450,5 +1511,4 @@ export default function AdminPage() {
       </div>
     </div>
   );
-  
 }

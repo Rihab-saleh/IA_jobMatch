@@ -12,12 +12,13 @@ const { authMiddleware, adminMiddleware } = require("./middlewares/authMiddlewar
 const notificationRoutes = require("./routes/notificationRoutes");
 const recommendation = require("./services/index");
 const AdminConfig = require("./models/adminConfig_model");
-
+const logVisitor = require('./middlewares/visitorLog');
 const axios = require('axios');
 const bcrypt = require("bcryptjs");
 const Person = require("./models/person_model");
 const Admin = require("./models/admin_model");
 const path = require("path");
+const logRoutes = require('./routes/log');
 
 const app = express();
 require("dotenv").config();
@@ -31,7 +32,7 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With", 'X-Ollama-Response-Time'],
   })
 );
-
+app.use(logVisitor);
 // Middleware pour parser les requêtes JSON
 app.use(express.json());
 
@@ -103,6 +104,7 @@ connectDB()
   });
 
 // Définir les routes
+app.use('/api', logRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", authMiddleware, userRoutes);
 app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);

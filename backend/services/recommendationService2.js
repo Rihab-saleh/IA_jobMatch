@@ -32,26 +32,21 @@ async function getRecommendationsForUser(userId) {
     const config = await AdminConfig.findOne().sort({ updatedAt: -1 }).lean();
     const llmModel = config?.llmModel || 'mistral';
     const sources = config?.allowedApiSources || [];
-
-    const jobTitle = userProfile.jobTitle || '';
-    const location = userProfile.location || '';
-    const skills = userProfile.skills?.map(s => s.name) || [];
-    const experiencesText = userProfile.experiences?.[0]?.description || '';
+    const jobTitle = userProfile.profile.jobTitle || '';
+    const location = userProfile.profile.location || '';
+    const skills = userProfile.profile.skills?.map(s => s.name) || [];
+    const experiencesText = userProfile.profile.experiences?.[0]?.description || '';
 
     const experienceTerms = extractCompetencies(experiencesText);
     const competencies = [...skills, ...experienceTerms];
-    const query = [jobTitle, ...competencies].filter(Boolean).join(' ');
+    console.log("jobTitle:", jobTitle);
+    console.log("userProfile:", userProfile);
+    const query = jobTitle;
 
     const jobData = await searchJobs({ query, location, limit: 300, apiSources: sources });
     const allJobs = jobData.jobs || [];
 
-    const filteredJobs = allJobs.filter(job => {
-      const jobLocation = (job.location?.name || job.location || '').toLowerCase();
-      return (
-        (!jobTitle || job.title?.toLowerCase().includes(jobTitle.toLowerCase())) &&
-        (!location || jobLocation.includes(location.toLowerCase()))
-      );
-    });
+    const filteredJobs = allJobs
 
     if (filteredJobs.length === 0) {
       console.warn(`⚠️ Aucun emploi trouvé pour ${userEmail}`);
