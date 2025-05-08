@@ -1,4 +1,4 @@
-"use client";
+;
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../contexts/auth-context";
@@ -40,8 +40,12 @@ export default function RecommendationsPage() {
 
       let response;
       if (recommendationType === "saved") {
+
         response = await recommendationService.getSavedJobRecommendations(userId);
-      } else {
+        console.log(response);
+      }
+      if (!response || !response.data || response.error) {
+
         response = await recommendationService.getRecommendationsForUser(userId);
       }
 

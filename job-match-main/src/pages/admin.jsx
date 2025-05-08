@@ -1,4 +1,4 @@
-"use client";
+;
 
 import { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
@@ -512,7 +512,7 @@ function AIConfigForm({ config, onChange, onSubmit, isSaving }) {
           >
             <option value="mistral">Mistral</option>
             <option value="llama2">Llama 2</option>
-            <option value="mistral:instruct">Mistral Instruct</option>
+            <option value="mistral">Mistral Instruct</option>
           </select>
         </div>
 

@@ -20,6 +20,7 @@ function extractCompetencies(text) {
  * Génère des recommandations d'emploi personnalisées pour un utilisateur.
  */
 async function getRecommendationsForUser(userId) {
+  console.log(`🔍 Recommandations d'emploi pour l'utilisateur: ${userId}`);
   try {
     if (!userId) throw new Error('userId is required');
 
