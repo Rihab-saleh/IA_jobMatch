@@ -38,7 +38,7 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        purple: {
+        blue: {
           50: "#f5f3ff",
           100: "#ede9fe",
           200: "#ddd6fe",

@@ -83,9 +83,9 @@ console.log("response : ---------------  ", response)
   if (!reviewResults) {
     return (
       <Card className="border shadow-sm">
-        <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b">
-          <CardTitle className="text-xl text-purple-800 flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-600" />
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+          <CardTitle className="text-xl text-blue-800 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-blue-600" />
             Professional CV Review
           </CardTitle>
           <CardDescription>
@@ -94,15 +94,15 @@ console.log("response : ---------------  ", response)
         </CardHeader>
         <CardContent className="p-6">
           <div className="text-center py-8">
-            <div className="mx-auto w-24 h-24 bg-purple-50 rounded-full flex items-center justify-center mb-4">
-              <Sparkles className="h-10 w-10 text-purple-600" />
+            <div className="mx-auto w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+              <Sparkles className="h-10 w-10 text-blue-600" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Ready to analyze your CV</h3>
             <p className="text-gray-500 mb-6 max-w-md mx-auto">
               Our AI will review your entire CV and provide detailed feedback on each section, with actionable suggestions to improve your chances of getting noticed by recruiters.
             </p>
             <Button 
-              className="bg-purple-700 hover:bg-purple-800 text-white"
+              className="bg-blue-700 hover:bg-blue-800 text-white"
               onClick={handleAnalyzeCV}
               disabled={isAnalyzing}
             >
@@ -126,11 +126,11 @@ console.log("response : ---------------  ", response)
 
   return (
     <Card className="border shadow-sm">
-      <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b">
+      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
         <div className="flex justify-between items-center">
           <div>
-            <CardTitle className="text-xl text-purple-800 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-600" />
+            <CardTitle className="text-xl text-blue-800 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-blue-600" />
               CV Analysis Results
             </CardTitle>
             <CardDescription>
@@ -138,7 +138,7 @@ console.log("response : ---------------  ", response)
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-purple-800">{reviewResults.overallScore}%</span>
+            <span className="text-2xl font-bold text-blue-800">{reviewResults.overallScore}%</span>
             <div className="w-12 h-12 rounded-full border-4 flex items-center justify-center"
               style={{ 
                 borderColor: `${reviewResults.overallScore >= 80 ? 'rgb(22, 163, 74)' : 
@@ -302,7 +302,7 @@ console.log("response : ---------------  ", response)
                         <div className="space-y-2">
                           {section?.recommendations?.map((rec, index) => (
                             <div key={index} className="flex gap-2 items-start">
-                              <Sparkles className="h-5 w-5 text-purple-500 flex-shrink-0" />
+                              <Sparkles className="h-5 w-5 text-blue-500 flex-shrink-0" />
                               <span className="text-sm text-gray-700">{rec}</span>
                             </div>
                           ))}
@@ -327,7 +327,7 @@ console.log("response : ---------------  ", response)
                   <div key={index} className="border rounded-lg overflow-hidden">
                     <div className="bg-gray-50 p-3 border-b flex justify-between items-center">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center font-medium text-sm">
+                        <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-medium text-sm">
                           {index + 1}
                         </div>
                         <h4 className="font-medium">{item.title}</h4>
@@ -351,7 +351,7 @@ console.log("response : ---------------  ", response)
                         <ul className="space-y-1">
                           {item.steps?.map((step, stepIndex) => (
                             <li key={stepIndex} className="flex gap-2 text-sm">
-                              <span className="text-purple-500">•</span>
+                              <span className="text-blue-500">•</span>
                               <span>{step}</span>
                             </li>
                           ))}
@@ -365,7 +365,7 @@ console.log("response : ---------------  ", response)
             
             <div className="mt-6 pt-6 border-t">
               <Button 
-                className="bg-purple-700 hover:bg-purple-800 text-white"
+                className="bg-blue-700 hover:bg-blue-800 text-white"
                 onClick={handleAnalyzeCV}
               >
                 <Sparkles className="mr-2 h-4 w-4" />

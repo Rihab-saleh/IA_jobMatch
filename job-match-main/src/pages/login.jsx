@@ -190,7 +190,7 @@ export default function Login() {
 
               <div className="flex items-center justify-end">
                 <div className="text-sm">
-                  <Link to="/forgot-password" className="text-purple-700 font-medium">
+                  <Link to="/forgot-password" className="text-blue-700 font-medium">
                     Mot de passe oublié ?
                   </Link>
                 </div>
@@ -200,7 +200,7 @@ export default function Login() {
             <div>
               <Button
                 type="submit"
-                className="w-full bg-purple-700 hover:bg-purple-800 py-6 text-lg text-white"
+                className="w-full bg-blue-700 hover:bg-blue-800 py-6 text-lg text-white"
                 disabled={loading || reactivationLoading}
               >
                 {loading ? "Connexion..." : "Se connecter"}
@@ -211,7 +211,7 @@ export default function Login() {
           <div className="mt-6 text-center text-sm">
             <p className="text-gray-600">
               Pas de compte ?{" "}
-              <Link to="/register" className="text-purple-700 font-medium">
+              <Link to="/register" className="text-blue-700 font-medium">
                 S'inscrire
               </Link>
             </p>

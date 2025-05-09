@@ -309,7 +309,7 @@ function JobsTable({ jobs, onDelete }) {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${job.source === "Adzuna" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
+                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${job.source === "Adzuna" ? "bg-blue-100 text-blue-800" : "bg-blue-100 text-blue-800"
                       }`}
                   >
                     {job.source}

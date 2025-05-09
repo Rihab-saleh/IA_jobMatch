@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
   const getIcon = () => {
     const iconMap = {
-      job_match: <Briefcase className="h-5 w-5 text-purple-600" />,
+      job_match: <Briefcase className="h-5 w-5 text-blue-600" />,
       application_update: <CheckCircle className="h-5 w-5 text-blue-600" />,
       profile_suggestion: <User className="h-5 w-5 text-green-600" />,
       system_alert: <AlertCircle className="h-5 w-5 text-orange-600" />,
@@ -41,7 +41,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
   return (
     <div
       className={`bg-white rounded-lg border p-4 transition-all hover:shadow-md ${
-        !notification.read ? "border-l-4 border-l-purple-700 bg-purple-50" : ""
+        !notification.read ? "border-l-4 border-l-blue-700 bg-blue-50" : ""
       }`}
     >
       <div className="flex items-start gap-4">
@@ -57,7 +57,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
           <div className="flex justify-between items-start">
             <Link
               to={getActionLink()}
-              className="font-semibold cursor-pointer hover:text-purple-700"
+              className="font-semibold cursor-pointer hover:text-blue-700"
               onClick={handleAction}
             >
               {notification.title}
@@ -94,11 +94,11 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
                   <span>{notification.location}</span>
                 </div>
                 <div className="mt-2 flex items-center justify-between">
-                  <div className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
+                  <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
                     {notification.matchPercentage}% Match
                   </div>
                   <Link to={getActionLink()}>
-                    <Button size="sm" className="bg-purple-700 hover:bg-purple-800" onClick={handleAction}>
+                    <Button size="sm" className="bg-blue-700 hover:bg-blue-800" onClick={handleAction}>
                       View Job
                     </Button>
                   </Link>
@@ -117,7 +117,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
                 </div>
                 <div className="mt-2 flex justify-end">
                   <Link to={getActionLink()}>
-                    <Button size="sm" className="bg-purple-700 hover:bg-purple-800" onClick={handleAction}>
+                    <Button size="sm" className="bg-blue-700 hover:bg-blue-800" onClick={handleAction}>
                       View Application
                     </Button>
                   </Link>
@@ -128,7 +128,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
             {notification.type === "profile_suggestion" && (
               <div className="mt-2 flex justify-end">
                 <Link to={getActionLink()}>
-                  <Button size="sm" className="bg-purple-700 hover:bg-purple-800" onClick={handleAction}>
+                  <Button size="sm" className="bg-blue-700 hover:bg-blue-800" onClick={handleAction}>
                     Update Profile
                   </Button>
                 </Link>
@@ -206,7 +206,7 @@ export default function NotificationsPage() {
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-700 mb-2">Error loading notifications</h3>
           <p className="text-gray-500 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()} className="bg-purple-700 hover:bg-purple-800">
+          <Button onClick={() => window.location.reload()} className="bg-blue-700 hover:bg-blue-800">
             Retry
           </Button>
         </div>

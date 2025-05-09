@@ -315,7 +315,7 @@ export default function PostJobPage() {
 
           {/* Submit Button */}
           <div>
-            <Button type="submit" className="bg-purple-700 hover:bg-purple-800 px-8 py-6 text-lg">
+            <Button type="submit" className="bg-blue-700 hover:bg-blue-800 px-8 py-6 text-lg">
               Post Job
             </Button>
           </div>

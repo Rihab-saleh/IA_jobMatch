@@ -136,7 +136,7 @@ export default function SettingsPage() {
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-700 mb-2">Error</h3>
           <p className="text-gray-500 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()} className="bg-purple-700 hover:bg-purple-800">
+          <Button onClick={() => window.location.reload()} className="bg-blue-700 hover:bg-blue-800">
             Retry
           </Button>
         </div>
@@ -209,7 +209,7 @@ export default function SettingsPage() {
                             id="email"
                             checked={notificationSettings.email}
                             onChange={() => handleNotificationToggle("email")}
-                            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -226,7 +226,7 @@ export default function SettingsPage() {
                             id="jobAlerts"
                             checked={notificationSettings.jobAlerts}
                             onChange={() => handleNotificationToggle("jobAlerts")}
-                            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                         </div>
                         <div className="flex items-center justify-between">
@@ -241,7 +241,7 @@ export default function SettingsPage() {
                             id="applicationUpdates"
                             checked={notificationSettings.applicationUpdates}
                             onChange={() => handleNotificationToggle("applicationUpdates")}
-                            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                         </div>
                       </div>
@@ -268,7 +268,7 @@ export default function SettingsPage() {
               </CardContent>
               <CardFooter>
                 <Button
-                  className="bg-purple-700 hover:bg-purple-800"
+                  className="bg-blue-700 hover:bg-blue-800"
                   onClick={saveNotificationSettings}
                   disabled={saving || loading}
                 >
@@ -321,7 +321,7 @@ export default function SettingsPage() {
                         id="showEmail"
                         checked={privacySettings.showEmail}
                         onChange={() => handlePrivacyToggle("showEmail")}
-                        className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </div>
                     <div className="flex items-center justify-between">
@@ -336,14 +336,14 @@ export default function SettingsPage() {
                         id="showPhone"
                         checked={privacySettings.showPhone}
                         onChange={() => handlePrivacyToggle("showPhone")}
-                        className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </div>
                   </div>
                 </div>
               </CardContent>
               <CardFooter>
-                <Button className="bg-purple-700 hover:bg-purple-800">Save Privacy Settings</Button>
+                <Button className="bg-blue-700 hover:bg-blue-800">Save Privacy Settings</Button>
               </CardFooter>
             </Card>
           </TabsContent>

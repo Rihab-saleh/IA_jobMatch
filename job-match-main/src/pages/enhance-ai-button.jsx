@@ -53,7 +53,7 @@ export default function EnhanceAIButton({
             <Button
                 variant={variant}
                 size={size}
-                className={`${className} text-purple-700 border-purple-200 hover:bg-purple-50 hover:text-purple-800`}
+                className={`${className} text-blue-700 border-blue-200 hover:bg-blue-50 hover:text-blue-800`}
                 onClick={handleEnhance}
                 disabled={isLoading || !content.trim()}
             >
@@ -64,8 +64,8 @@ export default function EnhanceAIButton({
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-[600px] bg-white">
                     <DialogHeader>
-                        <DialogTitle className="text-xl text-purple-800 flex items-center gap-2">
-                            <Sparkles className="h-5 w-5 text-purple-600" />
+                        <DialogTitle className="text-xl text-blue-800 flex items-center gap-2">
+                            <Sparkles className="h-5 w-5 text-blue-600" />
                             AI Enhancement Suggestions
                         </DialogTitle>
                         <DialogDescription className="text-gray-600">
@@ -90,7 +90,7 @@ export default function EnhanceAIButton({
                             <div>
                                 <h3 className="font-medium text-gray-900 mb-2">Enhanced Version</h3>
                                 <textarea
-                                    className="bg-purple-50 border border-purple-200 rounded-md p-3 text-purple-900 text-sm w-full"
+                                    className="bg-blue-50 border border-blue-200 rounded-md p-3 text-blue-900 text-sm w-full"
                                     value={editableEnhancedContent}
                                     onChange={(e) => setEditableEnhancedContent(e.target.value)}
                                     rows={5}
@@ -103,7 +103,7 @@ export default function EnhanceAIButton({
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                             Cancel
                         </Button>
-                        <Button className="bg-purple-700 hover:bg-purple-800 text-white" onClick={applyEnhancement}>
+                        <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={applyEnhancement}>
                             Apply Enhancement
                         </Button>
                     </DialogFooter>

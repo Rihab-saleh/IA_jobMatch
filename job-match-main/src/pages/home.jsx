@@ -29,7 +29,7 @@ const features = [
     description:
       "Discover job market trends and the most sought-after skills in your field.",
     icon: TrendingUp,
-    color: "bg-purple-500",
+    color: "bg-blue-500",
   },
 ]
 
@@ -115,7 +115,7 @@ export default function HomePage() {
 
               <div className="hidden md:block relative ml-28"> {/* Further increased margin-left to move the picture more to the right */}
                 <div className="absolute -top-10 -right-10 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-70 animate-blob"></div>
-                <div className="absolute -bottom-8 -left-8 w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-2xl opacity-70 animate-blob animation-delay-2000"></div>
+                <div className="absolute -bottom-8 -left-8 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-2xl opacity-70 animate-blob animation-delay-2000"></div>
                 <div className="absolute top-24 right-24 w-64 h-64 bg-pink-200 rounded-full mix-blend-multiply filter blur-2xl opacity-70 animate-blob animation-delay-4000"></div>
 
                 <div

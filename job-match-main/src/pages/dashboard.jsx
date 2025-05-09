@@ -173,7 +173,7 @@ export default function SavedJobsPage() {
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-700" />
+          <Loader2 className="h-8 w-8 animate-spin text-blue-700" />
           <p className="text-gray-600">Loading saved jobs...</p>
         </div>
       </div>
@@ -188,7 +188,7 @@ export default function SavedJobsPage() {
 
         {/* Profile Completion Card */}
         <Card className="mb-8 border-0 shadow-md">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b">
             <CardTitle>Profile Completion</CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
@@ -216,7 +216,7 @@ export default function SavedJobsPage() {
                 <p className="text-sm text-gray-500">Complete your profile to improve job matches</p>
               </div>
               <Link to="/profile">
-                <Button className="mt-3 md:mt-0 bg-purple-600 hover:bg-purple-700 text-white">Complete Profile</Button>
+                <Button className="mt-3 md:mt-0 bg-blue-600 hover:bg-blue-700 text-white">Complete Profile</Button>
               </Link>
             </div>
 
@@ -389,7 +389,7 @@ export default function SavedJobsPage() {
         </Card>
 
         <Card className="border-0 shadow-md overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b flex justify-between items-center">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b flex justify-between items-center">
             <div>
               <CardTitle>Saved Jobs</CardTitle>
               <p className="text-sm text-gray-500 mt-1">
@@ -411,7 +411,7 @@ export default function SavedJobsPage() {
                     className="border rounded-lg p-4 relative hover:shadow-md transition-all duration-200 bg-white"
                   >
                     <button
-                      className="absolute right-4 top-4 text-purple-700 hover:text-purple-900"
+                      className="absolute right-4 top-4 text-blue-700 hover:text-blue-900"
                       onClick={() => toggleSaveJob(job)}
                       aria-label="Unsave job"
                     >
@@ -443,7 +443,7 @@ export default function SavedJobsPage() {
                         <Button variant="outline" size="sm">
                           View Details
                         </Button>
-                        <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white">
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
                           Apply Now
                         </Button>
                       </div>
@@ -457,7 +457,7 @@ export default function SavedJobsPage() {
                 <h3 className="text-lg font-medium mb-2">No saved jobs</h3>
                 <p className="text-gray-500 mb-4">Save jobs you're interested in to apply later</p>
                 <Link to="/jobs">
-                  <Button className="bg-purple-600 hover:bg-purple-700 text-white">Browse Jobs</Button>
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">Browse Jobs</Button>
                 </Link>
               </div>
             )}

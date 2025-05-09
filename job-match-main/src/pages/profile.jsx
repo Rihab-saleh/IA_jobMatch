@@ -953,7 +953,7 @@ function ProfilePage() {
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center">
-          <Loader2 className="h-12 w-12 animate-spin text-purple-700 mb-4" />
+          <Loader2 className="h-12 w-12 animate-spin text-blue-700 mb-4" />
           <p className="text-lg text-gray-600">Checking authentication...</p>
         </div>
       </div>
@@ -968,7 +968,7 @@ function ProfilePage() {
           <p className="text-gray-600 mb-6">You must be logged in to access this page.</p>
           <Button
             onClick={() => navigate("/login", { state: { from: "/profile" } })}
-            className="bg-purple-700 hover:bg-purple-800"
+            className="bg-blue-700 hover:bg-blue-800"
           >
             Log In
           </Button>
@@ -981,7 +981,7 @@ function ProfilePage() {
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center">
-          <Loader2 className="h-12 w-12 animate-spin text-purple-700 mb-4" />
+          <Loader2 className="h-12 w-12 animate-spin text-blue-700 mb-4" />
           <p className="text-lg text-gray-600">Loading...</p>
           {state.error && <p className="text-red-500 text-sm mt-2">{state.error}</p>}
         </div>
@@ -1004,7 +1004,7 @@ function ProfilePage() {
         {/* Mobile Profile Summary */}
         <div className="md:hidden mb-6">
           <Card className="border-0 shadow-md overflow-hidden">
-            <div className="h-16 bg-gradient-to-r from-purple-600 to-indigo-600"></div>
+            <div className="h-16 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
             <CardContent className="pt-0 -mt-8 flex items-center gap-4">
               <div className="relative">
                 {state.savedProfileData.profilePicture ? (
@@ -1023,7 +1023,7 @@ function ProfilePage() {
                 )}
                 <button
                   onClick={triggerFileInput}
-                  className="absolute bottom-0 right-0 bg-purple-600 text-white p-1 rounded-full hover:bg-purple-700 transition-colors shadow-md"
+                  className="absolute bottom-0 right-0 bg-blue-600 text-white p-1 rounded-full hover:bg-blue-700 transition-colors shadow-md"
                   disabled={state.isUploading}
                 >
                   {state.isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
@@ -1066,7 +1066,7 @@ function ProfilePage() {
           {/* Sidebar - Hidden on mobile */}
           <div className="hidden md:block w-full md:w-1/3">
             <Card className="sticky top-4 overflow-hidden border-0 shadow-lg">
-              <div className="h-24 bg-gradient-to-r from-purple-600 to-indigo-600"></div>
+              <div className="h-24 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
               <CardContent className="pt-0 -mt-12">
                 <div className="flex flex-col items-center">
                   <div className="relative mb-4">
@@ -1083,7 +1083,7 @@ function ProfilePage() {
                     )}
                     <button
                       onClick={triggerFileInput}
-                      className="absolute bottom-0 right-0 bg-purple-600 text-white p-2 rounded-full hover:bg-purple-700 transition-colors shadow-md"
+                      className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors shadow-md"
                       disabled={state.isUploading}
                     >
                       {state.isUploading ? (
@@ -1125,7 +1125,7 @@ function ProfilePage() {
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-gray-700">Profile Completion</span>
-                    <span className="text-sm font-semibold text-purple-700">{completionPercentage}%</span>
+                    <span className="text-sm font-semibold text-blue-700">{completionPercentage}%</span>
                   </div>
                   <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                     <div
@@ -1206,37 +1206,37 @@ function ProfilePage() {
               <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 mb-6 bg-white shadow-sm rounded-lg p-1 overflow-x-auto">
                 <TabsTrigger
                   value="personal"
-                  className="data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 rounded-md text-xs sm:text-sm"
+                  className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-md text-xs sm:text-sm"
                 >
                   Personal
                 </TabsTrigger>
                 <TabsTrigger
                   value="skills"
-                  className="data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 rounded-md text-xs sm:text-sm"
+                  className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-md text-xs sm:text-sm"
                 >
                   Skills
                 </TabsTrigger>
                 <TabsTrigger
                   value="experience"
-                  className="data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 rounded-md text-xs sm:text-sm"
+                  className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-md text-xs sm:text-sm"
                 >
                   Experience
                 </TabsTrigger>
                 <TabsTrigger
                   value="education"
-                  className="data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 rounded-md text-xs sm:text-sm"
+                  className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-md text-xs sm:text-sm"
                 >
                   Education
                 </TabsTrigger>
                 <TabsTrigger
                   value="certifications"
-                  className="data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 rounded-md text-xs sm:text-sm"
+                  className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-md text-xs sm:text-sm"
                 >
                   Certifications
                 </TabsTrigger>
                 <TabsTrigger
                   value="languages"
-                  className="data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 rounded-md text-xs sm:text-sm"
+                  className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 rounded-md text-xs sm:text-sm"
                 >
                   Languages
                 </TabsTrigger>
@@ -1246,7 +1246,7 @@ function ProfilePage() {
               <div className="md:hidden mb-4 flex justify-end">
                 <Button
                   onClick={saveProfile}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md"
                   disabled={state.saving}
                   size="sm"
                 >
@@ -1257,7 +1257,7 @@ function ProfilePage() {
 
               <TabsContent value="personal" className="space-y-6">
                 <Card className="border-0 shadow-md overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b">
                     <CardTitle className="text-xl text-gray-900">Personal Information</CardTitle>
                     <CardDescription>
                       Update your personal information to complete your profile and improve your professional presence.
@@ -1274,7 +1274,7 @@ function ProfilePage() {
                           name="firstName"
                           value={state.profileData.firstName}
                           onChange={handleProfileChange}
-                          className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           placeholder="Enter your first name"
                         />
                       </div>
@@ -1287,7 +1287,7 @@ function ProfilePage() {
                           name="lastName"
                           value={state.profileData.lastName}
                           onChange={handleProfileChange}
-                          className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           placeholder="Enter your last name"
                         />
                       </div>
@@ -1301,7 +1301,7 @@ function ProfilePage() {
                           type="email"
                           value={state.profileData.email}
                           onChange={handleProfileChange}
-                          className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           placeholder="Enter your email address"
                         />
                       </div>
@@ -1315,7 +1315,7 @@ function ProfilePage() {
                           type="tel"
                           value={state.profileData.phone}
                           onChange={handleProfileChange}
-                          className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           placeholder="Enter your phone number"
                         />
                       </div>
@@ -1328,7 +1328,7 @@ function ProfilePage() {
                           name="location"
                           value={state.profileData.location}
                           onChange={handleProfileChange}
-                          className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           placeholder="City, Country"
                         />
                       </div>
@@ -1341,7 +1341,7 @@ function ProfilePage() {
                           name="jobTitle"
                           value={state.profileData.jobTitle}
                           onChange={handleProfileChange}
-                          className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           placeholder="e.g. Senior Developer"
                         />
                       </div>
@@ -1356,7 +1356,7 @@ function ProfilePage() {
                         value={state.profileData.bio}
                         onChange={handleProfileChange}
                         rows={4}
-                        className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                         placeholder="Tell us about your professional background, skills, and career goals..."
                       />
                     </div>
@@ -1364,7 +1364,7 @@ function ProfilePage() {
                   <CardFooter className="bg-gray-50 border-t px-6 py-4">
                     <Button
                       onClick={saveProfile}
-                      className="ml-auto bg-purple-600 hover:bg-purple-700 text-white"
+                      className="ml-auto bg-blue-600 hover:bg-blue-700 text-white"
                       disabled={state.saving}
                     >
                       {state.saving ? (
@@ -1379,7 +1379,7 @@ function ProfilePage() {
               </TabsContent>
               <TabsContent value="skills" className="space-y-6">
                 <Card className="border-0 shadow-md overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b">
                     <CardTitle className="text-xl text-gray-900">Technical Skills</CardTitle>
                     <CardDescription>
                       Add your skills to help us match you with relevant job opportunities. Our AI will analyze your
@@ -1399,7 +1399,7 @@ function ProfilePage() {
                               state.editingSkill ? handleSkillOperation("update") : handleSkillOperation("add")
                             }
                           }}
-                          className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                          className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                         />
                       </div>
                       <div className="w-full sm:w-48">
@@ -1407,7 +1407,7 @@ function ProfilePage() {
                           value={state.skillLevel}
                           onValueChange={(value) => setState((prev) => ({ ...prev, skillLevel: value }))}
                         >
-                          <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                          <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                             <SelectValue placeholder="Skill level" />
                           </SelectTrigger>
                           <SelectContent className="bg-white z-20">
@@ -1436,7 +1436,7 @@ function ProfilePage() {
                         ) : (
                           <Button
                             onClick={() => handleSkillOperation("add")}
-                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
                           >
                             <PlusCircle className="h-4 w-4 mr-2" />
                             Add
@@ -1453,7 +1453,7 @@ function ProfilePage() {
                           className="px-3 py-1.5 text-xs sm:text-sm flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 shadow-sm transition-all duration-200"
                         >
                           <span className="font-medium">{skill.name}</span>
-                          <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded-full">
+                          <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">
                             {skill.level}
                           </span>
                           <div className="flex gap-1">
@@ -1462,7 +1462,7 @@ function ProfilePage() {
                                 e.stopPropagation()
                                 handleSkillOperation("edit", skill)
                               }}
-                              className="text-gray-500 hover:text-purple-600 transition-colors"
+                              className="text-gray-500 hover:text-blue-600 transition-colors"
                             >
                               <Edit className="h-3 w-3" />
                             </button>
@@ -1492,7 +1492,7 @@ function ProfilePage() {
                           <Badge
                             key={skill}
                             variant="outline"
-                            className="px-3 py-1.5 text-xs cursor-pointer hover:bg-purple-50 flex items-center gap-1 bg-white border border-gray-200 transition-all duration-200"
+                            className="px-3 py-1.5 text-xs cursor-pointer hover:bg-blue-50 flex items-center gap-1 bg-white border border-gray-200 transition-all duration-200"
                             onClick={() =>
                               setState((prev) => ({
                                 ...prev,
@@ -1502,7 +1502,7 @@ function ProfilePage() {
                             }
                           >
                             {skill}
-                            <PlusCircle className="h-3 w-3 ml-1 text-purple-600" />
+                            <PlusCircle className="h-3 w-3 ml-1 text-blue-600" />
                           </Badge>
                         ))}
                       </div>
@@ -1513,7 +1513,7 @@ function ProfilePage() {
               </TabsContent>
               <TabsContent value="experience" className="space-y-6">
                 <Card className="border-0 shadow-md overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
                       <div>
                         <CardTitle className="text-xl text-gray-900">Work Experience</CardTitle>
@@ -1523,7 +1523,7 @@ function ProfilePage() {
                       </div>
                       <Button
                         onClick={() => openDialog("experience")}
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
                         size="sm"
                       >
                         <PlusCircle className="h-4 w-4 mr-2" />
@@ -1543,7 +1543,7 @@ function ProfilePage() {
                         </p>
                         <Button
                           onClick={() => openDialog("experience")}
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           <PlusCircle className="h-4 w-4 mr-2" />
                           Add Experience
@@ -1559,7 +1559,7 @@ function ProfilePage() {
                             <div className="flex flex-col sm:flex-row justify-between">
                               <div>
                                 <h3 className="font-semibold text-lg text-gray-900">{exp.jobTitle}</h3>
-                                <p className="text-purple-700 font-medium">{exp.company}</p>
+                                <p className="text-blue-700 font-medium">{exp.company}</p>
                                 <div className="flex items-center text-sm text-gray-500 mt-2">
                                   <MapPin className="h-3 w-3 mr-1" />
                                   <span>{exp.location}</span>
@@ -1607,7 +1607,7 @@ function ProfilePage() {
               </TabsContent>
               <TabsContent value="education" className="space-y-6">
                 <Card className="border-0 shadow-md overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
                       <div>
                         <CardTitle className="text-xl text-gray-900">Education</CardTitle>
@@ -1617,7 +1617,7 @@ function ProfilePage() {
                       </div>
                       <Button
                         onClick={() => openDialog("education")}
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
                         size="sm"
                       >
                         <PlusCircle className="h-4 w-4 mr-2" />
@@ -1636,7 +1636,7 @@ function ProfilePage() {
                         </p>
                         <Button
                           onClick={() => openDialog("education")}
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           <PlusCircle className="h-4 w-4 mr-2" />
                           Add Education
@@ -1653,10 +1653,10 @@ function ProfilePage() {
                               <div>
                                 <h3 className="font-semibold text-lg text-gray-900">{edu.degree}</h3>
 
-                                <p className="text-purple-700 font-medium">{edu.school}</p>
+                                <p className="text-blue-700 font-medium">{edu.school}</p>
                                 {edu.fieldOfStudy && (
                                   <div className="flex items-center text-sm text-gray-500 mt-2">
-                                    <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs">
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
                                       {edu.fieldOfStudy}
                                     </span>
                                   </div>
@@ -1712,7 +1712,7 @@ function ProfilePage() {
               </TabsContent>
               <TabsContent value="certifications" className="space-y-6">
                 <Card className="border-0 shadow-md overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
                       <div>
                         <CardTitle className="text-xl text-gray-900">Certifications</CardTitle>
@@ -1722,7 +1722,7 @@ function ProfilePage() {
                       </div>
                       <Button
                         onClick={() => openDialog("certification")}
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
                         size="sm"
                       >
                         <PlusCircle className="h-4 w-4 mr-2" />
@@ -1741,7 +1741,7 @@ function ProfilePage() {
                         </p>
                         <Button
                           onClick={() => openDialog("certification")}
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           <PlusCircle className="h-4 w-4 mr-2" />
                           <span className="hidden sm:inline">Add Certification</span>
@@ -1758,7 +1758,7 @@ function ProfilePage() {
                             <div className="flex flex-col sm:flex-row justify-between">
                               <div>
                                 <h3 className="font-semibold text-lg text-gray-900">{cert.name}</h3>
-                                <p className="text-purple-700 font-medium">{cert.issuer}</p>
+                                <p className="text-blue-700 font-medium">{cert.issuer}</p>
                                 {cert.credentialId && (
                                   <div className="flex items-center text-sm text-gray-500 mt-2">
                                     <span className="font-medium">ID:</span>
@@ -1777,7 +1777,7 @@ function ProfilePage() {
                                     href={cert.credentialURL}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center mt-2 text-sm text-purple-600 hover:text-purple-800"
+                                    className="inline-flex items-center mt-2 text-sm text-blue-600 hover:text-blue-800"
                                   >
                                     <Award className="h-3 w-3 mr-1" />
                                     View Credential
@@ -1816,7 +1816,7 @@ function ProfilePage() {
 
               <TabsContent value="languages" className="space-y-6">
                 <Card className="border-0 shadow-md overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
                       <div>
                         <CardTitle className="text-xl text-gray-900">Languages</CardTitle>
@@ -1826,7 +1826,7 @@ function ProfilePage() {
                       </div>
                       <Button
                         onClick={() => openDialog("language")}
-                        className="bg-purple-600 hover:bg-purple-700 text-white"
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
                         size="sm"
                       >
                         <PlusCircle className="h-4 w-4 mr-2" />
@@ -1845,7 +1845,7 @@ function ProfilePage() {
                         </p>
                         <Button
                           onClick={() => openDialog("language")}
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           <PlusCircle className="h-4 w-4 mr-2" />
                           Add Language
@@ -1863,7 +1863,7 @@ function ProfilePage() {
                                 <h3 className="font-semibold text-lg text-gray-900">{lang.name}</h3>
                                 <div className="flex items-center mt-2 gap-2">
                                   <span className="text-sm text-gray-600">Proficiency:</span>
-                                  <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs">
+                                  <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
                                     {lang.proficiency || lang.level}
                                   </span>
                                 </div>
@@ -1904,11 +1904,11 @@ function ProfilePage() {
         {/* Experience Dialog */}
         <Dialog open={state.activeDialog === "experience"} onOpenChange={closeDialog}>
           <DialogContent className="sm:max-w-[600px] bg-white p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+            <DialogHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
               <DialogTitle className="text-xl font-bold">
                 {state.currentItem ? "Edit Work Experience" : "Add Work Experience"}
               </DialogTitle>
-              <DialogDescription className="text-purple-100 opacity-90">
+              <DialogDescription className="text-blue-100 opacity-90">
                 Fill in the details of your work experience to showcase your professional background.
               </DialogDescription>
             </DialogHeader>
@@ -1923,7 +1923,7 @@ function ProfilePage() {
                       id="company"
                       name="company"
                       defaultValue={state.currentItem?.company || ""}
-                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
                     />
                   </div>
@@ -1935,7 +1935,7 @@ function ProfilePage() {
                       id="jobTitle"
                       name="jobTitle"
                       defaultValue={state.currentItem?.jobTitle || ""}
-                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
                     />
                   </div>
@@ -1949,7 +1949,7 @@ function ProfilePage() {
                       id="location"
                       name="location"
                       defaultValue={state.currentItem?.location || ""}
-                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1962,7 +1962,7 @@ function ProfilePage() {
                         id="current"
                         name="current"
                         defaultChecked={!state.currentItem?.endDate || state.currentItem?.endDate === null}
-                        className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         onChange={(e) => {
                           const endDateField = document.getElementById("endDate")
                           const endDateLabel = document.querySelector('label[for="endDate"]')
@@ -2013,7 +2013,7 @@ function ProfilePage() {
                           ? new Date(state.currentItem.startDate).toISOString().split("T")[0]
                           : ""
                       }
-                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
                       onChange={() => {
                         const startDate = document.getElementById("startDate").value
@@ -2039,7 +2039,7 @@ function ProfilePage() {
                           ? new Date(state.currentItem.endDate).toISOString().split("T")[0]
                           : ""
                       }
-                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       disabled={!state.currentItem?.endDate || state.currentItem?.endDate === null}
                       onChange={() => {
                         const startDate = document.getElementById("startDate").value
@@ -2062,7 +2062,7 @@ function ProfilePage() {
                     name="description"
                     defaultValue={state.currentItem?.description || ""}
                     rows={4}
-                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     placeholder="Describe your responsibilities, achievements, and the skills you utilized in this role..."
                   />
                 </div>
@@ -2071,7 +2071,7 @@ function ProfilePage() {
                 <Button type="button" variant="outline" onClick={closeDialog}>
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white">
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
                   {state.currentItem ? "Update Experience" : "Add Experience"}
                 </Button>
               </div>
@@ -2082,11 +2082,11 @@ function ProfilePage() {
         {/* Education Dialog */}
         <Dialog open={state.activeDialog === "education"} onOpenChange={closeDialog}>
           <DialogContent className="sm:max-w-[600px] bg-white p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+            <DialogHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
               <DialogTitle className="text-xl font-bold">
                 {state.currentItem ? "Edit Education" : "Add Education"}
               </DialogTitle>
-              <DialogDescription className="text-purple-100 opacity-90">
+              <DialogDescription className="text-blue-100 opacity-90">
                 Fill in the details of your education to showcase your academic background.
               </DialogDescription>
             </DialogHeader>
@@ -2101,7 +2101,7 @@ function ProfilePage() {
                       id="institution"
                       name="institution"
                       defaultValue={state.currentItem?.school || ""}
-                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
                     />
                   </div>
@@ -2113,7 +2113,7 @@ function ProfilePage() {
                       id="degree"
                       name="degree"
                       defaultValue={state.currentItem?.degree || ""}
-                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
                     />
                   </div>
@@ -2126,7 +2126,7 @@ function ProfilePage() {
                     id="fieldOfStudy"
                     name="fieldOfStudy"
                     defaultValue={state.currentItem?.fieldOfStudy || ""}
-                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-2">
@@ -2137,7 +2137,7 @@ function ProfilePage() {
                     id="location"
                     name="location"
                     defaultValue={state.currentItem?.location || ""}
-                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     placeholder="City, Country"
                   />
                 </div>
@@ -2155,7 +2155,7 @@ function ProfilePage() {
                           ? new Date(state.currentItem.startDate).toISOString().split("T")[0]
                           : ""
                       }
-                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
                       onChange={() => {
                         const startDate = document.getElementById("startDate").value
@@ -2178,7 +2178,7 @@ function ProfilePage() {
                         id="currentEducation"
                         name="current"
                         defaultChecked={!state.currentItem?.endDate || state.currentItem?.endDate === null}
-                        className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         onChange={(e) => {
                           const endDateField = document.getElementById("educationEndDate")
                           const endDateLabel = document.querySelector('label[for="educationEndDate"]')
@@ -2228,7 +2228,7 @@ function ProfilePage() {
                         ? new Date(state.currentItem.endDate).toISOString().split("T")[0]
                         : ""
                     }
-                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     disabled={!state.currentItem?.endDate || state.currentItem?.endDate === null}
                     onChange={() => {
                       const startDate = document.getElementById("startDate").value
@@ -2250,7 +2250,7 @@ function ProfilePage() {
                     name="description"
                     defaultValue={state.currentItem?.description || ""}
                     rows={4}
-                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     placeholder="Describe your studies, achievements, and relevant coursework..."
                   />
                 </div>
@@ -2259,7 +2259,7 @@ function ProfilePage() {
                 <Button type="button" variant="outline" onClick={closeDialog}>
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white">
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
                   {state.currentItem ? "Update Education" : "Add Education"}
                 </Button>
               </div>
@@ -2270,11 +2270,11 @@ function ProfilePage() {
         {/* Certification Dialog */}
         <Dialog open={state.activeDialog === "certification"} onOpenChange={closeDialog}>
           <DialogContent className="sm:max-w-[600px] bg-white p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+            <DialogHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
               <DialogTitle className="text-xl font-bold">
                 {state.currentItem ? "Edit Certification" : "Add Certification"}
               </DialogTitle>
-              <DialogDescription className="text-purple-100 opacity-90">
+              <DialogDescription className="text-blue-100 opacity-90">
                 Fill in the details of your professional certification to showcase your expertise.
               </DialogDescription>
             </DialogHeader>
@@ -2288,7 +2288,7 @@ function ProfilePage() {
                     id="name"
                     name="name"
                     defaultValue={state.currentItem?.name || ""}
-                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     required
                   />
                 </div>
@@ -2300,7 +2300,7 @@ function ProfilePage() {
                     id="issuingOrganization"
                     name="issuingOrganization"
                     defaultValue={state.currentItem?.issuer || ""}
-                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     required
                   />
                 </div>
@@ -2318,7 +2318,7 @@ function ProfilePage() {
                           ? new Date(state.currentItem.issueDate).toISOString().split("T")[0]
                           : ""
                       }
-                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
                       onChange={() => {
                         const issueDate = document.getElementById("issueDate").value
@@ -2343,7 +2343,7 @@ function ProfilePage() {
                           ? new Date(state.currentItem.expirationDate).toISOString().split("T")[0]
                           : ""
                       }
-                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       onChange={() => {
                         const issueDate = document.getElementById("issueDate").value
                         const expirationDate = document.getElementById("expirationDate").value
@@ -2364,7 +2364,7 @@ function ProfilePage() {
                       id="credentialId"
                       name="credentialId"
                       defaultValue={state.currentItem?.credentialId || ""}
-                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                   <div className="space-y-2">
@@ -2376,7 +2376,7 @@ function ProfilePage() {
                       name="credentialUrl"
                       type="url"
                       defaultValue={state.currentItem?.credentialURL || ""}
-                      className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
                 </div>
@@ -2385,7 +2385,7 @@ function ProfilePage() {
                 <Button type="button" variant="outline" onClick={closeDialog}>
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white">
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
                   {state.currentItem ? "Update Certification" : "Add Certification"}
                 </Button>
               </div>
@@ -2396,11 +2396,11 @@ function ProfilePage() {
         {/* Language Dialog */}
         <Dialog open={state.activeDialog === "language"} onOpenChange={closeDialog}>
           <DialogContent className="sm:max-w-[600px] bg-white p-0 overflow-hidden max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+            <DialogHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
               <DialogTitle className="text-xl font-bold">
                 {state.currentItem ? "Edit Language" : "Add Language"}
               </DialogTitle>
-              <DialogDescription className="text-purple-100 opacity-90">
+              <DialogDescription className="text-blue-100 opacity-90">
                 Add languages you speak to showcase your communication skills.
               </DialogDescription>
             </DialogHeader>
@@ -2414,7 +2414,7 @@ function ProfilePage() {
                     id="languageName"
                     name="languageName"
                     defaultValue={state.currentItem?.name || ""}
-                    className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     required
                     placeholder="e.g. English, French, Spanish"
                   />
@@ -2424,7 +2424,7 @@ function ProfilePage() {
                     Proficiency Level
                   </Label>
                   <Select name="level" defaultValue={state.currentItem?.level || "Intermediate"}>
-                    <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                    <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue placeholder="Select proficiency level" />
                     </SelectTrigger>
                     <SelectContent className="bg-white" >
@@ -2441,7 +2441,7 @@ function ProfilePage() {
                 <Button type="button" variant="outline" onClick={closeDialog}>
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white">
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
                   {state.currentItem ? "Update Language" : "Add Language"}
                 </Button>
               </div>

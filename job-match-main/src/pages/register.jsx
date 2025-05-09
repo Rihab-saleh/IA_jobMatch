@@ -221,7 +221,7 @@ export default function Register() {
           <div className="flex justify-center">
             <Button 
               type="submit" 
-              className="px-12 py-6 text-lg bg-purple-700 hover:bg-purple-800"
+              className="px-12 py-6 text-lg bg-blue-700 hover:bg-blue-800"
               disabled={loading}
             >
               {loading ? "Processing..." : "Register"}
@@ -231,7 +231,7 @@ export default function Register() {
           <div className="text-center">
             <p className="text-gray-600">
               Already registered?{" "}
-              <Link to="/login" className="text-purple-700 font-medium">
+              <Link to="/login" className="text-blue-700 font-medium">
                 Login
               </Link>
             </p>

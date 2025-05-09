@@ -190,11 +190,11 @@ export default function JobDetailsView() {
                     </h1>
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                       <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1 text-sm font-medium text-gray-700">
-                        <Building className="h-4 w-4 mr-1.5 text-purple-500" />
+                        <Building className="h-4 w-4 mr-1.5 text-blue-500" />
                         {job.company || "Company not specified"}
                       </span>
                       <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1 text-sm font-medium text-gray-700">
-                        <MapPin className="h-4 w-4 mr-1.5 text-purple-500" />
+                        <MapPin className="h-4 w-4 mr-1.5 text-blue-500" />
                         {job.location || "Location not specified"}
                       </span>
                     </div>
@@ -220,7 +220,7 @@ export default function JobDetailsView() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <div className="flex items-center gap-3">
-                  <Briefcase className="h-5 w-5 text-purple-600" />
+                  <Briefcase className="h-5 w-5 text-blue-600" />
                   <div>
                     <p className="text-sm text-gray-500">Job Type</p>
                     <p className="font-medium text-gray-900">
@@ -232,7 +232,7 @@ export default function JobDetailsView() {
 
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <div className="flex items-center gap-3">
-                  <DollarSign className="h-5 w-5 text-purple-600" />
+                  <DollarSign className="h-5 w-5 text-blue-600" />
                   <div>
                     <p className="text-sm text-gray-500">Salary</p>
                     <p className="font-medium text-gray-900">
@@ -244,7 +244,7 @@ export default function JobDetailsView() {
 
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <div className="flex items-center gap-3">
-                  <Clock className="h-5 w-5 text-purple-600" />
+                  <Clock className="h-5 w-5 text-blue-600" />
                   <div>
                     <p className="text-sm text-gray-500">Experience</p>
                     <p className="font-medium text-gray-900">
@@ -256,7 +256,7 @@ export default function JobDetailsView() {
 
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <div className="flex items-center gap-3">
-                  <Calendar className="h-5 w-5 text-purple-600" />
+                  <Calendar className="h-5 w-5 text-blue-600" />
                   <div>
                     <p className="text-sm text-gray-500">Posted Date</p>
                     <p className="font-medium text-gray-900">
@@ -276,7 +276,7 @@ export default function JobDetailsView() {
                   {job.skills.map((skill, index) => (
                     <Badge
                       key={index}
-                      className="bg-purple-100 text-purple-800 hover:bg-purple-200 text-sm py-1.5 px-3"
+                      className="bg-blue-100 text-blue-800 hover:bg-blue-200 text-sm py-1.5 px-3"
                     >
                       {skill}
                     </Badge>
@@ -329,7 +329,7 @@ export default function JobDetailsView() {
                 href={job.applyUrl || job.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-purple-600 text-white hover:bg-purple-700 h-10 px-4 py-2 flex-1 gap-2"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2 flex-1 gap-2"
               >
                 Apply Now
                 <ExternalLink className="h-4 w-4" />

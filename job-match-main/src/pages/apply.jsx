@@ -190,7 +190,7 @@ export default function ApplyPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link to="/dashboard">
-                  <Button className="w-full sm:w-auto bg-purple-700 hover:bg-purple-800">Go to Dashboard</Button>
+                  <Button className="w-full sm:w-auto bg-blue-700 hover:bg-blue-800">Go to Dashboard</Button>
                 </Link>
                 <Link to="/jobs">
                   <Button variant="outline" className="w-full sm:w-auto">
@@ -312,7 +312,7 @@ export default function ApplyPage() {
                   <div className="border rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <FileText className="h-6 w-6 text-purple-700 mr-3" />
+                        <FileText className="h-6 w-6 text-blue-700 mr-3" />
                         <div>
                           <p className="font-medium">{formData.resume.name}</p>
                           <p className="text-sm text-gray-500">{(formData.resume.size / 1024 / 1024).toFixed(2)} MB</p>
@@ -402,11 +402,11 @@ export default function ApplyPage() {
                   <div>
                     <Label htmlFor="agreeToTerms" className="font-normal">
                       I agree to the{" "}
-                      <Link to="/terms" className="text-purple-700 hover:underline">
+                      <Link to="/terms" className="text-blue-700 hover:underline">
                         Terms and Conditions
                       </Link>{" "}
                       and{" "}
-                      <Link to="/privacy" className="text-purple-700 hover:underline">
+                      <Link to="/privacy" className="text-blue-700 hover:underline">
                         Privacy Policy
                       </Link>
                     </Label>
@@ -422,7 +422,7 @@ export default function ApplyPage() {
               <div className="pt-4">
                 <Button
                   type="submit"
-                  className="w-full bg-purple-700 hover:bg-purple-800 py-6 text-lg"
+                  className="w-full bg-blue-700 hover:bg-blue-800 py-6 text-lg"
                   disabled={submitting}
                 >
                   {submitting ? "Submitting Application..." : "Submit Application"}

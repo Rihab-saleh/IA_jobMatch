@@ -850,7 +850,7 @@ export default function CVBuilderPage() {
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold">Personal Information</h2>
                     <Button
-                      className="bg-purple-700 hover:bg-purple-800 text-white"
+                      className="bg-blue-700 hover:bg-blue-800 text-white"
                       onClick={savePersonalInfo}
                       disabled={saving}
                     >
@@ -994,7 +994,7 @@ export default function CVBuilderPage() {
                     >
                       <DialogTrigger asChild>
                         <Button
-                          className="bg-purple-700 hover:bg-purple-800 text-white"
+                          className="bg-blue-700 hover:bg-blue-800 text-white"
                           onClick={() => {
                             setActiveDialog("experience")
                             setCurrentItem(null)
@@ -1005,11 +1005,11 @@ export default function CVBuilderPage() {
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-white border shadow-lg">
-                        <DialogHeader className="bg-purple-50 px-6 py-4 border-b border-purple-100">
-                          <DialogTitle className="text-purple-800 text-xl">
+                        <DialogHeader className="bg-blue-50 px-6 py-4 border-b border-blue-100">
+                          <DialogTitle className="text-blue-800 text-xl">
                             {currentItem ? "Edit Experience" : "Add New Experience"}
                           </DialogTitle>
-                          <DialogDescription className="text-purple-700/70">
+                          <DialogDescription className="text-blue-700/70">
                             Add details about your work experience
                           </DialogDescription>
                         </DialogHeader>
@@ -1042,7 +1042,7 @@ export default function CVBuilderPage() {
                         <p className="text-gray-500 mb-4">Add your work history to improve your CV</p>
                         <Button
                           variant="outline"
-                          className="border-purple-700 text-purple-700 hover:bg-purple-50"
+                          className="border-blue-700 text-blue-700 hover:bg-blue-50"
                           onClick={() => {
                             setActiveDialog("experience")
                             setCurrentItem(null)
@@ -1059,12 +1059,12 @@ export default function CVBuilderPage() {
                           className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow"
                         >
                           <div className="flex justify-between mb-2">
-                            <h3 className="font-semibold text-purple-900">{experience.title || "New Position"}</h3>
+                            <h3 className="font-semibold text-blue-900">{experience.title || "New Position"}</h3>
                             <div className="flex gap-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                                 onClick={() => {
                                   setActiveDialog("experience")
                                   setCurrentItem(experience)
@@ -1127,7 +1127,7 @@ export default function CVBuilderPage() {
                                 {experience.skills.map((skill, index) => (
                                   <span
                                     key={index}
-                                    className="inline-block px-2 py-1 text-xs bg-purple-50 text-purple-700 rounded-full border border-purple-200"
+                                    className="inline-block px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-200"
                                   >
                                     {skill}
                                   </span>
@@ -1156,7 +1156,7 @@ export default function CVBuilderPage() {
                     >
                       <DialogTrigger asChild>
                         <Button
-                          className="bg-purple-700 hover:bg-purple-800 text-white"
+                          className="bg-blue-700 hover:bg-blue-800 text-white"
                           onClick={() => {
                             setActiveDialog("education")
                             setCurrentItem(null)
@@ -1203,7 +1203,7 @@ export default function CVBuilderPage() {
                       <p className="text-gray-500 mb-4">Add your educational background to improve your CV</p>
                       <Button
                         variant="outline"
-                        className="border-purple-700 text-purple-700 hover:bg-purple-50"
+                        className="border-blue-700 text-blue-700 hover:bg-blue-50"
                         onClick={() => {
                           setActiveDialog("education")
                           setCurrentItem(null)
@@ -1306,7 +1306,7 @@ export default function CVBuilderPage() {
                     >
                       <DialogTrigger asChild>
                         <Button
-                          className="bg-purple-700 hover:bg-purple-800 text-white"
+                          className="bg-blue-700 hover:bg-blue-800 text-white"
                           onClick={() => {
                             setActiveDialog("certification")
                             setCurrentItem(null)
@@ -1353,7 +1353,7 @@ export default function CVBuilderPage() {
                       <p className="text-gray-500 mb-4">Add your professional certifications to enhance your CV</p>
                       <Button
                         variant="outline"
-                        className="border-purple-700 text-purple-700 hover:bg-purple-50"
+                        className="border-blue-700 text-blue-700 hover:bg-blue-50"
                         onClick={() => {
                           setActiveDialog("certification")
                           setCurrentItem(null)
@@ -1426,7 +1426,7 @@ export default function CVBuilderPage() {
                 <div className="bg-white rounded-lg border p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold">Skills</h2>
-                    <Button className="bg-purple-700 hover:bg-purple-800 text-white" onClick={openSkillDialog}>
+                    <Button className="bg-blue-700 hover:bg-blue-800 text-white" onClick={openSkillDialog}>
                       <PlusCircle className="h-4 w-4 mr-2" />
                       Add Skill
                     </Button>
@@ -1464,7 +1464,7 @@ export default function CVBuilderPage() {
                             value={newSkill}
                             onChange={(e) => setNewSkill(e.target.value)}
                             placeholder="Enter skill name (e.g., React, Python)"
-                            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                           />
                         </div>
                         <div className="space-y-2">
@@ -1472,7 +1472,7 @@ export default function CVBuilderPage() {
                             Skill Level
                           </Label>
                           <Select value={skillLevel} onValueChange={(value) => setSkillLevel(value)}>
-                            <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                            <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                               <SelectValue placeholder="Select skill level" />
                             </SelectTrigger>
                             <SelectContent className="bg-white z-20">
@@ -1506,7 +1506,7 @@ export default function CVBuilderPage() {
                             }
                           }}
                           disabled={!newSkill.trim() || saving}
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           {saving ? (
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1529,11 +1529,11 @@ export default function CVBuilderPage() {
                       {skills.map((skill) => (
                         <div
                           key={skill._id}
-                          className="border rounded-lg p-3 flex justify-between items-center bg-gradient-to-r from-purple-50 "
+                          className="border rounded-lg p-3 flex justify-between items-center bg-gradient-to-r from-blue-50 "
                         >
                           <div className="flex flex-col">
-                            <span className="font-medium text-purple-800">{skill.name}</span>
-                            <span className="ml-2 text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                            <span className="font-medium text-blue-800">{skill.name}</span>
+                            <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full">
                               {skill.level}
                             </span>
                           </div>
@@ -1541,7 +1541,7 @@ export default function CVBuilderPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0 text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                              className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                               onClick={() => {
                                 setActiveDialog("skill")
                                 setCurrentItem(skill)
@@ -1582,7 +1582,7 @@ export default function CVBuilderPage() {
                     >
                       <DialogTrigger asChild>
                         <Button
-                          className="bg-purple-700 hover:bg-purple-800 text-white"
+                          className="bg-blue-700 hover:bg-blue-800 text-white"
                           onClick={() => {
                             setActiveDialog("language")
                             setCurrentItem(null)
@@ -1628,7 +1628,7 @@ export default function CVBuilderPage() {
                       <p className="text-gray-500 mb-4">Add your language proficiencies to enhance your CV</p>
                       <Button
                         variant="outline"
-                        className="border-purple-700 text-purple-700 hover:bg-purple-50"
+                        className="border-blue-700 text-blue-700 hover:bg-blue-50"
                         onClick={() => {
                           setActiveDialog("language")
                           setCurrentItem(null)
@@ -1698,7 +1698,7 @@ export default function CVBuilderPage() {
 
               <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                 {/* Template 1 */}
-                <div className={`border rounded-lg p-2 ${activeTemplate === "modern" ? "ring-2 ring-purple-700" : ""}`}>
+                <div className={`border rounded-lg p-2 ${activeTemplate === "modern" ? "ring-2 ring-blue-700" : ""}`}>
                   <div className="aspect-[3/4] bg-gray-100 rounded-lg mb-2 overflow-hidden">
                     <img
                       src="/placeholder.svg?height=300&width=225"
@@ -1713,7 +1713,7 @@ export default function CVBuilderPage() {
                     <Button
                       variant={activeTemplate === "modern" ? "default" : "outline"}
                       size="sm"
-                      className={activeTemplate === "modern" ? "bg-purple-700 hover:bg-purple-800 text-white" : ""}
+                      className={activeTemplate === "modern" ? "bg-blue-700 hover:bg-blue-800 text-white" : ""}
                       onClick={() => setActiveTemplate("modern")}
                     >
                       {activeTemplate === "modern" ? "Selected" : "Select"}
@@ -1723,7 +1723,7 @@ export default function CVBuilderPage() {
 
                 {/* Template 2 */}
                 <div
-                  className={`border rounded-lg p-2 ${activeTemplate === "professional" ? "ring-2 ring-purple-700" : ""}`}
+                  className={`border rounded-lg p-2 ${activeTemplate === "professional" ? "ring-2 ring-blue-700" : ""}`}
                 >
                   <div className="aspect-[3/4] bg-gray-100 rounded-lg mb-2 overflow-hidden">
                     <img
@@ -1740,7 +1740,7 @@ export default function CVBuilderPage() {
                       variant={activeTemplate === "professional" ? "default" : "outline"}
                       size="sm"
                       className={
-                        activeTemplate === "professional" ? "bg-purple-700 hover:bg-purple-800 text-white" : ""
+                        activeTemplate === "professional" ? "bg-blue-700 hover:bg-blue-800 text-white" : ""
                       }
                       onClick={() => setActiveTemplate("professional")}
                     >
@@ -1807,7 +1807,7 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
             name="title"
             value={formData.title}
             onChange={handleChange}
-            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
             required
           />
         </div>
@@ -1821,7 +1821,7 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
             name="company"
             value={formData.company}
             onChange={handleChange}
-            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
             required
           />
         </div>
@@ -1837,7 +1837,7 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
               name="location"
               value={formData.location}
               onChange={handleChange}
-              className="pl-9 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+              className="pl-9 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -1854,7 +1854,7 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
                 value={formData.startDate}
                 onChange={handleChange}
                 placeholder="DD/MM/YYYY"
-                className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 required
               />
               <Button
@@ -1901,7 +1901,7 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
                 onChange={handleChange}
                 placeholder="DD/MM/YYYY"
                 disabled={formData.current}
-                className={`border-gray-300 focus:border-purple-500 focus:ring-purple-500 ${formData.current ? "bg-gray-100 text-gray-500" : ""}`}
+                className={`border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${formData.current ? "bg-gray-100 text-gray-500" : ""}`}
               />
               <Button
                 type="button"
@@ -1952,7 +1952,7 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
                 endDate: checked ? "" : prev.endDate,
               }))
             }}
-            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
           <Label htmlFor="current" className="text-sm font-medium text-gray-700">
             I currently work here
@@ -1969,7 +1969,7 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
             value={formData.description}
             onChange={handleChange}
             rows={3}
-            className="border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
             placeholder="Describe your responsibilities and achievements..."
           />
         </div>
@@ -1979,7 +1979,7 @@ function ExperienceForm({ experience, onSubmit, onCancel, isSaving }) {
         <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving}>
           Cancel
         </Button>
-        <Button type="submit" className="bg-purple-700 hover:bg-purple-800 text-white text-white" disabled={isSaving}>
+        <Button type="submit" className="bg-blue-700 hover:bg-blue-800 text-white text-white" disabled={isSaving}>
           {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {experience ? "Update Experience" : "Add Experience"}
         </Button>

@@ -19,7 +19,7 @@ export default function JobDetailsPage() {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
         <h1 className="text-2xl font-bold mb-4">Job non trouvé</h1>
-        <Link to="/jobs" className="text-purple-600 hover:underline">
+        <Link to="/jobs" className="text-blue-600 hover:underline">
           <ArrowLeft className="inline mr-2" />
           Retour aux offres
         </Link>
@@ -31,7 +31,7 @@ export default function JobDetailsPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-5xl mx-auto">
         <div className="mb-8">
-          <Link to="/jobs" className="text-purple-600 hover:underline">
+          <Link to="/jobs" className="text-blue-600 hover:underline">
             <ArrowLeft className="inline mr-2" />
             Retour aux offres
           </Link>
@@ -93,7 +93,7 @@ export default function JobDetailsPage() {
           <div className="border-t pt-6">
             <Button 
               asChild 
-              className="w-full bg-purple-600 hover:bg-purple-700"
+              className="w-full bg-blue-600 hover:bg-blue-700"
             >
               <a
                 href={job.url}
