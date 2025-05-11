@@ -1,58 +1,44 @@
+const mongoose = require('mongoose');
 const Notification = require('../models/notification_model');
 const User = require('../models/user_model');
 
 const notificationController = {
-  getUnreadNotifications: async (req, res) => {
+  getAllNotifications: async (req, res) => {
     try {
-      const notifications = await Notification.find({
-        userId: req.user._id,
-        read: false
-      }).sort('-createdAt');
-
-      res.json(notifications);
-    } catch (error) {
-      res.status(500).json({ 
-        success: false,
-        message: 'Failed to fetch notifications'
-      });
-    }
-  },
-
-  markAsRead: async (req, res) => {
-    try {
-      const notification = await Notification.findOneAndUpdate(
-        { 
-          _id: req.params.id, 
-          userId: req.user._id 
-        },
-        { read: true },
-        { new: true }
-      );
-
-      if (!notification) {
-        return res.status(404).json({ 
-          success: false,
-          message: 'Notification not found'
+      if (!req.user || !req.user._id) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Unauthorized: Missing user authentication' 
         });
       }
 
-      res.json({ 
-        success: true, 
-        message: 'Notification marked as read' 
-      });
+      const notifications = await Notification.find({
+        userId: new mongoose.Types.ObjectId(req.user._id)
+      }).sort({ createdAt: -1 });
+
+      res.json({ success: true, notifications });
     } catch (error) {
+      console.error('Error fetching notifications:', error);
       res.status(500).json({ 
         success: false,
-        message: 'Failed to update notification'
+        message: 'Failed to fetch notifications',
+        error: error.message
       });
     }
   },
 
   deleteNotification: async (req, res) => {
     try {
+      if (!req.user || !req.user._id) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Unauthorized: Missing user authentication' 
+        });
+      }
+
       const result = await Notification.deleteOne({
         _id: req.params.id,
-        userId: req.user._id
+        userId: new mongoose.Types.ObjectId(req.user._id)
       });
 
       if (result.deletedCount === 0) {
@@ -64,28 +50,14 @@ const notificationController = {
 
       res.json({ 
         success: true, 
-        message: 'Notification deleted' 
+        message: 'Notification deleted successfully' 
       });
     } catch (error) {
+      console.error('Error deleting notification:', error);
       res.status(500).json({ 
         success: false,
-        message: 'Failed to delete notification'
-      });
-    }
-  },
-
-  getJobAlerts: async (req, res) => {
-    try {
-      const alerts = await Notification.find({
-        userId: req.user._id,
-        notificationType: 'jobAlert'
-      }).sort('-createdAt');
-
-      res.json(alerts);
-    } catch (error) {
-      res.status(500).json({ 
-        success: false,
-        message: 'Failed to fetch job alerts'
+        message: 'Failed to delete notification',
+        error: error.message
       });
     }
   }

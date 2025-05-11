@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Menu, X, Bell, User, Settings, LogOut, ChevronDown, Briefcase, Home, FileText, Sparkles } from 'lucide-react'
 import { useAuth } from "../contexts/auth-context"
@@ -71,8 +71,8 @@ const NotificationBadge = ({ count = 0 }) => (
 const UserDropdown = ({ isOpen, setIsOpen, fullName, userRole, accountLinks, logout }) => {
   const dropdownRef = useRef(null)
   const [isHovered, setIsHovered] = useState(false)
+  const { isAuthenticated } = useAuth()
 
-  // Get initials from full name
   const getInitials = (name) => {
     if (!name) return "U"
     return name
@@ -96,6 +96,14 @@ const UserDropdown = ({ isOpen, setIsOpen, fullName, userRole, accountLinks, log
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [setIsOpen])
 
+  const handleLinkClick = useCallback((e) => {
+    if (!isAuthenticated) {
+      e.preventDefault()
+      // Optionally redirect to login with return url
+    }
+    setIsOpen(false)
+  }, [isAuthenticated, setIsOpen])
+
   return (
     <div className="relative user-dropdown" ref={dropdownRef}>
       <button
@@ -110,7 +118,6 @@ const UserDropdown = ({ isOpen, setIsOpen, fullName, userRole, accountLinks, log
         aria-haspopup="true"
       >
         <div className="relative group">
-          {/* Animated background glow */}
           <div
             className={cn(
               "absolute inset-0 rounded-full blur-md transition-all duration-300",
@@ -118,7 +125,6 @@ const UserDropdown = ({ isOpen, setIsOpen, fullName, userRole, accountLinks, log
             )}
           ></div>
 
-          {/* Avatar with gradient border */}
           <div
             className={cn(
               "relative h-11 w-11 rounded-full flex items-center justify-center text-white font-semibold text-lg overflow-hidden",
@@ -129,7 +135,6 @@ const UserDropdown = ({ isOpen, setIsOpen, fullName, userRole, accountLinks, log
             {initials}
           </div>
 
-          {/* Online status indicator */}
           <div className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-white"></div>
         </div>
 
@@ -146,7 +151,7 @@ const UserDropdown = ({ isOpen, setIsOpen, fullName, userRole, accountLinks, log
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-72 bg-card rounded-xl shadow-xl py-1 z-10 border border-blue-100 animate-in fade-in-50 slide-in-from-top-5 duration-200">
+        <div className="absolute right-0 mt-3 w-72 bg-card rounded-xl shadow-xl py-1 z-10 border border-blue-100 animate-in fade-in-50 slide-in-from-top-5 duration-200 bg-white">
           <div className="px-5 py-4 border-b border-blue-50">
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-semibold text-lg">
@@ -166,9 +171,12 @@ const UserDropdown = ({ isOpen, setIsOpen, fullName, userRole, accountLinks, log
             {accountLinks.map(({ path, label, icon: Icon, description }) => (
               <Link
                 key={path}
-                to={path}
-                className="flex items-center px-5 py-2.5 text-sm text-foreground hover:bg-blue-50 transition-colors"
-                onClick={() => setIsOpen(false)}
+                to={isAuthenticated ? path : "#"}
+                onClick={handleLinkClick}
+                className={cn(
+                  "flex items-center px-5 py-2.5 text-sm text-foreground transition-colors",
+                  isAuthenticated ? "hover:bg-blue-50" : "opacity-50 cursor-not-allowed"
+                )}
               >
                 <div className="mr-3 h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                   <Icon className="h-4.5 w-4.5" />
@@ -232,33 +240,30 @@ const AdminHeader = ({ logout, fullName }) => {
   ]
 
   return (
-<header
-  className="border-b border-border sticky top-0 z-50 shadow-md"
-  style={{ backgroundColor: "white" }}
->
-  <div className="container mx-auto flex h-20 items-center justify-between px-6">
-    <div className="flex items-center">
-      <Logo />
-      <div className="ml-6 hidden md:flex items-center space-x-1">
-        {adminNavLinks.map(({ path, label, icon }) => (
-          <NavLink key={path} to={path} label={label} icon={icon} isActive={isActive(path)} />
-        ))}
-      </div>
-    </div>
+    <header className="border-b border-border sticky top-0 z-50 shadow-md bg-white">
+      <div className="container mx-auto flex h-20 items-center justify-between px-6">
+        <div className="flex items-center">
+          <Logo />
+          <div className="ml-6 hidden md:flex items-center space-x-1">
+            {adminNavLinks.map(({ path, label, icon }) => (
+              <NavLink key={path} to={path} label={label} icon={icon} isActive={isActive(path)} />
+            ))}
+          </div>
+        </div>
 
-    <div className="flex items-center gap-2">
-      <NotificationBadge count={3} />
-      <UserDropdown
-        isOpen={dropdownOpen}
-        setIsOpen={setDropdownOpen}
-        fullName={fullName}
-        userRole="admin"
-        accountLinks={accountLinks}
-        logout={logout}
-      />
-    </div>
-  </div>
-</header>
+        <div className="flex items-center gap-2">
+          <NotificationBadge count={3} />
+          <UserDropdown
+            isOpen={dropdownOpen}
+            setIsOpen={setDropdownOpen}
+            fullName={fullName}
+            userRole="admin"
+            accountLinks={accountLinks}
+            logout={logout}
+          />
+        </div>
+      </div>
+    </header>
   )
 }
 
@@ -268,7 +273,6 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
-  // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 10)
@@ -277,7 +281,6 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  // User navigation links with icons
   const userNavLinks = [
     { path: "/", label: "Home", icon: Home },
     { path: "/jobs", label: "Find Jobs", icon: Briefcase },
@@ -286,16 +289,13 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
     { path: "/cv-builder", label: "CV Builder", icon: FileText },
   ]
 
-  // Default links for non-authenticated users
   const defaultLinks = [
     { path: "/", label: "Home", icon: Home },
     { path: "/jobs", label: "Find Jobs", icon: Briefcase },
   ]
 
-  // Choose which links to display based on authentication status
   const navLinks = isAuthenticated ? userNavLinks : defaultLinks
 
-  // Account dropdown links
   const accountLinks = [
     {
       path: "/profile",
@@ -372,7 +372,6 @@ const UserHeader = ({ mobileMenuOpen, setMobileMenuOpen, isAuthenticated, logout
         </div>
       </div>
 
-      {/* Mobile menu */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-background border-t border-border animate-in slide-in-from-top-5 duration-200">
           <div className="container mx-auto px-4 py-3">
@@ -444,19 +443,16 @@ export default function Header() {
   const userRole = getUserRole()
   const fullName = getFullName()
 
-  // Close mobile menu when changing routes
   useEffect(() => {
     setMobileMenuOpen(false)
   }, [location.pathname])
 
-  // Redirect admin users to admin dashboard
   useEffect(() => {
     if (isAuthenticated && userRole === "admin" && !location.pathname.startsWith("/admin")) {
       navigate("/admin")
     }
   }, [isAuthenticated, userRole, location.pathname, navigate])
 
-  // Render appropriate header based on user role
   if (userRole === "admin") {
     return <AdminHeader logout={logout} fullName={fullName} />
   }

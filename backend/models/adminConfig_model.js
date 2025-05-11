@@ -2,7 +2,7 @@
 const mongoose = require('mongoose');
 
 const adminConfigSchema = new mongoose.Schema({
-  llmModel: { type: String,enum:  ['mistral', 'llama2', 'mistral'],
+  llmModel: { type: String,enum:  ['mistral', 'llama2', 'mistral:instruct'],
      default: 'llama2' },
   allowedApiSources: { type: [String],
     enum: ['adzuna', 'reed', 'apijobs', 'jooble', 'findwork', 'remotive', 'scraped'],

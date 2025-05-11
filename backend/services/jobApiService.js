@@ -1049,33 +1049,34 @@ app.post('/api/jobs/save', async (req, res) => {
   }
 });
 
+// Example backend route
 app.get('/api/jobs/saved/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ error: "ID utilisateur requis" });
+  }
+
   try {
-    const { userId } = req.params;
-
-    if (!userId) {
-      return res.status(400).json({
-        error: "ID utilisateur requis",
-        required: ["userId"]
-      });
-    }
-
-    // Ne récupérer que les jobs où favorited = true
-    const savedJobs = await SavedJob.find({
-      userId,
-      favorited: true
-    });
-
+    const savedJobs = await SavedJob.find({ userId, favorited: true });
     if (!savedJobs || savedJobs.length === 0) {
-      return res.status(404).json({ message: "Aucun job favori trouvé pour cet utilisateur" });
+      return res.status(200).json([]);
     }
+    
+    // Transformation of data
+    const transformedJobs = savedJobs.map(job => ({
+      ...job.toObject(),
+      isSaved: job.favorited,
+    }));
 
-    res.status(200).json(savedJobs);
+    return res.status(200).json(transformedJobs);
   } catch (error) {
-    console.error("Erreur lors de la récupération des jobs favoris :", error);
-    res.status(500).json({ error: 'Erreur interne du serveur', details: error.message });
+    console.error("Erreur lors de la récupération des jobs favoris:", error);
+    return res.status(500).json({ error: 'Erreur interne du serveur', details: error.message });
   }
 });
+
+
 
 
 app.delete("/api/jobs/saved/:userId/:jobId", async (req, res) => {

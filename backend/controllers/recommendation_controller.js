@@ -25,28 +25,44 @@ exports.getRecommendationsForUser = async (req, res) => {
   }
 };
 
+
+
 exports.getSavedJobRecommendations = async (req, res) => {
   try {
     const { userId } = req.params;
+    const { recommended } = req.query;
+
     if (!userId) {
       return res.status(400).json({ success: false, message: 'User ID is required.' });
     }
 
     const savedJobs = await recommendationService.getSavedJobRecommendations(userId);
+
     if (!Array.isArray(savedJobs) || savedJobs.length === 0) {
-      return res.json({ success: false, message: 'No saved job recommendations found for this user.' });
+      if (recommended === 'true') {
+        // 🔄 Aucune recommandation sauvegardée → on génère dynamiquement
+        const recommendations = await recommendationService.getRecommendationsForUser(userId);
+        return res.status(200).json({ success: true, recommendations });
+      }
+
+      // 🔔 Aucun job sauvegardé, mais pas besoin de générer
+      return res.status(200).json({ success: true, message: 'Aucune recommandation trouvée pour cet utilisateur.' });
     }
 
-    return res.json({ success: true, savedJobs });
+    // ✅ Jobs recommandés existants
+    return res.status(200).json({ success: true, savedJobs });
+
   } catch (error) {
     console.error('[ERROR] getSavedJobRecommendations:', error.message);
     return res.status(500).json({
       success: false,
-      message: 'Error while fetching saved job recommendations.',
+      message: 'Erreur lors de la récupération des recommandations.',
       error: error.message
     });
   }
 };
+
+
 
 exports.scheduleRecommendations = async (req, res) => {
   try {

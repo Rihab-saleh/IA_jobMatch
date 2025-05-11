@@ -62,7 +62,7 @@ function App() {
                 
                 {/* Changed from path="/reset-password/:token" to path="/reset-password" */}
                 <Route path="/reset-password/:token" element={<ResetPassword />} />
-
+                <Route path="/settings" element={<Settings />} />
                 {/* Authenticated Routes */}
                 <Route
                   path="/dashboard"
@@ -80,21 +80,15 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute>
-                      <Settings />
-                    </ProtectedRoute>
-                  }
-                />
+             
                 <Route
                   path="/notifications"
+                 
                   element={
                     <ProtectedRoute>
                       <Notifications />
                     </ProtectedRoute>
-                  }
+                  }   
                 />
                 <Route
                   path="/cv-builder"

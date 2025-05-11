@@ -2,7 +2,21 @@
 
 import { useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { Search, MapPin, Bookmark, Loader, Briefcase, Calendar, DollarSign, Filter, X, ChevronDown, Clock, Building, ArrowUpRight } from 'lucide-react'
+import {
+  Search,
+  MapPin,
+  Bookmark,
+  Loader,
+  Briefcase,
+  Calendar,
+  DollarSign,
+  Filter,
+  X,
+  ChevronDown,
+  Clock,
+  Building,
+  ArrowUpRight,
+} from "lucide-react"
 import axios from "axios"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
@@ -293,47 +307,46 @@ export default function JobsPage() {
   return (
     <div className="bg-gray-50 min-h-screen">
       <div className="container mx-auto px-4 py-8">
-        /* Search header */}
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 mb-8 shadow-lg">
-            <h1 className="text-2xl font-bold text-white mb-4">Find Your Dream Job</h1>
-            <form onSubmit={handleSearchSubmit} className="bg-white p-2 rounded-lg shadow-sm">
-              <div className="flex flex-col md:flex-row gap-3">
-                <div className="relative flex-grow">
-            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-            <Input
-              value={filters.query}
-              onChange={(e) => handleFilterChange("query", e.target.value)}
-              placeholder="Job title, keywords, or company"
-              className="pl-10 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-            />
-                </div>
-
-                <div className="relative flex-grow md:border-l md:border-gray-200 pl-0 md:pl-3">
-            <MapPin className="absolute left-3 md:left-6 top-2.5 h-5 w-5 text-gray-400" />
-            <Input
-              value={filters.location}
-              onChange={(e) => handleFilterChange("location", e.target.value)}
-              placeholder="Location or remote"
-              className="pl-10 md:pl-12 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-            />
-                </div>
-
-                <Button type="submit" className="bg-blue-700 hover:bg-blue-800 px-6 shadow-sm">
-            {loading ? (
-              <div className="flex items-center gap-2">
-                <Loader className="h-4 w-4 animate-spin" />
-                <span>Searching...</span>
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 mb-8 shadow-lg">
+          <h1 className="text-2xl font-bold text-white mb-4">Find Your Dream Job</h1>
+          <form onSubmit={handleSearchSubmit} className="bg-white p-2 rounded-lg shadow-sm">
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="relative flex-grow">
+                <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                <Input
+                  value={filters.query}
+                  onChange={(e) => handleFilterChange("query", e.target.value)}
+                  placeholder="Job title, keywords, or company"
+                  className="pl-10 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                />
               </div>
-            ) : (
-              <span style={{color:"white"}} >Search Jobs</span>
-            )}
-                </Button>
-              </div>
-            </form>
-          </div>
 
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* Mobile filter toggle */}
+              <div className="relative flex-grow md:border-l md:border-gray-200 pl-0 md:pl-3">
+                <MapPin className="absolute left-3 md:left-6 top-2.5 h-5 w-5 text-gray-400" />
+                <Input
+                  value={filters.location}
+                  onChange={(e) => handleFilterChange("location", e.target.value)}
+                  placeholder="Location or remote"
+                  className="pl-10 md:pl-12 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                />
+              </div>
+
+              <Button type="submit" className="bg-blue-700 hover:bg-blue-800 px-6 shadow-sm">
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader className="h-4 w-4 animate-spin" />
+                    <span>Searching...</span>
+                  </div>
+                ) : (
+                  <span style={{ color: "white" }}>Search Jobs</span>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Mobile filter toggle */}
           <div className="lg:hidden mb-4">
             <Button
               onClick={() => setShowMobileFilters(!showMobileFilters)}
@@ -497,22 +510,24 @@ export default function JobsPage() {
                   key={job.id}
                   className="bg-white rounded-xl shadow-sm p-6 relative hover:shadow-md transition-all duration-300 border border-transparent hover:border-blue-100"
                 >
-                  <button
-                    onClick={() => toggleSaveJob(job)}
-                    className={`absolute right-4 top-4 p-2 rounded-full transition-colors ${
-                      job.isSaved
-                        ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
-                        : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                    }`}
-                    title={job.isSaved ? "Remove from saved jobs" : "Save job"}
-                    disabled={savingJobs[job.id]}
-                  >
-                    {savingJobs[job.id] ? (
-                      <Loader className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <Bookmark className={`h-5 w-5 ${job.isSaved ? "fill-current" : ""}`} />
-                    )}
-                  </button>
+                  {user && (
+                    <button
+                      onClick={() => toggleSaveJob(job)}
+                      className={`absolute right-4 top-4 p-2 rounded-full transition-colors ${
+                        job.isSaved
+                          ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
+                          : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                      }`}
+                      title={job.isSaved ? "Remove from saved jobs" : "Save job"}
+                      disabled={savingJobs[job.id]}
+                    >
+                      {savingJobs[job.id] ? (
+                        <Loader className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Bookmark className={`h-5 w-5 ${job.isSaved ? "fill-current" : ""}`} />
+                      )}
+                    </button>
+                  )}
 
                   <h3 className="text-xl font-semibold mb-1 pr-10 text-gray-800">{job.title}</h3>
 
@@ -570,15 +585,20 @@ export default function JobsPage() {
                   )}
 
                   <div className="flex flex-wrap gap-3 mt-4">
-                    <a
-                      href={job.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <Button
+                      onClick={() => {
+                        if (user) {
+                          window.open(job.url, "_blank", "noopener,noreferrer")
+                        } else {
+                          toast.error("Please log in to apply for jobs")
+                          navigate("/login")
+                        }
+                      }}
                       className="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                     >
                       Apply Now
                       <ArrowUpRight className="h-4 w-4" />
-                    </a>
+                    </Button>
                     <Button
                       variant="outline"
                       className="border-blue-200 text-blue-700 hover:bg-blue-50"
