@@ -26,7 +26,36 @@ const notificationSchema = new mongoose.Schema({
   lastUpdated: {
     type: Date,
     default: Date.now
-  }
+  },
+  jobTitle: {
+    type: String,
+    required: false,
+  },
+  jobUrl: {
+    type: String,
+    required: false,
+  },
+  jobCompany: {
+    type: String,
+    required: false,
+  },
+  jobLocation: {
+    type: String,
+    required: false,
+  },
+  jobMatchPercentage: {
+    type: Number,
+    required: false,
+  },
+  jobSkills: {
+    type: [String],
+    required: false,
+  },
+  jobDescription: {
+    type: String,
+    required: false,
+  },
+  
 }, {
   timestamps: true,
   toJSON: {

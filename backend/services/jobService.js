@@ -1,4 +1,4 @@
-const Job = require("../models/job_model");
+const Job = require("../models/savedjob_model");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const NodeCache = require("node-cache");

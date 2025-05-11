@@ -37,91 +37,27 @@ const api = axios.create({
  * Notification service for managing user notifications
  */
 export const notificationService = {
-  /**
-   * Get all notifications for the current user
-   * @returns {Promise<Array>} List of notifications
-   */
-  async getNotifications() {
+
+  async getNotifications(page = 1, limit = 10) {
     try {
       const token = getToken();
-      
-      // Debugging logs
-      console.debug('Making request to /notifications with token:', token ? 'present' : 'missing');
-      
       if (!token) {
         throw new Error('No authentication token available');
       }
 
-      const response = await api.get("/notifications", {
+      const response = await api.get(`/notifications?page=${page}&limit=${limit}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       return response.data;
     } catch (error) {
-      console.error("API Error Details:", {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
-      });
-      
-      if (error.response?.status === 401) {
-        // Handle unauthorized error (e.g., clear invalid token)
-        localStorage.removeItem('token');
-        // Optionally redirect to login
-        window.location.href = '/login';
-      }
-      
+      console.error("Error fetching notifications:", error.response?.data || error.message);
       throw error;
     }
   },
 
-  /**
-   * Get notification settings for a user
-   * @param {string} userId - User ID
-   * @returns {Promise<Object>} Notification settings
-   */
-  getSettings: async function(userId) {
-    try {
-      const token = getToken();
-      const response = await api.get(`/notifications/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching notification settings:", error.response?.data || error.message);
-      throw error;
-    }
-  },
 
-  /**
-   * Update notification settings for a user
-   * @param {string} userId - User ID
-   * @param {Object} settings - Updated settings object
-   * @returns {Promise<Object>} Updated settings
-   */
-  async updateSettings(userId, settings) {
-    try {
-      const token = getToken();
-      const response = await api.put(`/notifications/${userId}`, settings, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error updating notification settings:", error.response?.data || error.message);
-      throw error;
-    }
-  },
-
-  /**
-   * Mark a notification as read
-   * @param {string} notificationId - Notification ID
-   * @returns {Promise<Object>} Updated notification
-   */
   async markAsRead(notificationId) {
     try {
       const token = getToken();
@@ -137,62 +73,54 @@ export const notificationService = {
     }
   },
 
+
+  async markAllAsRead() {
+    try {
+      const token = getToken();
+      const response = await api.put(`/notifications/mark-all-as-read`, null, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+ 
+  async deleteNotification(notificationId) {
+    try {
+      const token = getToken();
+      const response = await api.delete(`/notifications/${notificationId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting notification:", error.response?.data || error.message);
+      throw error;
+    }
+  },
+
   /**
-   * Send job alert email
-   * @param {string} userId - User ID
-   * @param {Object} jobAlertData - Job alert data
+   * Delete all notifications
    * @returns {Promise<Object>} Response data
    */
-  async sendJobAlertEmail(userId, jobAlertData) {
+  async deleteAllNotifications() {
     try {
       const token = getToken();
-      const response = await api.post(`/notifications/${userId}/job-alert`, jobAlertData, {
+      const response = await api.delete(`/notifications`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       return response.data;
     } catch (error) {
-      console.error("Error sending job alert email:", error.response?.data || error.message);
+      console.error("Error deleting all notifications:", error.response?.data || error.message);
       throw error;
-    }
-  },
-
-  /**
-   * Verify email configuration
-   * @returns {Promise<Object>} Email configuration status
-   */
-  async verifyEmailConfig() {
-    try {
-      const token = getToken();
-      const response = await api.get("/notifications/verify-email-config", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error verifying email configuration:", error.response?.data || error.message);
-      throw error;
-    }
-  },
-
-  /**
-   * Check if user is authenticated
-   * @returns {Promise<boolean>} Authentication status
-   */
-  async checkAuth() {
-    try {
-      const token = getToken();
-      const response = await api.get("/notifications/check-auth", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      return response.data.authenticated;
-    } catch (error) {
-      console.error("Error checking authentication:", error.response?.data || error.message);
-      return false;
     }
   },
 };

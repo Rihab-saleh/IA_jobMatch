@@ -259,12 +259,9 @@ function inferCategoryFromContext(phrase) {
   ) {
     return "Tool";
   }
-
-  // Default to Technical for most terms in a job description
   return "Technical";
 }
 
-// Calculate confidence from context
 function calculateConfidenceFromContext(phrase) {
   // Base confidence
   let confidence = 0.7;

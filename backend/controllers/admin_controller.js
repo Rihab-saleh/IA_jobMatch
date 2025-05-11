@@ -1,6 +1,5 @@
 const AdminService = require("../services/adminService");
 const User = require("../models/user_model");
-const Job = require("../models/job_model");
 const Admin = require("../models/admin_model");
 const VisitorLog = require('../models/visitor_model');
 

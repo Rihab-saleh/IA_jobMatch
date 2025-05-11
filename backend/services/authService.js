@@ -75,7 +75,7 @@ const signup = async (userData) => {
     password: hashedPassword,
     role: "user",
     isActive: true, // New users are active by default
-    accountStatusRequests: [],
+   
   });
 
   await newPerson.save();

@@ -219,18 +219,10 @@ const AdminHeader = ({ logout, fullName }) => {
 
   const adminNavLinks = [
     { path: "/admin", label: "Dashboard", icon: Home },
-    { path: "/admin/users", label: "Users", icon: User },
-    { path: "/admin/jobs", label: "Jobs", icon: Briefcase },
-    { path: "/admin/settings", label: "Settings", icon: Settings },
   ]
 
   const accountLinks = [
-    {
-      path: "/admin/profile",
-      label: "Admin Profile",
-      icon: User,
-      description: "Manage your account details",
-    },
+ 
     {
       path: "/admin/settings",
       label: "Admin Settings",

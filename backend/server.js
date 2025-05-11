@@ -10,7 +10,6 @@ const jobRoutes = require("./routes/jobRoutes");
 const authRoutes = require("./routes/auth.routes");
 const { authMiddleware, adminMiddleware } = require("./middlewares/authMiddleware");
 const notificationRoutes = require("./routes/notificationRoutes");
-const recommendation = require("./services/index");
 const AdminConfig = require("./models/adminConfig_model");
 const logVisitor = require('./middlewares/visitorLog');
 const axios = require('axios');
@@ -111,11 +110,13 @@ app.use("/api/admin", authMiddleware, adminMiddleware, adminRoutes);
 app.use("/api/recommendations", authMiddleware, recommendationRoutes);
 app.use("/api/jobs", authMiddleware, jobRoutes);
 app.use("/api/notifications", authMiddleware, notificationRoutes);
-app.use("/api/recommendation", recommendation);
+
 
 // Servir les fichiers statiques (ex. : uploads)
-app.use("/uploads", express.static(path.join(__dirname, "../assets/uploads/profiles")));
+const uploadDir = path.join(__dirname, 'uploads/profiles');
 
+// Serve the uploads directory statically
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Gestion des routes non trouvées
 app.use((req, res, next) => {
   res.status(404).json({ error: "Route not found" });

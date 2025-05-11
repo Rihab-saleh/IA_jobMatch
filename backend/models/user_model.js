@@ -3,8 +3,6 @@ const person = require('./person_model'); // Import Person model
 const skills = require('./skill_model'); // Import Skill model
 const profile = require('./profile_model'); // Import Profile model
 const notifications = require('./notification_model'); // Import Notification model
-const UserPreferences = require('./UserPreferences_model'); // Import UserPreferences model
-const request=require('./accountstatus_request');
 
 const userSchema = new mongoose.Schema({
     person: {

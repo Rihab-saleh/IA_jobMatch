@@ -35,7 +35,16 @@ function buildHTMLEmail(greeting, jobs) {
       <div style="max-width: 640px; margin: auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
         <h2 style="color: #264653; font-size: 24px;">${greeting}</h2>
         <p style="font-size: 16px; color: #444;">Here are some opportunities that match your profile:</p>
-        ${jobs.map(job => `
+        ${jobs.map(job => {
+          // Ensure URL is properly formatted
+          let jobUrl = job.url || job.applyUrl || job.sourceUrl || '#';
+          
+          // Add https:// prefix if the URL doesn't have a protocol
+          if (jobUrl !== '#' && !jobUrl.startsWith('http://') && !jobUrl.startsWith('https://')) {
+            jobUrl = 'https://' + jobUrl;
+          }
+          
+          return `
           <div style="margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px;">
             <h3 style="margin: 0; color: #2a9d8f; font-size: 20px;">${job.title}</h3>
             <p><strong>Company:</strong> ${job.company}</p>
@@ -48,9 +57,9 @@ function buildHTMLEmail(greeting, jobs) {
                 : '<span style="color: #999;">Not specified</span>'
               }
             </div>
-            <a href="${job.url || '#'}" style="display:inline-block; margin-top:15px; background-color:#264653; color:#fff; padding:10px 18px; text-decoration:none; border-radius:6px; font-size:14px;" target="_blank">🔎 View Job</a>
+            <a href="${jobUrl}" style="display:inline-block; margin-top:15px; background-color:#264653; color:#fff; padding:10px 18px; text-decoration:none; border-radius:6px; font-size:14px;" target="_blank">🔎 View Job</a>
           </div>
-        `).join('')}
+        `}).join('')}
         <p style="font-size: 16px; color: #444;">Good luck with your job search!</p>
         <p style="font-size: 12px; color: #999; margin-top: 30px;">This email was sent automatically via <strong>Job Match</strong>. Please do not reply directly to this message.</p>
       </div>
@@ -60,14 +69,22 @@ function buildHTMLEmail(greeting, jobs) {
 /** Build plain text email content */
 function buildTextEmail(greeting, jobs) {
   return `${greeting}\n\nVoici vos nouvelles recommandations :\n\n` +
-    jobs.map(job =>
-      `- ${job.title} chez ${job.company} (${job.location})\n` +
-      `  🎯 Correspondance : ${job.matchPercentage}%\n` +
-      `  📌 Compétences : ${job.skills.length && job.skills[0] !== 'Non spécifiées' 
-        ? job.skills.join(', ') 
-        : 'Non spécifiées'}\n` +
-      `  🔗 ${job.url || 'Lien non disponible'}`
-    ).join('\n\n') +
+    jobs.map(job => {
+      // Ensure URL is properly formatted
+      let jobUrl = job.url || job.applyUrl || job.sourceUrl || 'Lien non disponible';
+      
+      // Add https:// prefix if the URL doesn't have a protocol
+      if (jobUrl !== 'Lien non disponible' && !jobUrl.startsWith('http://') && !jobUrl.startsWith('https://')) {
+        jobUrl = 'https://' + jobUrl;
+      }
+      
+      return `- ${job.title} chez ${job.company} (${job.location})\n` +
+        `  🎯 Correspondance : ${job.matchPercentage}%\n` +
+        `  📌 Compétences : ${job.skills.length && job.skills[0] !== 'Non spécifiées' 
+          ? job.skills.join(', ') 
+          : 'Non spécifiées'}\n` +
+        `  🔗 ${jobUrl}`;
+    }).join('\n\n') +
     `\n\nBonne chance dans vos recherches !`;
 }
 
@@ -104,19 +121,30 @@ async function sendJobRecommendationsEmail(email, recommendations = []) {
     }
 
     // Limiter à 5 recommandations et structurer les informations
-    const jobs = recommendations.slice(0, 5).map(job => ({
-      id: job.id || Math.random().toString(36).substring(2, 9),
-      title: job.title || 'Titre non spécifié',
-      company: job.company || 'Entreprise non spécifiée',
-      location: job.location?.name || job.location || 'Localisation non précisée',
-      matchPercentage: job.matchPercentage || 0,
-      skills: (job.skillMatches && job.skillMatches.length > 0)
-        ? job.skillMatches
-        : (job.skills && job.skills.length > 0)
-          ? job.skills
-          : ['Non spécifiées'], // Ajoutez une valeur par défaut
-      url: job.applyUrl || job.url || job.sourceUrl || '#',
-    }));
+    const jobs = recommendations.slice(0, 5).map(job => {
+      // Get the URL from various possible sources
+      let jobUrl = job.applyUrl || job.url || job.sourceUrl;
+      
+      // Ensure URL has proper format
+      if (jobUrl && !jobUrl.startsWith('http://') && !jobUrl.startsWith('https://')) {
+        jobUrl = 'https://' + jobUrl;
+      }
+      
+      return {
+        id: job.id || Math.random().toString(36).substring(2, 9),
+        title: job.title || 'Titre non spécifié',
+        company: job.company || 'Entreprise non spécifiée',
+        location: job.location?.name || job.location || 'Localisation non précisée',
+        matchPercentage: job.matchPercentage || 0,
+        skills: (job.skillMatches && job.skillMatches.length > 0)
+          ? job.skillMatches
+          : (job.skills && job.skills.length > 0)
+            ? job.skills
+            : ['Non spécifiées'], // Ajoutez une valeur par défaut
+        url: jobUrl || '#',
+        description: job.description || '',
+      };
+    });
 
     const greeting = person.fullName ? `Hello ${person.fullName},` : 'Hello,';
 
@@ -130,15 +158,35 @@ async function sendJobRecommendationsEmail(email, recommendations = []) {
     // Envoi de l'email
     await sendEmail({ to: cleanEmail, ...emailContent });
 
-    // Enregistrement de la notification pour l'utilisateur
-    await Notification.create({
-      userId: user._id,
-      notificationType: 'jobAlert',
-      message: `${jobs.length} nouvelles recommandations envoyées à ${cleanEmail}`,
-      createdAt: new Date(),
-    });
+    // Créer une notification pour chaque job
+    await Promise.all(jobs.map(async (job) => {
+      // Vérifier si une notification existe déjà pour ce job
+      const existingNotification = await Notification.findOne({
+        userId: user._id,
+        notificationType: 'jobAlert',
+        jobTitle: job.title,
+        jobUrl: job.url,
+      });
+      
+      // Si aucune notification n'existe, en créer une nouvelle
+      if (!existingNotification) {
+        await Notification.create({
+          userId: user._id,
+          notificationType: 'jobAlert',
+          jobTitle: job.title,
+          jobUrl: job.url,
+          jobCompany: job.company,
+          jobLocation: job.location,
+          jobMatchPercentage: job.matchPercentage,
+          jobSkills: job.skills,
+          jobDescription: job.description,
+          message: `Nouvelle recommandation d'emploi: ${job.title} chez ${job.company}`,
+          createdAt: new Date(),
+        });
+      }
+    }));
 
-    return { success: true, sent: true };
+    return { success: true, sent: true, jobCount: jobs.length };
 
   } catch (error) {
     console.error('[ERROR] sendJobRecommendationsEmail:', error.message);

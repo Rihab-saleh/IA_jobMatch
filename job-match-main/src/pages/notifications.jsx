@@ -20,36 +20,18 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
 
   const handleAction = () => {
     if (!notification.read) {
-      onMarkAsRead(notification.id);
+      onMarkAsRead(notification.id); // Mark notification as read when clicked
     }
   };
 
   const formatDate = (dateString) => {
-    const now = new Date();
     const date = new Date(dateString);
-    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
-
-    if (diffInHours < 24) {
-      return date.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } else if (diffInHours < 48) {
-      return "Yesterday";
-    } else {
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-    }
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
-
-  // Fallback content
-  const title = notification.notificationType 
-    ? notification.notificationType.replace(/_/g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase())
-    : "Notification";
-    
-  const message = notification.content || "You have a new notification";
 
   return (
     <div
@@ -71,7 +53,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
               className="font-semibold text-gray-900 hover:text-blue-700 truncate cursor-pointer"
               onClick={handleAction}
             >
-              {title}
+              {notification.jobTitle || "Notification"}
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-xs text-gray-500 whitespace-nowrap">
@@ -90,11 +72,28 @@ const NotificationItem = ({ notification, onMarkAsRead, onDelete }) => {
             </div>
           </div>
 
-          <p 
-            className="mt-1 text-sm text-gray-600 break-words cursor-pointer"
-            onClick={handleAction}
-          >
-            {message}
+          <p className="mt-1 text-sm text-gray-600 break-words">
+            <span className="font-medium">{notification.jobCompany}</span>
+            {notification.jobMatchPercentage && (
+              <span className="ml-2 text-gray-500">
+                ({notification.jobMatchPercentage}% match)
+              </span>
+            )}
+          </p>
+
+          {notification.jobUrl && (
+            <a
+              href={notification.jobUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline text-sm"
+            >
+              View Job
+            </a>
+          )}
+
+          <p className="mt-1 text-sm text-gray-600 break-words">
+            {notification.content || "You have a new notification"}
           </p>
         </div>
       </div>
@@ -116,6 +115,7 @@ export default function NotificationsPage() {
       try {
         setLoading(true);
         const response = await notificationService.getNotifications();
+        console.log("Notifications Data:", response.notifications); // Debugging
         setNotifications(response.notifications || []);
         setHasUnread(response.notifications?.some(n => !n.read) || false);
         setError(null);

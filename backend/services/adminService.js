@@ -2,10 +2,10 @@ const mongoose = require('mongoose');
 
 const bcrypt = require("bcrypt");
 const User = require("../models/user_model");
-const AccountStatusRequest = require("../models/accountstatus_request");
+
 const Person = require("../models/person_model");
 const Admin = require("../models/admin_model");
-const IARecommendation = require("../models/recommendation_model");
+
 
 class AdminService {
   async toggleUserStatus(userId) {

@@ -3,7 +3,6 @@ const router = express.Router()
 const adminController = require("../controllers/admin_controller")
 const { authMiddleware, adminMiddleware } = require("../middlewares/authMiddleware")
 const User = require("../models/user_model")
-const AccountStatusRequest = require("../models/accountstatus_request")
 const AdminConfig = require("../models/adminConfig_model");
 
 router.get("/check", authMiddleware, adminMiddleware, (req, res) => {

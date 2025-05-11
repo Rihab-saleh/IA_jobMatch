@@ -5,16 +5,7 @@ const { sendJobRecommendationsEmail } = require('./emailService');
 const { searchJobs } = require('./jobApiService');
 const AdminConfig = require('../models/adminConfig_model');
 
-/**
- * Extrait les compétences significatives à partir d'un texte.
- */
-function extractCompetencies(text) {
-  const stopWords = new Set(['the', 'and', 'with', 'using', 'for', 'this']);
-  return [...new Set(
-    (text?.match(/\b[A-Za-z]{4,}\b/g) || [])
-      .filter(term => !stopWords.has(term.toLowerCase()))
-  )];
-}
+
 
 /**
  * Génère des recommandations d'emploi personnalisées pour un utilisateur.
@@ -38,8 +29,6 @@ async function getRecommendationsForUser(userId) {
     const skills = userProfile.profile.skills?.map(s => s.name) || [];
     const experiencesText = userProfile.profile.experiences?.[0]?.description || '';
 
-    const experienceTerms = extractCompetencies(experiencesText);
-    const competencies = [...skills, ...experienceTerms];
     console.log("jobTitle:", jobTitle);
     console.log("userProfile:", userProfile);
     const query = jobTitle;
@@ -100,7 +89,7 @@ async function getRecommendationsForUser(userId) {
     const savedJobs = await SavedJob.find({ userId }).lean();
     const savedJobIds = savedJobs.map(job => job.jobId);
 
-    // Filtrer pour garder seulement les nouveaux jobs
+   
     const newRecommendations = validRecommendations.filter(job => {
       const jobId = job.id || job.url || `${job.title}-${job.company}`;
       return !savedJobIds.includes(jobId);
@@ -172,9 +161,7 @@ async function saveRecommendedJobs(userId, jobs) {
   }
 }
 
-/**
- * Récupère les emplois recommandés déjà enregistrés.
- */
+
 async function getSavedJobRecommendations(userId) {
   return await SavedJob.find({ userId, recommended: true }).sort({ savedAt: -1 });
 }

@@ -218,7 +218,7 @@ DO NOT include any introductory text, explanations, or markdown formatting. Resp
 `;
 
     // Set up a timeout of 300000 milliseconds
-    const TIMEOUT_MS = 300000;
+    const TIMEOUT_MS = 30000000000;
     
     // Create the fallback response
     const fallbackResponse = {
