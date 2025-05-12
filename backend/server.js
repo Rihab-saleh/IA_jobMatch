@@ -112,11 +112,6 @@ app.use("/api/jobs", authMiddleware, jobRoutes);
 app.use("/api/notifications", authMiddleware, notificationRoutes);
 
 
-// Servir les fichiers statiques (ex. : uploads)
-const uploadDir = path.join(__dirname, 'uploads/profiles');
-
-// Serve the uploads directory statically
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Gestion des routes non trouvées
 app.use((req, res, next) => {
   res.status(404).json({ error: "Route not found" });

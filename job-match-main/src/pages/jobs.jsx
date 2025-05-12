@@ -50,7 +50,7 @@ export default function JobsPage() {
 
   const api = axios.create({
     baseURL: "http://localhost:3001/api/jobs",
-    timeout: 30000,
+    timeout: 30000000,
     headers: {
       "Content-Type": "application/json",
     },
@@ -128,7 +128,7 @@ export default function JobsPage() {
 
       const response = await api.post("/search", requestBody, {
         signal,
-        timeout: 30000,
+        timeout: 30000000,
       })
 
       const jobsData = response.data.jobs || []

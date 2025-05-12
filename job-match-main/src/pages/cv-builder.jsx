@@ -798,7 +798,13 @@ export default function CVBuilderPage() {
               </Button>
             </div>
           </div>
+          <div className=" flex justify-end mb-4">
+           
 
+            <Button variant="outline" onClick={generatePDF} disabled={generatingPdf}>
+             generate PDF
+              </Button>
+          </div>
           <div className="border rounded-lg p-6 bg-white shadow-md">
             <div ref={resumeRef}>
               <ResumeTemplate
@@ -836,9 +842,9 @@ export default function CVBuilderPage() {
         <p className="text-gray-600 mb-8">Create and optimize your CV with AI-powered suggestions</p>
 
         <Tabs defaultValue="builder" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
             <TabsTrigger value="builder">CV Builder</TabsTrigger>
-            <TabsTrigger value="templates">Templates</TabsTrigger>
+
             <TabsTrigger value="optimizer">AI Optimizer</TabsTrigger>
           </TabsList>
 
@@ -938,22 +944,6 @@ export default function CVBuilderPage() {
                     />
                   </div>
 
-                  <div className="mb-4">
-                    <label htmlFor="linkedin" className="block text-sm font-medium mb-1">
-                      LinkedIn URL
-                    </label>
-                    <div className="relative">
-                      <Link className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="linkedin"
-                        name="linkedin"
-                        value={personalInfo.linkedin}
-                        onChange={handlePersonalInfoChange}
-                        className="pl-9"
-                        placeholder="https://www.linkedin.com/in/yourprofile"
-                      />
-                    </div>
-                  </div>
 
                   <div>
                     <label htmlFor="summary" className="block text-sm font-medium mb-1">
@@ -1687,71 +1677,7 @@ export default function CVBuilderPage() {
             </div>
           </TabsContent>
 
-          {/* Templates Tab */}
-          <TabsContent value="templates" className="space-y-6">
-            <div className="bg-white rounded-lg border p-6">
-              <h2 className="text-xl font-semibold mb-4">Choose a Template</h2>
-              <p className="text-gray-600 mb-6">
-                Select a professional template for your CV. You can switch templates at any time without losing your
-                content.
-              </p>
-
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                {/* Template 1 */}
-                <div className={`border rounded-lg p-2 ${activeTemplate === "modern" ? "ring-2 ring-blue-700" : ""}`}>
-                  <div className="aspect-[3/4] bg-gray-100 rounded-lg mb-2 overflow-hidden">
-                    <img
-                      src="/placeholder.svg?height=300&width=225"
-                      alt="Modern Template"
-                      width={225}
-                      height={300}
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Modern</span>
-                    <Button
-                      variant={activeTemplate === "modern" ? "default" : "outline"}
-                      size="sm"
-                      className={activeTemplate === "modern" ? "bg-blue-700 hover:bg-blue-800 text-white" : ""}
-                      onClick={() => setActiveTemplate("modern")}
-                    >
-                      {activeTemplate === "modern" ? "Selected" : "Select"}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Template 2 */}
-                <div
-                  className={`border rounded-lg p-2 ${activeTemplate === "professional" ? "ring-2 ring-blue-700" : ""}`}
-                >
-                  <div className="aspect-[3/4] bg-gray-100 rounded-lg mb-2 overflow-hidden">
-                    <img
-                      src="/placeholder.svg?height=300&width=225"
-                      alt="Professional Template"
-                      width={225}
-                      height={300}
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Professional</span>
-                    <Button
-                      variant={activeTemplate === "professional" ? "default" : "outline"}
-                      size="sm"
-                      className={
-                        activeTemplate === "professional" ? "bg-blue-700 hover:bg-blue-800 text-white" : ""
-                      }
-                      onClick={() => setActiveTemplate("professional")}
-                    >
-                      {activeTemplate === "professional" ? "Selected" : "Select"}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
+         
           {/* AI Optimizer Tab */}
           <TabsContent value="optimizer" className="space-y-6">
             <CVReviewAnalyzer

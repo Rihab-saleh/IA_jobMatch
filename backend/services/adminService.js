@@ -2,11 +2,9 @@ const mongoose = require('mongoose');
 
 const bcrypt = require("bcrypt");
 const User = require("../models/user_model");
-
+const VisitorLog = require("../models/visitor_model"); 
 const Person = require("../models/person_model");
 const Admin = require("../models/admin_model");
-
-
 class AdminService {
   async toggleUserStatus(userId) {
     try {
@@ -526,32 +524,68 @@ async getAllAdmins(page = 1, limit = 10, search = "") {
       throw new Error(`Échec du traitement: ${err.message}`);
     }
   }
-  async getStats() {
+  async getStats()
+  {
     try {
-      // Exécute les quatre requêtes en parallèle avec Promise.all
-      const [activeUsers, inactiveUsers, totalAdmins] = await Promise.all([
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+  
+      const startOfWeek = new Date(today)
+      startOfWeek.setDate(today.getDate() - today.getDay()) // Start of current week (Sunday)
+  
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1) // Start of current month
+  
+      // Execute all queries in parallel with Promise.all for better performance
+      const [
+        activeUsers,
+        inactiveUsers,
+        newUsersToday,
+        newUsersThisWeek,
+        newUsersThisMonth,
+        totalAdmins,
+        totalVisitors,
+        visitorsToday,
+        visitorsThisWeek,
+        visitorsThisMonth,
+      ] = await Promise.all([
         User.countDocuments({ isActive: true }),
         User.countDocuments({ isActive: false }),
-
-        Admin.countDocuments()
-      ]);
+        User.countDocuments({ createdAt: { $gte: today } }),
+        User.countDocuments({ createdAt: { $gte: startOfWeek } }),
+        User.countDocuments({ createdAt: { $gte: startOfMonth } }),
+        Admin.countDocuments(),
+        VisitorLog.countDocuments(),
+        VisitorLog.countDocuments({ timestamp: { $gte: today } }),
+        VisitorLog.countDocuments({ timestamp: { $gte: startOfWeek } }),
+        VisitorLog.countDocuments({ timestamp: { $gte: startOfMonth } }),
+      ])
   
-      // Retourne les statistiques formatées
+      // Return formatted statistics
       return {
         users: {
           total: activeUsers + inactiveUsers,
           active: activeUsers,
-          inactive: inactiveUsers
+          inactive: inactiveUsers,
+          today: newUsersToday,
+          thisWeek: newUsersThisWeek,
+          thisMonth: newUsersThisMonth
+        },
+        visitors: {
+          total: totalVisitors,
+          today: visitorsToday,
+          thisWeek: visitorsThisWeek,
+          thisMonth: visitorsThisMonth
         },
         admins: {
           total: totalAdmins
         }
       };
     } catch (err) {
-      console.error("Error in getStats:", err);
-      throw new Error("Failed to fetch statistics");
+      console.error("Error in getStats:", err)
+      throw new Error("Failed to fetch statistics")
     }
   }
+  
   
 }
 

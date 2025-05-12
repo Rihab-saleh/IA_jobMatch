@@ -244,7 +244,7 @@ const AdminHeader = ({ logout, fullName }) => {
         </div>
 
         <div className="flex items-center gap-2">
-          <NotificationBadge count={3} />
+        
           <UserDropdown
             isOpen={dropdownOpen}
             setIsOpen={setDropdownOpen}

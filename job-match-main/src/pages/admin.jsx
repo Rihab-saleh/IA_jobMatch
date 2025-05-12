@@ -66,6 +66,10 @@ function DetailedStats({ stats }) {
             <span className="text-sm font-medium">{stats.users.inactive}</span>
           </div>
           <div className="flex items-center">
+            <span className="text-sm text-gray-500 mr-2">New Today:</span>
+            <span className="text-sm font-medium">{stats.users.today}</span>
+          </div>
+          <div className="flex items-center">
             <span className="text-sm text-gray-500 mr-2">New This Week:</span>
             <span className="text-sm font-medium">{stats.users.thisWeek}</span>
           </div>
@@ -406,6 +410,33 @@ function UsersTable({ users, onAction }) {
 }
 
 function AdminsTable({ admins, onEdit, onDelete }) {
+  // Add this function to get the current admin's email from localStorage token
+  const getCurrentAdminEmail = () => {
+    try {
+      const token = localStorage.getItem("auth_token")
+      if (!token) return null
+
+      // Decode JWT token (assuming it's a JWT token)
+      const base64Url = token.split(".")[1]
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join(""),
+      )
+
+      const payload = JSON.parse(jsonPayload)
+      return payload.email // Assuming the email is stored in the token payload
+    } catch (error) {
+      console.error("Error decoding token:", error)
+      return null
+    }
+  }
+
+  // Get current admin email
+  const currentAdminEmail = getCurrentAdminEmail()
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
@@ -413,7 +444,6 @@ function AdminsTable({ admins, onEdit, onDelete }) {
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
           </tr>
         </thead>
@@ -421,6 +451,9 @@ function AdminsTable({ admins, onEdit, onDelete }) {
           {admins && admins.length > 0 ? (
             admins.map((admin) => {
               if (!admin) return null
+
+              // Check if this admin is the current logged-in admin
+              const isCurrentAdmin = currentAdminEmail && admin.email === currentAdminEmail
 
               return (
                 <tr key={admin._id}>
@@ -432,9 +465,7 @@ function AdminsTable({ admins, onEdit, onDelete }) {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{admin.email || ""}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{admin.age || "Not specified"}</div>
-                  </td>
+                 
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
                       <Button
@@ -451,8 +482,10 @@ function AdminsTable({ admins, onEdit, onDelete }) {
                         variant="ghost"
                         size="icon"
                         onClick={() => onDelete(admin)}
-                        className="text-red-600 hover:text-red-900 hover:bg-red-50"
+                        className={`text-red-600 hover:text-red-900 hover:bg-red-50 ${isCurrentAdmin ? "opacity-50 cursor-not-allowed" : ""}`}
                         aria-label="Delete admin"
+                        disabled={isCurrentAdmin}
+                        title={isCurrentAdmin ? "You cannot delete your own account" : "Delete admin"}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
